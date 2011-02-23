@@ -1,0 +1,16 @@
+var SMTPError =
+{
+	COULDNOTCONNECT: 	1,
+	BADRESPONSE: 		2,
+	AUTHFAILED: 		3,
+	TIMEDOUT: 			4,
+	ERROR: 				5,
+	NOCONNECTION: 		6,
+	AUTHNOTSUPPORTED:	7,
+	CONNECTIONCLOSED: 8,
+	CONNECTIONENDED:	9,
+	CONNECTIONAUTH:	10
+}
+
+for(var each in SMTPError)
+	exports[each] = SMTPError[each];
