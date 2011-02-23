@@ -1,6 +1,6 @@
 #v0.1
 
-###send emails from node.js to any smtp server
+###send emails, html and attachments from node.js to any smtp server
 
 ### Installing 
 

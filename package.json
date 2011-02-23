@@ -1,6 +1,6 @@
 {
   "name": "emailjs",
-  "description": "send emails, attachments and html emails from node.js to any smtp server",
+  "description": "send emails, html and attachments from node.js to any smtp server",
   "version": "0.1.0",
   "author": "eleith",
   "contributors" : [
