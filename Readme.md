@@ -18,16 +18,36 @@
 
 # USAGE - text only emails
 
-      var email 	= require("./path/to/emailjs/email");
-		var server 	= email.server.connect({user:yourUSER, password:yourPASS, host:"smtp.gmail.com", port:465, domain:yourDOMAIN, secure:true});
+		var email 	= require("./path/to/emailjs/email");
+		var server 	= email.server.connect({
+			user:yourUSER, 
+			password:yourPASS, 
+			host:"smtp.gmail.com", 
+			port:465, 
+			domain:yourDOMAIN, 
+			secure:true});
 
 		// send the message and get a callback with an error or details of the message that was sent
-		server.send({text:"i hope this works", from:yourUSER + "@gmail.com", to:yourFRIEND, subject:"testing emailjs"}, function(err, message) { console.log(err || message); });
+		server.send({
+			text:"i hope this works", 
+			from:yourUSER + "@gmail.com", 
+			to:yourFRIEND, 
+			subject:"testing emailjs"}, 
+			function(err, message) { 
+				console.log(err || message); 
+			});
 
 # USAGE - html emails and attachments
 
-      var email 	= require("./path/to/emailjs/email");
-		var server 	= email.server.connect({user:yourUSER, password:yourPASS, host:"smtp.gmail.com", port:465, domain:yourDOMAIN, secure:true});
+		var email 	= require("./path/to/emailjs/email");
+		var server 	= email.server.connect({
+			user:yourUSER, 
+			password:yourPASS, 
+			host:"smtp.gmail.com", 
+			port:465, 
+			domain:yourDOMAIN, 
+			secure:true});
+
 		var message	= email.message.create("i hope this works", {from:yourUSER + "@gmail.com", to:yourFRIEND, subject:"testing emailjs"});
 
 		// attach an alternative html email for those with advanced email clients
