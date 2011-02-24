@@ -1,4 +1,4 @@
-#v0.1
+#v0.1.2
 
 ### emailjs
 
@@ -17,6 +17,61 @@ send emails, html and attachments from node.js to any smtp server
 
 # REQUIRES
  - access to an SMTP Server (ex: gmail)
+
+# EXAMPLE USAGE - text only emails
+
+		var email 	= require("./path/to/emailjs/email");
+		var server 	= email.server.connect({
+			user:		"username", 
+			password:"password", 
+			host:		"smtp.gmail.com", 
+			ssl:		true
+		});
+
+		// send the message and get a callback with an error or details of the message that was sent
+		server.send({
+			text:		"i hope this works", 
+			from:		"you <username@gmail.com>", 
+			to:		"someone <someone@gmail.com>, another <another@gmail.com>",
+			cc:		"else <else@gmail.com>",
+			subject:	"testing emailjs"
+		}, function(err, message) { console.log(err || message); });
+
+# EXAMPLE USAGE - html emails and attachments
+
+		var email 	= require("./path/to/emailjs/email");
+		var server 	= email.server.connect({
+			user:		"username", 
+			password:"password", 
+			host:		"smtp.gmail.com", 
+			ssl:		true
+		});
+
+		var headers	= {
+			text:		"i hope this works", 
+			from:		"you <username@gmail.com>", 
+			to:		"someone <someone@gmail.com>, another <another@gmail.com>",
+			cc:		"else <else@gmail.com>",
+			subject:	"testing emailjs"
+		};
+
+		// create the message
+		var message = email.message.create(headers);
+
+		// attach an alternative html email for those with advanced email clients
+		message.attach_alternative("i <i>hope</i> this works!");
+
+		// attach attachments because you can!
+		message.attach("path/to/file.zip", "application/zip", "renamed.zip");
+
+		// send the message and get a callback with an error or details of the message that was sent
+		server.send(message, function(err, message) { console.log(err || message); });
+
+		// you can continue to send more messages with successive calls to 'server.send', 
+		// they will be queued on the same smtp connection
+
+		// or you can create a new server connection with 'email.server.connect' 
+		// to asynchronously send individual emails instead of a queue
 
 # API 
 
@@ -73,58 +128,6 @@ send emails, html and attachments from node.js to any smtp server
 	mime_type	// string of the file mime type
 	name			// name to give the file as perceived by the recipient
 	
-# EXAMPLE USAGE - text only emails
-
-		var email 	= require("./path/to/emailjs/email");
-		var server 	= email.server.connect({
-			user:		"username", 
-			password:"password", 
-			host:		"smtp.gmail.com", 
-			ssl:		true
-		});
-
-		// send the message and get a callback with an error or details of the message that was sent
-		server.send({
-			text:		"i hope this works", 
-			from:		"you <username@gmail.com>", 
-			to:		"someone <someone@gmail.com>, another <another@gmail.com>",
-			cc:		"else <else@gmail.com>",
-			subject:	"testing emailjs"
-		}, function(err, message) { console.log(err || message); });
-
-# EXAMPLE USAGE - html emails and attachments
-
-		var email 	= require("./path/to/emailjs/email");
-		var server 	= email.server.connect({
-			user:		"username", 
-			password:"password", 
-			host:		"smtp.gmail.com", 
-			ssl:		true
-		});
-
-		var headers	= {
-			text:		"i hope this works", 
-			from:		"you <username@gmail.com>", 
-			to:		"someone <someone@gmail.com>, another <another@gmail.com>",
-			cc:		"else <else@gmail.com>",
-			subject:	"testing emailjs"
-		};
-
-		// create the message
-		var message = email.message.create(headers);
-
-		// attach an alternative html email for those with advanced email clients
-		message.attach_alternative("i <i>hope</i> this works!");
-
-		// attach attachments because you can!
-		message.attach("path/to/file.zip", "application/zip", "renamed.zip");
-
-		// send the message and get a callback with an error or details of the message that was sent
-		server.send(message, function(err, message) { console.log(err || message); });
-
-		// you can continue to send more messages with successive calls to 'server.send', they will be queued on the same smtp connection
-		// or you can create a new server connection with 'email.server.connect' to async send individual emails instead of a queue
-
 ## Authors
 
 eleith
