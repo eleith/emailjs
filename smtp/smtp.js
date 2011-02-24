@@ -7,12 +7,14 @@ var os				= require('os');
 var tls				= require('tls');
 var util				= require('util');
 var events			= require('events');
+var starttls		= require('./tls');
 
 var SMTPResponse	= require('./response');
 var SMTPError		= require('./error');
 
 var SMTP_PORT 		= 25;
 var SMTP_SSL_PORT = 465;
+var SMTP_TLS_PORT = 587;
 var CRLF				= "\r\n";
 var AUTH_METHODS	= {PLAIN:'PLAIN', CRAM_MD5:'CRAM-MD5', LOGIN:'LOGIN'};
 var TIMEOUT			= 5000;
@@ -68,14 +70,15 @@ var SMTP = function(options)
 
 	this.sock				= null;
 	this.timeout 			= options.timeout || TIMEOUT;
-	this.secure				= options.secure || false;
 	this.features 			= null;
 	this._state				= SMTPState.NOTCONNECTED;
+	this._secure			= false;
 	this.loggedin			= (options.user && options.password) ? false : true;
 	this.domain				= options.domain || os.hostname();
 	this.host 				= options.host || 'localhost';
-	this.port 				= options.port || options.secure ? SMTP_SSL_PORT : SMTP_PORT;
-	this.ssl					= options.ssl;
+	this.port 				= options.port || (options.ssl ? SMTP_SSL_PORT : options.tls ? SMTP_TLS_PORT : SMTP_PORT);
+	this.ssl					= options.ssl || false;
+	this.tls					= options.tls || false;
 
 	// keep private
 	SMTP_USER				= options.user;
@@ -103,32 +106,35 @@ SMTP.prototype =
 	{
 		options = options || {};
 	
-		var self  	= this;
+		var self  	= this, connect_timeout = null;
 	
 		self.host 	= host || self.host;
 		self.port 	= port || self.port;
-		self.secure = options.secure || self.secure;
 		self.ssl		= options.ssl || self.ssl;
 	
 		if(self._state != SMTPState.NOTCONNECTED)
 			self.quit();
-	
+
 		var connected = function(err) 
 		{
+			clearTimeout(connect_timeout);
+
 			if(!err) 
 			{
-				if(self.secure)
+				log("connected: " + self.host + ":" + self.port);
+
+				if(self.ssl && !self.tls)
 				{
-					// if key/ca/cert was passed and ssl is used, check if authorized is false
-					if(self.ssl && !self.sock.authorize)
+					// if key/ca/cert was passed in, check if connection is authorized
+					if(typeof(self.ssl) != 'boolean' && !self.sock.authorized)
 					{
 						self.close(true);
 						caller(callback, {code:SMTPError.CONNECTIONAUTH, message:"could not establish an ssl connection", error:err});
 						return;
 					}
+					else
+						self._secure = true;
 				}
-	
-				log("connected: " + self.host + ":" + self.port);
 			}
 			else
 			{
@@ -143,7 +149,7 @@ SMTP.prototype =
 	
 			if(!err && msg.code == '220')
 			{
-				log("response: " + data);
+				log(data);
 	
 				// might happen first, so no need to wait on connected()
 				self._state = SMTPState.CONNECTED;
@@ -156,38 +162,42 @@ SMTP.prototype =
 					log("response (error): " + err);
 					self.close(true);
 	
-					caller(callback, {code:err.code, error:err.error});
+					caller(callback, {code:err.code, error:err.error, message:err.message});
 				}
 				else
 				{
 					log("response (data): " + data);
 					self.quit();
 	
-					caller(callback, {code:SMTPError.BadResponse, message:"bad response on connection", smtp:data, error:err});
+					caller(callback, {code:SMTPError.BADRESPONSE, message:"bad response on connection", smtp:data, error:err});
 				}
 			}
 		};
 
+		var timedout = function()
+		{
+			if(self._state != SMTPState.CONNECTED)
+			{
+				self.close(true);
+				caller(callback, {code:SMTPError.TIMEDOUT, message:"timedout while connecting to smtp server"});
+			}
+		};
 
 		self._state = SMTPState.CONNECTING;
 	
-		if(self.secure)
+		if(self.ssl)
 		{
-			// object, may contain 'key' and/or 'ca' and/or 'cert'
-			if(self.ssl)
-				self.sock = tls.connect(self.port, self.host, self.ssl, connected);
-	
-			else
-				self.sock = tls.connect(self.port, self.host, connected);
+			self.sock = tls.connect(self.port, self.host, self.ssl, connected);
 		}
 		else
 		{
 			self.sock = net.Socket();
 			self.sock.connect(self.port, self.host, connected);
 		}
-		
+
+		connect_timeout = setTimeout(timedout, self.timeout);
 		SMTPResponse.watch(self.sock);
-	
+
 		self.sock.setTimeout(self.timeout);
 		self.sock.once('response', response);
 	},
@@ -198,11 +208,11 @@ SMTP.prototype =
 	
 		if(self.sock && self._state == SMTPState.CONNECTED)
 		{
-			log("send: " + str);
+			log(str);
 
 			var response = function(err, data)
 			{
-				log("response: " + (data || err));
+				log((data || err));
 				
 				if(err)
 					self.close(true);
@@ -253,15 +263,49 @@ SMTP.prototype =
 		this.command("helo " + (domain || this.domain), callback);
 	},
 	
-	
 	/*
 	// STARTTLS is not supported since node net api doesn't support upgrading a socket to a secure socket
 	// use ssl instead of tls. the benefit is that the entire communication will be encrypted from the beginning
-	starttls: function(callback, domain)
+	// */
+	starttls: function(callback)
 	{
-		this.command("starttls", callback);
+		var self = this,
+
+		response = function(err, data)
+		{
+			if(!err)
+			{
+				var secured_socket = null;
+
+				var secured_timer = null;
+
+				var secured = function()
+				{
+					clearTimeout(secured_timer);
+
+					self._secure	= true;
+					self.sock		= secured_socket;
+
+					SMTPResponse.watch(self.sock);
+					caller(callback, err);
+				};
+
+				var timeout = function()
+				{
+					caller(callback, {code:SMTPError.TIMEDOUT, message:"connection timedout during STARTTLS handshake"});
+				};
+
+				secured_timer	= setTimeout(timeout, self.timeout);
+				secured_socket = starttls.secure(self.sock, self.ssl, secured);
+			}
+			else
+			{
+				caller(callback, err);
+			}
+		};
+
+		this.command("starttls", response, [220]);
 	},
-	*/
 	
 	ehlo: function(callback, domain)
 	{
@@ -295,8 +339,22 @@ SMTP.prototype =
 						self.features[parse[1].toLowerCase()] = parse[2] || true;
 					}
 				});
-	
-				caller(callback, null, data);
+
+				if(self.tls && !self._secure)
+				{
+					var secured = function(err, data)
+					{
+						if(!err)
+							self.ehlo(callback, domain);
+
+						else
+							caller(callback, err, data);
+					};
+
+					self.starttls(secured);
+				}
+				else
+					caller(callback, null, data);
 			}
 			else
 			{
@@ -336,8 +394,7 @@ SMTP.prototype =
 	
 	rcpt: function(callback, to)
 	{
-		// SMTP 'rcpt' command -- indicates 1 recipient for self mail
-		this.command("rcpt TO:" + to, callback, [250, 251]);
+		this.command("RCPT TO:" + to, callback, [250, 251]);
 	},
 	
 	data: function(callback)
@@ -347,11 +404,12 @@ SMTP.prototype =
 
 	data_end: function(callback)
 	{
-		this.command(CRLF + "." + CRLF, callback);
+		this.command(CRLF + ".", callback);
 	},
 
 	message: function(data)
 	{
+		log(data);
 		this.sock.write(data);
 	},
 
@@ -448,7 +506,7 @@ SMTP.prototype =
 	
 				for(var i = 0; i < preferred.length; i++)
 				{
-					if((self.features["auth"]).indexOf(preferred[i]) != -1)
+					if((self.features["auth"] || "").indexOf(preferred[i]) != -1)
 					{
 						method = preferred[i];
 						break;
@@ -497,7 +555,7 @@ SMTP.prototype =
 				self.command("AUTH " + AUTH_METHODS.PLAIN + " " + encode_plain(login.user, login.password), response, [235, 503]);
 	
 			else if(!method)
-				caller(callback, {code:SMTPError.AUTHNOTSUPPORTED, message:"authorization no supported", smtp:data});
+				caller(callback, {code:SMTPError.AUTHNOTSUPPORTED, message:"no form of authorization supported", smtp:data});
 		};
 	
 		self.ehlo_or_helo_if_needed(initiate, domain);
@@ -515,9 +573,9 @@ SMTP.prototype =
 		}
 	
 		this._state		= SMTPState.NOTCONNECTED;
+		this._secure	= false;
 		this.sock 		= null;
 		this.features 	= null;
-		this.secure		= false;
 		this.loggedin	= false;
 	},
 	

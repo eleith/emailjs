@@ -82,6 +82,12 @@ Client.prototype =
 				callback:	callback || function() {}
 			};
 
+			if(msg.header["cc"])
+				stack.to = stack.to.concat(address.parse(msg.header["cc"]));
+
+			if(msg.header["bcc"])
+				stack.to = stack.to.concat(address.parse(msg.header["bcc"]));
+
 			self.queue.push(stack);
 			self._poll();
 		}
@@ -114,7 +120,7 @@ Client.prototype =
 	_sendrcpt: function(stack)
 	{
 		var self = this, to = stack.to.shift().address;
-		self.smtp.rcpt(self._sendsmtp(stack, stack.to.length ? self._sendrcpt : self._senddata), '<' + to + '>');
+		self.smtp.rcpt(self._sendsmtp(stack, stack.to.length ? self._sendrcpt : self._senddata), '<'+ to +'>');
 	},
 
 	_senddata: function(stack)

@@ -15,12 +15,14 @@ var generate_boundary = function()
 	return text;
 };
 
-var Message = function(text, headers)
+var Message = function(headers)
 {
 	this.attachments	= [];
-	this.text			= text;
+	this.text			= headers.text;
 	this.html			= null;
 	this.header			= {"message-id":"<" + (new Date()).getTime() + "." + process.pid + "@" + os.hostname() +">"};
+
+	delete headers.text;
 
 	for(var header in headers)
 	{
@@ -239,7 +241,11 @@ var MessageStream = function(message)
 		var data = [];
 
 		for(var header in self.message.header)
-			data = data.concat([header, ": ", self.message.header[header], CRLF]);
+		{
+			// do not output BCC in the headers...
+			if(!/bcc/i.test(header))
+				data = data.concat([header, ": ", self.message.header[header], CRLF]);
+		}
 
 		self.emit('data', data.join(''));
 		output_process(output_data);
