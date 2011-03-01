@@ -70,7 +70,7 @@ Client.prototype =
 		var self = this;
 
 		if(!(msg instanceof message.Message) && msg.from && msg.to && msg.text)
-			msg = message.create(msg.text, msg);
+			msg = message.create(msg);
 
 		if(msg instanceof message.Message && msg.valid())
 		{
