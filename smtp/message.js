@@ -285,7 +285,7 @@ MessageStream.prototype.destroySoon = function()
 util.inherits(MessageStream, stream.Stream);
 
 exports.Message = Message;
-exports.create = function(text, headers) 
+exports.create = function(headers) 
 {
-	return new Message(text, headers);
+	return new Message(headers);
 };
