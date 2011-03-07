@@ -158,8 +158,8 @@ var MessageStream = function(message)
 		data = data.concat([self.message.text, CRLF, CRLF]);
 
 		data = data.concat(["--", boundary, CRLF]);
-		data = data.concat(["Content-Type:text/html", CRLF, "Content-Transfer-Encoding: quoted-printable", CRLF, "Content-Disposition: inline", CRLF, CRLF]);
-		data = data.concat([self.message.html, CRLF, CRLF]);
+		data = data.concat(["Content-Type:text/html", CRLF, "Content-Transfer-Encoding: base64", CRLF, "Content-Disposition: inline", CRLF, CRLF]);
+		data = data.concat([(new Buffer(self.message.html)).toString("base64"), CRLF, CRLF]);
 
 		data = data.concat(["--", boundary, "--", CRLF, CRLF]);
 
