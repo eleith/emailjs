@@ -59,7 +59,7 @@ send emails, html and attachments from node.js to any smtp server
 		var message = email.message.create(headers);
 
 		// attach an alternative html email for those with advanced email clients
-		message.attach_alternative("i <i>hope</i> this works!");
+		message.attach_alternative("<html>i <i>hope</i> this works!</html>");
 
 		// attach attachments because you can!
 		message.attach("path/to/file.zip", "application/zip", "renamed.zip");
@@ -102,6 +102,9 @@ send emails, html and attachments from node.js to any smtp server
 
 	// headers is an object with the following keys ('from' and 'to' are required)
 	// returns a Message object
+
+	// you can actually pass any headers you want to send, the below are just the
+	// most common ones you would want to use, from and to being required...
 
 	headers =
 	{

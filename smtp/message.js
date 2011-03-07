@@ -28,7 +28,7 @@ var Message = function(headers)
 	{
 		// allow any headers the user wants to set??
 		// if(/cc|bcc|to|from|reply-to|sender|subject|date|message-id/i.test(header))
-		this.header[header] = headers[header];
+		this.header[header.toLowerCase()] = headers[header];
 	}
 };
 
@@ -154,12 +154,12 @@ var MessageStream = function(message)
 		var data			= ["Content-Type: multipart/alternative; boundary=\"", boundary, "\"", CRLF, CRLF];
 
 		data = data.concat(["--", boundary, CRLF]);
-		data = data.concat(["Content-Type: text/html", CRLF, "Content-Transfer-Encoding: quoted-printable", CRLF, "Content-Disposition: inline", CRLF, CRLF]);
-		data = data.concat([self.message.html, CRLF, CRLF]);
+		data = data.concat(["Content-Type:text/plain", CRLF, "Content-Transfer-Encoding: quoted-printable", CRLF, "Content-Disposition: inline", CRLF, CRLF]);
+		data = data.concat([self.message.text, CRLF, CRLF]);
 
 		data = data.concat(["--", boundary, CRLF]);
-		data = data.concat(["Content-Type: text/plain", CRLF, "Content-Transfer-Encoding: quoted-printable", CRLF, "Content-Disposition: inline", CRLF, CRLF]);
-		data = data.concat([self.message.text, CRLF, CRLF]);
+		data = data.concat(["Content-Type:text/html", CRLF, "Content-Transfer-Encoding: quoted-printable", CRLF, "Content-Disposition: inline", CRLF, CRLF]);
+		data = data.concat([self.message.html, CRLF, CRLF]);
 
 		data = data.concat(["--", boundary, "--", CRLF, CRLF]);
 
