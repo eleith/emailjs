@@ -100,11 +100,11 @@ send emails, html and attachments from node.js to any smtp server
 
 ## email.message.create(headers)
 
-	// headers is an object with the following keys ('from' and 'to' are required)
+	// headers is an object ('from' and 'to' are required)
 	// returns a Message object
 
-	// you can actually pass any headers you want to send, the below are just the
-	// most common ones you would want to use, from and to being required...
+	// you can actually pass more message headers than listed, the below are just the
+	// most common ones you would want to use
 
 	headers =
 	{
@@ -116,11 +116,12 @@ send emails, html and attachments from node.js to any smtp server
 		subject	// string subject of the email
 	}
 
-## Message.attach_alternative(html)
+## Message.attach_alternative(html, charset)
 
 	// should only be called once
 
 	html // string representing the html version of the email message
+	charset // defaults to utf-8 if not passed
 
 ## Message.attach(path, mime_type, name)
 
