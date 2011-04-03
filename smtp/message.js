@@ -146,7 +146,11 @@ var MessageStream = function(message)
 			self.emit('data', ["--", boundary, CRLF].join(""));
 			output_process(function() { output_alternatives(next); });
 		}
-		else if(index < self.message.attachments.length)
+		else if(index == -1 && !self.message.html)
+		{
+			next();
+		}
+		else if(index >= 0 && index < self.message.attachments.length)
 		{
 			self.emit('data', ["--", boundary, CRLF].join(""));
 			output_process(function() { output_attachment(self.message.attachments[index], next); });
