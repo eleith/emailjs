@@ -18,17 +18,27 @@ var generate_boundary = function()
 var Message = function(headers)
 {
 	this.attachments	= [];
-	this.text			= headers.text;
 	this.html			= null;
 	this.header			= {"message-id":"<" + (new Date()).getTime() + "." + process.pid + "@" + os.hostname() +">"};
-
-	delete headers.text;
+	this.content		= "text/plain; charset=utf-8";
 
 	for(var header in headers)
 	{
-		// allow any headers the user wants to set??
-		// if(/cc|bcc|to|from|reply-to|sender|subject|date|message-id/i.test(header))
-		this.header[header] = headers[header];
+		// allow user to override default content-type to override charset or send a single non-text message
+		if(/^content-type$/i.test(header))
+		{
+			this.content = headers[header];
+		}
+		else if(header == 'text')
+		{
+			this.text = headers[header];
+		}
+		else
+		{
+			// allow any headers the user wants to set??
+			// if(/cc|bcc|to|from|reply-to|sender|subject|date|message-id/i.test(header))
+			this.header[header.toLowerCase()] = headers[header];
+		}
 	}
 };
 
@@ -41,9 +51,9 @@ Message.prototype =
 		return this;
 	},
 
-	attach_alternative: function(html)
+	attach_alternative: function(html, charset)
 	{
-		this.html = html;
+		this.html = {message:html, charset:charset || "utf-8"};
 		return this;
 	},
 
@@ -154,12 +164,13 @@ var MessageStream = function(message)
 		var data			= ["Content-Type: multipart/alternative; boundary=\"", boundary, "\"", CRLF, CRLF];
 
 		data = data.concat(["--", boundary, CRLF]);
-		data = data.concat(["Content-Type: text/html", CRLF, "Content-Transfer-Encoding: quoted-printable", CRLF, "Content-Disposition: inline", CRLF, CRLF]);
-		data = data.concat([self.message.html, CRLF, CRLF]);
+		data = data.concat(["Content-Type:", self.message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF, "Content-Disposition: inline", CRLF, CRLF]);
+		data = data.concat([self.message.text, CRLF, CRLF]);
 
 		data = data.concat(["--", boundary, CRLF]);
-		data = data.concat(["Content-Type: text/plain", CRLF, "Content-Transfer-Encoding: quoted-printable", CRLF, "Content-Disposition: inline", CRLF, CRLF]);
-		data = data.concat([self.message.text, CRLF, CRLF]);
+		data = data.concat(["Content-Type:text/html; charset=", self.message.html.charset, CRLF, "Content-Transfer-Encoding: base64", CRLF]);
+		data = data.concat(["Content-Disposition: inline", CRLF, CRLF]);
+		data = data.concat([(new Buffer(self.message.html.message)).toString("base64"), CRLF, CRLF]);
 
 		data = data.concat(["--", boundary, "--", CRLF, CRLF]);
 
@@ -231,6 +242,7 @@ var MessageStream = function(message)
 		// otherwise, you only have a text message
 		else
 		{
+			self.emit("Content-Type:" + self.content + CRLF);
 			self.emit('data', CRLF + self.message.text);
 			self.emit('end');
 		}
