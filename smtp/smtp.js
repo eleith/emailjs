@@ -490,7 +490,10 @@ SMTP.prototype =
 			encode_cram_md5 = function(challenge)
 			{
 				challenge = (new Buffer(challenge, "base64")).toString("ascii");
-				var hmac = crypto.createHmac('md5', login.password); hmac.update(challenge);
+
+				var hmac = crypto.createHmac('md5', login.password);
+				hmac.update(challenge);
+
 				return (new Buffer(login.user + " " + hmac.digest('hex')).toString("base64"));
 			},
 	
