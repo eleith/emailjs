@@ -141,23 +141,27 @@ var MessageStream = function(message)
 			output_process(function() { output_message(index + 1, boundary); });
 		};
 
-		if(index == -1 && self.message.html)
+		if(index < 0)
 		{
 			self.emit('data', ["--", boundary, CRLF].join(""));
-			output_process(function() { output_alternatives(next); });
+
+			if(self.message.html)
+			{
+				output_process(function() { output_alternatives(next); });
+			}
+			else
+			{
+				output_text(next);
+			}
 		}
-		else if(index == -1 && !self.message.html)
-		{
-			next();
-		}
-		else if(index >= 0 && index < self.message.attachments.length)
+		else if(index < self.message.attachments.length)
 		{
 			self.emit('data', ["--", boundary, CRLF].join(""));
 			output_process(function() { output_attachment(self.message.attachments[index], next); });
 		}
 		else
 		{
-			self.emit('data', [CRLF, CRLF, "--", boundary, "--", CRLF, CRLF].join(""));
+			self.emit('data', ["--", boundary, "--", CRLF, CRLF].join(""));
 			self.emit('end');
 		}
 	};
@@ -165,17 +169,17 @@ var MessageStream = function(message)
 	var output_alternatives = function(next)
 	{
 		var boundary	= generate_boundary();
-		var data			= ["Content-Type: multipart/alternative; boundary=\"", boundary, "\"", CRLF, CRLF];
 
-		data = data.concat(["--", boundary, CRLF]);
-		data = data.concat(["Content-Type:", self.message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF, "Content-Disposition: inline", CRLF, CRLF]);
-		data = data.concat([self.message.text, CRLF, CRLF]);
+		self.emit('data', ["Content-Type: multipart/alternative; boundary=\"", boundary, "\"", CRLF, CRLF].join(""));
+		self.emit('data', ["--", boundary, CRLF].join(""));
 
-		data = data.concat(["--", boundary, CRLF]);
+		output_text(function(){});
+
+		var data = ["--", boundary, CRLF];
+
 		data = data.concat(["Content-Type:text/html; charset=", self.message.html.charset, CRLF, "Content-Transfer-Encoding: base64", CRLF]);
 		data = data.concat(["Content-Disposition: inline", CRLF, CRLF]);
 		data = data.concat([(new Buffer(self.message.html.message)).toString("base64"), CRLF, CRLF]);
-
 		data = data.concat(["--", boundary, "--", CRLF, CRLF]);
 
 		self.emit('data', data.join(""));
@@ -215,7 +219,8 @@ var MessageStream = function(message)
 						else
 						{
 							self.emit('data', buffer.slice(0, bytes).toString("base64"));
-							fs.close(fd, function() { self.emit('end') });
+							self.emit('data', [CRLF, CRLF].join("")); // important!
+							fs.close(fd, next);
 						}
 					}
 					else
@@ -234,6 +239,16 @@ var MessageStream = function(message)
 		fs.open(attachment.path, 'r+', opened);
 	};
 
+	var output_text = function(next)
+	{
+		var data = ["Content-Type:", self.message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF];
+		data = data.concat(["Content-Disposition: inline", CRLF, CRLF]);
+		data = data.concat([self.message.text || "", CRLF, CRLF]);
+
+		self.emit('data', data.join(""));
+		next();
+	};
+
 	var output_data = function()
 	{
 		// are there attachments or alternatives?
@@ -246,9 +261,7 @@ var MessageStream = function(message)
 		// otherwise, you only have a text message
 		else
 		{
-			self.emit("Content-Type:" + self.content + CRLF);
-			self.emit('data', CRLF + self.message.text);
-			self.emit('end');
+			output_text(function() { self.emit('end') });
 		}
 	};
 
