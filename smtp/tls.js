@@ -12,7 +12,7 @@ var secure = function(socket, options, cb)
 
 	pair.on('secure', function() 
 	{
-		var verifyError = pair._ssl.verifyError();
+		var verifyError = pair.ssl.verifyError();
 
 		if(verifyError) 
 		{
