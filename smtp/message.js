@@ -195,6 +195,7 @@ var MessageStream = function(message)
 		
 		var chunk	= 5700;
 		var buffer 	= new Buffer(chunk);
+		var att_string	= "";
 		var opened 	= function(err, fd)
 		{
 			if(!err)
@@ -213,13 +214,19 @@ var MessageStream = function(message)
 					{
 						if(bytes == chunk)
 						{
-							self.emit('data', buffer.toString("base64"));
+							att_string += buffer.toString("base64");
 							fs.read(fd, buffer, 0, chunk, null, read);
 						}
 						else
 						{
-							self.emit('data', buffer.slice(0, bytes).toString("base64"));
-							self.emit('data', [CRLF, CRLF].join("")); // important!
+							att_string += buffer.slice(0, bytes).toString("base64");
+							
+							for (var start = 0; start < att_string.length; start += 76)
+							{
+								self.emit('data', att_string.substring(start, start + 76) + CRLF);
+							}
+							
+							self.emit('data', CRLF); // important!
 							fs.close(fd, next);
 						}
 					}
