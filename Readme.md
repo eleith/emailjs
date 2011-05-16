@@ -1,4 +1,4 @@
-#v0.1.9
+#v0.1.10
 
 ### emailjs
 
@@ -13,7 +13,7 @@ send emails, html and attachments from node.js to any smtp server
  - supports smtp authentication (PLAIN, LOGIN, CRAMMD5)
  - emails are queued and the queue is sent asynchronously
  - supports sending html emails and emails with multiple attachments (MIME)
- - works with nodejs 4.7 and above
+ - works with nodejs 3.8 and above
 
 # REQUIRES
  - access to an SMTP Server (ex: gmail)
