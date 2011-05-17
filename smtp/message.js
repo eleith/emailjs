@@ -193,10 +193,10 @@ var MessageStream = function(message)
 
 		self.emit('data', data.join(""));
 		
-		var chunk	= 5700;
-		var buffer 	= new Buffer(chunk);
-		var att_string	= "";
-		var opened 	= function(err, fd)
+		var mimechunk 	= 76; // MIME standard wants 76 char chunks when sending out
+		var chunk		= mimechunk*25*3; // 5700
+		var buffer 		= new Buffer(chunk);
+		var opened 		= function(err, fd)
 		{
 			if(!err)
 			{
@@ -212,21 +212,22 @@ var MessageStream = function(message)
 					}
 					else if(!err)
 					{
-						if(bytes == chunk)
+						var info		= buffer.toString("base64", 0, bytes);
+						var leftover= info.length % mimechunk;
+						var loops	= info.length / mimechunk;
+
+						for(var step = 0; step < loops; step++)
 						{
-							att_string += buffer.toString("base64");
+							self.emit('data', info.substring(step*mimechunk, mimechunk*(step + 1)) + CRLF);
+						}
+
+						if(bytes == chunk) // gauranteed no leftovers
+						{
 							fs.read(fd, buffer, 0, chunk, null, read);
 						}
 						else
 						{
-							att_string += buffer.slice(0, bytes).toString("base64");
-							
-							for (var start = 0; start < att_string.length; start += 76)
-							{
-								self.emit('data', att_string.substring(start, start + 76) + CRLF);
-							}
-							
-							self.emit('data', CRLF); // important!
+							self.emit('data', leftover ? info.substr(-leftover) + CRLF + CRLF : CRLF); // important!
 							fs.close(fd, next);
 						}
 					}
@@ -268,7 +269,7 @@ var MessageStream = function(message)
 		// otherwise, you only have a text message
 		else
 		{
-			output_text(function() { self.emit('end') });
+			output_text(function() { self.emit('end'); });
 		}
 	};
 
@@ -279,7 +280,7 @@ var MessageStream = function(message)
 		for(var header in self.message.header)
 		{
 			// do not output BCC in the headers...
-			if(!/bcc/i.test(header))
+			if(!(/bcc/i.test(header)))
 				data = data.concat([header, ": ", self.message.header[header], CRLF]);
 		}
 
