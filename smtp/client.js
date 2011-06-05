@@ -101,10 +101,18 @@ Client.prototype =
 		var check= function(err)
 		{
 			if(!err && next)
+			{
 				next.apply(self, [stack]);
-
+			}
 			else
-				stack.callback(err, stack.message);
+			{
+				// if we snag on SMTP commands, call done, passing the error
+				// but first reset SMTP state so queue can continue polling
+				self.smtp.rset(function()
+				{
+					self._senddone(stack, err);
+				});
+			}
 		};
 
 		return check;
@@ -138,12 +146,12 @@ Client.prototype =
 		stream.on('error', self._sendsmtp(stack));
 	},
 
-	_senddone: function(stack)
+	_senddone: function(stack, err)
 	{
 		var self = this;
 
 		self.sending = false;
-		stack.callback(null, stack.message);
+		stack.callback(err, stack.message);
 		self._poll();
 	}
 };

@@ -379,12 +379,12 @@ SMTP.prototype =
 	
 	rset: function(callback)
 	{
-		this.send("rset", callback);
+		this.command("rset", callback);
 	},
 	
 	noop: function(callback)
 	{
-		return this.send("noop", callback);
+		this.send("noop", callback);
 	},
 	
 	mail: function(callback, from)
