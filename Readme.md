@@ -1,4 +1,4 @@
-#v0.1.12
+#v0.1.13
 
 ### emailjs
 
@@ -80,7 +80,7 @@ send emails, html and attachments from node.js to any smtp server
 	// options is an object with the following keys
 	options =
 	{
-		username // username for logging into smtp 
+		user 		// username for logging into smtp 
 		password // password for logging into smtp
 		host		// smtp host
 		port		// smtp port (if null a standard port number will be used)

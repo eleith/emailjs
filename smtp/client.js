@@ -43,7 +43,7 @@ Client.prototype =
 		{
 			if(!err)
 			{
-				var login = function(err)
+				var begin = function(err)
 				{
 					if(!err)
 						self._poll();
@@ -53,10 +53,10 @@ Client.prototype =
 				};
 
 				if(!self.smtp.authorized())
-					self.smtp.login(login);
+					self.smtp.login(begin);
 
 				else
-					self._poll();
+					self.smtp.ehlo_or_helo_if_needed(begin);
 			}
 			else
 				stack.callback(err, stack.message);
@@ -161,4 +161,4 @@ exports.Client = Client;
 exports.connect = function(server)
 {
 	return new Client(server);
-}
+};
