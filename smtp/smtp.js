@@ -580,7 +580,7 @@ SMTP.prototype =
 		this._secure	= false;
 		this.sock 		= null;
 		this.features 	= null;
-		this.loggedin	= false;
+		this.loggedin	= (SMTP_USER && SMTP_PASSWORD) ? false : true;
 	},
 	
 	quit: function(callback)
