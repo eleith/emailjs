@@ -214,7 +214,7 @@ var MessageStream = function(message)
 					{
 						var info		= buffer.toString("base64", 0, bytes);
 						var leftover= info.length % mimechunk;
-						var loops	= info.length / mimechunk;
+						var loops	= Math.round(info.length / mimechunk);
 
 						for(var step = 0; step < loops; step++)
 						{
