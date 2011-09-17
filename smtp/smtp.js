@@ -191,7 +191,7 @@ SMTP.prototype =
 		}
 		else
 		{
-			self.sock = net.Socket();
+			self.sock = new net.Socket();
 			self.sock.connect(self.port, self.host, connected);
 		}
 
