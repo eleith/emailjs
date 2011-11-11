@@ -9,9 +9,10 @@ var Client = function(server)
 
    //this.smtp.debug(1);
 
-   this.queue         = [];
-   this.timer         = null;
+   this.queue        = [];
+   this.timer        = null;
    this.sending      = false;
+   this.ready        = false;
 };
 
 Client.prototype = 
@@ -27,7 +28,7 @@ Client.prototype =
          if(self.smtp.state() == smtp.state.NOTCONNECTED)
             self._connect(self.queue[0]);
 
-         else if(self.smtp.state() == smtp.state.CONNECTED && !self.sending)
+         else if(self.smtp.state() == smtp.state.CONNECTED && !self.sending && self.ready)
             self._sendmail(self.queue.shift());
       }
       // wait around 1 seconds in case something does come in, otherwise close out SMTP connection
@@ -46,8 +47,10 @@ Client.prototype =
             var begin = function(err)
             {
                if(!err)
+               {
+                  self.ready = true;
                   self._poll();
-
+               }
                else
                   stack.callback(err, stack.message);
             };
@@ -62,6 +65,7 @@ Client.prototype =
             stack.callback(err, stack.message);
       };
 
+      self.ready = false;
       self.smtp.connect(connect);
    },
 
