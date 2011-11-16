@@ -1,15 +1,23 @@
 {
-  "name": 			"emailjs",
-  "description": 	"send text/html emails and attachments from node.js to any smtp server",
-  "version": 		"0.1.16",
-  "author": 		"eleith",
-  "contributors":	["izuzak"],
-  "repository": 
-  {
-    "type": "git",
-    "url": "http://github.com/eleith/emailjs.git"
-  },
-  "dependencies": {},
-  "engine": 		["node >= 0.3.8"],
-  "main": 			"email"
+   "name": 			"emailjs",
+   "description": "send text/html emails and attachments from node.js to any smtp server",
+   "version": 		"0.1.17",
+   "author": 		"eleith",
+   "contributors":["izuzak"],
+   "repository": 
+   {
+       "type": "git",
+       "url": "http://github.com/eleith/emailjs.git"
+   },
+   "devDependencies":
+   {
+       "prompt": ">= 0.1.10"
+   },
+   "dependencies":{},
+   "engine": 		["node >= 0.3.8"],
+   "main": 			"email",
+   "scripts":
+   {
+       "test": "node test/run.js"
+   }
 }

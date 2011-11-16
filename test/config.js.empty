@@ -1,0 +1,16 @@
+var config = 
+{
+   host: 'localhost',
+   type: 'ssl', // tls or ssl, delete if you want neither
+   // port: '25', 
+
+   username: 'username',
+
+   // if your smtp requires authentication
+   // password: null,
+
+   email: null // where you want test emails going to
+};
+
+for(each in config)
+   exports[each] = config[each];
