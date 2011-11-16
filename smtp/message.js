@@ -1,9 +1,10 @@
-var stream    = require('stream');
-var util      = require('util');
+var stream  = require('stream');
+var util    = require('util');
 var fs      = require('fs');
 var os      = require('os');
 var path    = require('path');
-var CRLF      = "\r\n";
+var CRLF    = "\r\n";
+var counter = 0;
 
 var generate_boundary = function()
 {
@@ -20,7 +21,7 @@ var Message = function(headers)
 {
    this.attachments   = [];
    this.html         = null;
-   this.header         = {"message-id":"<" + (new Date()).getTime() + "." + process.pid + "@" + os.hostname() +">"};
+   this.header         = {"message-id":"<" + (new Date()).getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">"};
    this.content      = "text/plain; charset=utf-8";
 
    for(var header in headers)
@@ -126,11 +127,11 @@ var MessageStream = function(message)
    stream.Stream.call(self);
 
    self.message   = message;
-   self.readable    = true;
-   self.resume      = null;
-   self.paused      = false;
+   self.readable  = true;
+   self.resume    = null;
+   self.paused    = false;
    self.stopped   = false;
-   self.stream      = null;
+   self.stream    = null;
 
    var output_process = function(next)
    {
