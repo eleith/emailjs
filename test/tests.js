@@ -18,16 +18,19 @@ var tests =
 
    html: function(email, server, config)
    {
+      var path    = require('path');
+      var fs      = require('fs');
       var message = email.message.create(
       {
          subject: "this is a test TEXT+HTML message from emailjs",
          from:    /^.+@.+$/.test(config.username) ? config.username : config.username + '@' + config.host,
          to:      config.email,
-         text:    "hello friend, i hope this message finds you well."
+         text:    "hello friend if you are seeing this, you can not view html emails. it is attached inline."
       });
 
       // attach an alternative html email for those with advanced email clients
-      message.attach_alternative("<html><body> hello <i>friend</i> i hope <b>this</b> <a href='http://github.com/eleith/emailjs'>message</a> finds <b>you</b> well.</body></html>");
+      //message.attach_alternative("<html><body> hello <i>friend</i> i hope <b>this</b> <a href='http://github.com/eleith/emailjs'>message</a> finds <b>you</b> well.</body></html>");
+      message.attach_alternative(fs.readFileSync(path.join(__dirname, "attachments/smtp.html"), "utf-8"));
 
       server.send(message, function(err, message)
       {
@@ -56,5 +59,5 @@ var tests =
    }
 };
 
-for(test in tests)
+for(var test in tests)
    exports[test] = tests[test];

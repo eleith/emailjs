@@ -1,10 +1,11 @@
-var stream  = require('stream');
-var util    = require('util');
-var fs      = require('fs');
-var os      = require('os');
-var path    = require('path');
-var CRLF    = "\r\n";
-var counter = 0;
+var stream     = require('stream');
+var util       = require('util');
+var fs         = require('fs');
+var os         = require('os');
+var path       = require('path');
+var CRLF       = "\r\n";
+var MIMECHUNK  = 76; // MIME standard wants 76 char chunks when sending out.
+var counter    = 0;
 
 var generate_boundary = function()
 {
@@ -204,36 +205,25 @@ var MessageStream = function(message)
 
       data = data.concat(["Content-Type:text/html; charset=", self.message.html.charset, CRLF, "Content-Transfer-Encoding: base64", CRLF]);
       data = data.concat(["Content-Disposition: inline", CRLF, CRLF]);
-            
-      var mimechunk = 76; // MIME standard wants 76 char chunks when sending out.
-              
-      var info      = (new Buffer(self.message.html.message)).toString("base64");
-      var leftover  = info.length % mimechunk;
-      var loops     = Math.round(info.length / mimechunk);
-
-      for(var step = 0; step < loops; step++)
-      {
-         data = data.concat(info.substring(step*mimechunk, mimechunk*(step + 1)) + CRLF);
-      }
-
-      data = data.concat(CRLF);      
-      data = data.concat(["--", boundary, "--", CRLF, CRLF]);
 
       self.emit('data', data.join(""));
+
+      output_chunk(new Buffer(self.message.html.message).toString("base64"));
+
+      self.emit('data', [CRLF, "--", boundary, "--", CRLF, CRLF].join(""));
       next();
    };
 
    var output_attachment = function(attachment, next)
    {
       var data = ["Content-Type: ", attachment.type, CRLF, "Content-Transfer-Encoding: base64", CRLF];
-      data      = data.concat(["Content-Disposition: attachment; filename=\"", attachment.name, "\"", CRLF, CRLF]);
+      data     = data.concat(["Content-Disposition: attachment; filename=\"", attachment.name, "\"", CRLF, CRLF]);
 
       self.emit('data', data.join(""));
       
-      var mimechunk    = 76; // MIME standard wants 76 char chunks when sending out
-      var chunk      = mimechunk*25*3; // 5700
-      var buffer       = new Buffer(chunk);
-      var opened       = function(err, fd)
+      var chunk      = MIMECHUNK*25*3; // 5700
+      var buffer     = new Buffer(chunk);
+      var opened     = function(err, fd)
       {
          if(!err)
          {
@@ -249,14 +239,7 @@ var MessageStream = function(message)
                }
                else if(!err)
                {
-                  var info      = buffer.toString("base64", 0, bytes);
-                  var leftover= info.length % mimechunk;
-                  var loops   = Math.round(info.length / mimechunk);
-
-                  for(var step = 0; step < loops; step++)
-                  {
-                     self.emit('data', info.substring(step*mimechunk, mimechunk*(step + 1)) + CRLF);
-                  }
+                  output_chunk(buffer.toString("base64", 0, bytes));
 
                   if(bytes == chunk) // gauranteed no leftovers
                   {
@@ -264,7 +247,6 @@ var MessageStream = function(message)
                   }
                   else
                   {
-                     self.emit('data', leftover ? info.substr(-leftover) + CRLF + CRLF : CRLF); // important!
                      fs.close(fd, next);
                   }
                }
@@ -282,6 +264,20 @@ var MessageStream = function(message)
       };
 
       fs.open(attachment.path, 'r+', opened);
+   };
+
+   var output_chunk = function(data)
+   {
+      var leftover= data.length % MIMECHUNK;
+      var loops   = Math.round(data.length / MIMECHUNK);
+
+      for(var step = 0; step < loops; step++)
+      {
+         self.emit('data', data.substring(step*MIMECHUNK, MIMECHUNK*(step + 1)) + CRLF);
+      }
+
+      if(leftover)
+         self.emit('data', leftover ? data.substr(-leftover) + CRLF + CRLF : CRLF); // important!
    };
 
    var output_text = function(next)

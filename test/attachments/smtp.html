@@ -1,0 +1,779 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html lang="en" dir="ltr" class="client-nojs" xmlns="http://www.w3.org/1999/xhtml">
+<head>
+<title>Simple Mail Transfer Protocol - Wikipedia, the free encyclopedia</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" />
+<meta http-equiv="Content-Style-Type" content="text/css" />
+<meta name="generator" content="MediaWiki 1.18wmf1" />
+<link rel="canonical" href="/wiki/Simple_Mail_Transfer_Protocol" />
+<link rel="alternate" type="application/x-wiki" title="Edit this page" href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit" />
+<link rel="edit" title="Edit this page" href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit" />
+<link rel="apple-touch-icon" href="http://en.wikipedia.org/apple-touch-icon.png" />
+<link rel="shortcut icon" href="/favicon.ico" />
+<link rel="search" type="application/opensearchdescription+xml" href="/w/opensearch_desc.php" title="Wikipedia (en)" />
+<link rel="EditURI" type="application/rsd+xml" href="http://en.wikipedia.org/w/api.php?action=rsd" />
+<link rel="copyright" href="http://creativecommons.org/licenses/by-sa/3.0/" />
+<link rel="alternate" type="application/atom+xml" title="Wikipedia Atom feed" href="/w/index.php?title=Special:RecentChanges&amp;feed=atom" />
+<link rel="stylesheet" href="http://bits.wikimedia.org/en.wikipedia.org/load.php?debug=false&amp;lang=en&amp;modules=ext.wikihiero%7Cmediawiki.legacy.commonPrint%2Cshared%7Cskins.vector&amp;only=styles&amp;skin=vector&amp;*" type="text/css" media="all" />
+<meta name="ResourceLoaderDynamicStyles" content="" />
+<link rel="stylesheet" href="http://bits.wikimedia.org/en.wikipedia.org/load.php?debug=false&amp;lang=en&amp;modules=site&amp;only=styles&amp;skin=vector&amp;*" type="text/css" media="all" />
+<style type="text/css" media="all">a:lang(ar),a:lang(ckb),a:lang(fa),a:lang(kk-arab),a:lang(mzn),a:lang(ps),a:lang(ur){text-decoration:none}a.new,#quickbar a.new{color:#ba0000}
+
+/* cache key: enwiki:resourceloader:filter:minify-css:4:c88e2bcd56513749bec09a7e29cb3ffa */</style>
+<script src="http://bits.wikimedia.org/en.wikipedia.org/load.php?debug=false&amp;lang=en&amp;modules=startup&amp;only=scripts&amp;skin=vector&amp;*" type="text/javascript"></script>
+<script type="text/javascript">if ( window.mediaWiki ) {
+   mw.config.set({"wgCanonicalNamespace": "", "wgCanonicalSpecialPageName": false, "wgNamespaceNumber": 0, "wgPageName": "Simple_Mail_Transfer_Protocol", "wgTitle": "Simple Mail Transfer Protocol", "wgCurRevisionId": 460927081, "wgArticleId": 27675, "wgIsArticle": true, "wgAction": "view", "wgUserName": null, "wgUserGroups": ["*"], "wgCategories": ["All articles with unsourced statements", "Articles with unsourced statements from July 2009", "Email", "Internet mail protocols"], "wgBreakFrames": false, "wgRestrictionEdit": [], "wgRestrictionMove": [], "wgSearchNamespaces": [0], "wgFlaggedRevsParams": {"tags": {"status": {"levels": 1, "quality": 2, "pristine": 3}}}, "wgStableRevisionId": null, "wgVectorEnabledModules": {"collapsiblenav": true, "collapsibletabs": true, "editwarning": true, "expandablesearch": false, "footercleanup": false, "sectioneditlinks": false, "simplesearch": true, "experiments": true}, "wgWikiEditorEnabledModules": {"toolbar": true, "dialogs": true, "hidesig": true, "templateEditor": false, "templates": false, "preview": false, "previewDialog": false, "publish": false, "toc": false}, "wgTrackingToken": "e5015e8f90dffa492d0ef52be63fb0cf", "wikilove-recipient": "", "wikilove-edittoken": "+\\", "wikilove-anon": 0, "mbEditToken": "+\\", "Geo": {"city": "", "country": ""}, "wgNoticeProject": "wikipedia"});
+}
+</script><script type="text/javascript">if ( window.mediaWiki ) {
+   mw.loader.load(["mediawiki.page.startup"]);
+}
+</script>
+<!--[if lt IE 7]><style type="text/css">body{behavior:url("/w/skins-1.18/vector/csshover.min.htc")}</style><![endif]--></head>
+<body class="mediawiki ltr sitedir-ltr ns-0 ns-subject page-Simple_Mail_Transfer_Protocol action-view skin-vector">
+      <div id="mw-page-base" class="noprint"></div>
+      <div id="mw-head-base" class="noprint"></div>
+      <!-- content -->
+      <div id="content">
+         <a id="top"></a>
+         <div id="mw-js-message" style="display:none;"></div>
+                  <!-- sitenotice -->
+         <div id="siteNotice"><!-- centralNotice loads here --></div>
+         <!-- /sitenotice -->
+                  <!-- firstHeading -->
+         <h1 id="firstHeading" class="firstHeading">Simple Mail Transfer Protocol</h1>
+         <!-- /firstHeading -->
+         <!-- bodyContent -->
+         <div id="bodyContent">
+                        <!-- tagline -->
+            <div id="siteSub">From Wikipedia, the free encyclopedia</div>
+            <!-- /tagline -->
+                        <!-- subtitle -->
+            <div id="contentSub">  (Redirected from <a href="/w/index.php?title=Smtp&amp;redirect=no" title="Smtp">Smtp</a>)</div>
+            <!-- /subtitle -->
+                                                <!-- jumpto -->
+            <div id="jump-to-nav">
+               Jump to: <a href="#mw-head">navigation</a>,
+               <a href="#p-search">search</a>
+            </div>
+            <!-- /jumpto -->
+                        <!-- bodycontent -->
+            <div lang="en" dir="ltr" class="mw-content-ltr"><div class="dablink">This article is about the Internet standard for electronic mail transmission.  For the email delivery company, see <a href="/wiki/SMTP_(company)" title="SMTP (company)">SMTP (company)</a>.</div>
+<table class="vertical-navbox nowraplinks hlist" cellspacing="5" style="float: right; clear: right; color: black; background: #f9f9f9; border: 1px solid #aaa; width: 22em; margin: 0 0 1.0em 1.0em; padding: 0.2em; border-spacing: 0.4em 0; text-align: center; line-height: 1.4em; font-size: 88%;" cellpadding="0">
+<tr>
+<th class="" style="padding: 0.2em 0.4em 0.2em; font-size: 145%; line-height: 1.15em; font-weight: bold; background-color: #adb;"><a href="/wiki/Internet_protocol_suite" title="Internet protocol suite">Internet protocol suite</a></th>
+</tr>
+<tr>
+<td class="" style="padding-top: 0.2em; font-weight: bold; background-color: #cfc;"><a href="/wiki/Application_layer" title="Application layer">Application layer</a></td>
+</tr>
+<tr>
+<td style="padding-bottom: 0.2em;">
+<ul>
+<li><a href="/wiki/Border_Gateway_Protocol" title="Border Gateway Protocol">BGP</a></li>
+<li><a href="/wiki/Dynamic_Host_Configuration_Protocol" title="Dynamic Host Configuration Protocol">DHCP</a></li>
+<li><a href="/wiki/Domain_Name_System" title="Domain Name System">DNS</a></li>
+<li><a href="/wiki/File_Transfer_Protocol" title="File Transfer Protocol">FTP</a></li>
+<li><a href="/wiki/Hypertext_Transfer_Protocol" title="Hypertext Transfer Protocol">HTTP</a></li>
+<li><a href="/wiki/Internet_Message_Access_Protocol" title="Internet Message Access Protocol">IMAP</a></li>
+<li><a href="/wiki/Internet_Relay_Chat" title="Internet Relay Chat">IRC</a></li>
+<li><a href="/wiki/LDAP" title="LDAP" class="mw-redirect">LDAP</a></li>
+<li><a href="/wiki/Media_Gateway_Control_Protocol_(MGCP)" title="Media Gateway Control Protocol (MGCP)">MGCP</a></li>
+<li><a href="/wiki/Network_News_Transfer_Protocol" title="Network News Transfer Protocol">NNTP</a></li>
+<li><a href="/wiki/Network_Time_Protocol" title="Network Time Protocol">NTP</a></li>
+<li><a href="/wiki/Post_Office_Protocol" title="Post Office Protocol">POP</a></li>
+<li><a href="/wiki/Routing_Information_Protocol" title="Routing Information Protocol">RIP</a></li>
+<li><a href="/wiki/Remote_procedure_call" title="Remote procedure call">RPC</a></li>
+<li><a href="/wiki/Real-time_Transport_Protocol" title="Real-time Transport Protocol">RTP</a></li>
+<li><a href="/wiki/Session_Initiation_Protocol" title="Session Initiation Protocol">SIP</a></li>
+<li><strong class="selflink">SMTP</strong></li>
+<li><a href="/wiki/Simple_Network_Management_Protocol" title="Simple Network Management Protocol">SNMP</a></li>
+<li><a href="/wiki/SOCKS" title="SOCKS">SOCKS</a></li>
+<li><a href="/wiki/Secure_Shell" title="Secure Shell">SSH</a></li>
+<li><a href="/wiki/Telnet" title="Telnet">Telnet</a></li>
+<li><a href="/wiki/Transport_Layer_Security" title="Transport Layer Security">TLS/SSL</a></li>
+<li><a href="/wiki/Extensible_Messaging_and_Presence_Protocol" title="Extensible Messaging and Presence Protocol">XMPP</a></li>
+<li><a href="/wiki/Category:Application_layer_protocols" title="Category:Application layer protocols">(more)</a></li>
+</ul>
+</td>
+</tr>
+<tr>
+<td class="" style="padding-top: 0.2em; font-weight: bold; background-color: #cfc;"><a href="/wiki/Transport_layer" title="Transport layer">Transport layer</a></td>
+</tr>
+<tr>
+<td style="padding-bottom: 0.2em;">
+<ul>
+<li><a href="/wiki/Transmission_Control_Protocol" title="Transmission Control Protocol">TCP</a></li>
+<li><a href="/wiki/User_Datagram_Protocol" title="User Datagram Protocol">UDP</a></li>
+<li><a href="/wiki/Datagram_Congestion_Control_Protocol" title="Datagram Congestion Control Protocol">DCCP</a></li>
+<li><a href="/wiki/Stream_Control_Transmission_Protocol" title="Stream Control Transmission Protocol">SCTP</a></li>
+<li><a href="/wiki/Resource_reservation_protocol" title="Resource reservation protocol">RSVP</a></li>
+<li><a href="/wiki/Explicit_Congestion_Notification" title="Explicit Congestion Notification">ECN</a></li>
+<li><a href="/wiki/Category:Transport_layer_protocols" title="Category:Transport layer protocols">(more)</a></li>
+</ul>
+</td>
+</tr>
+<tr>
+<td class="" style="padding-top: 0.2em; font-weight: bold; background-color: #cfc;"><a href="/wiki/Internet_layer" title="Internet layer">Internet layer</a></td>
+</tr>
+<tr>
+<td style="padding-bottom: 0.2em;">
+<ul>
+<li><a href="/wiki/Internet_Protocol" title="Internet Protocol">IP</a>
+<ul>
+<li><a href="/wiki/IPv4" title="IPv4">IPv4</a></li>
+<li><a href="/wiki/IPv6" title="IPv6">IPv6</a></li>
+</ul>
+</li>
+<li><a href="/wiki/Internet_Control_Message_Protocol" title="Internet Control Message Protocol">ICMP</a></li>
+<li><a href="/wiki/ICMPv6" title="ICMPv6">ICMPv6</a></li>
+<li><a href="/wiki/Internet_Group_Management_Protocol" title="Internet Group Management Protocol">IGMP</a></li>
+<li><a href="/wiki/IPsec" title="IPsec">IPsec</a></li>
+<li><a href="/wiki/Category:Internet_Layer_protocols" title="Category:Internet Layer protocols">(more)</a></li>
+</ul>
+</td>
+</tr>
+<tr>
+<td class="" style="padding-top: 0.2em; font-weight: bold; background-color: #cfc;"><a href="/wiki/Link_layer" title="Link layer">Link layer</a></td>
+</tr>
+<tr>
+<td style="padding-bottom: 0.2em;">
+<ul>
+<li><a href="/wiki/Address_Resolution_Protocol" title="Address Resolution Protocol">ARP/InARP</a></li>
+<li><a href="/wiki/Neighbor_Discovery_Protocol" title="Neighbor Discovery Protocol">NDP</a></li>
+<li><a href="/wiki/Open_Shortest_Path_First" title="Open Shortest Path First">OSPF</a></li>
+<li><a href="/wiki/Tunneling_protocol" title="Tunneling protocol">Tunnels</a>
+<ul>
+<li><a href="/wiki/Layer_2_Tunneling_Protocol" title="Layer 2 Tunneling Protocol">L2TP</a></li>
+</ul>
+</li>
+<li><a href="/wiki/Point-to-Point_Protocol" title="Point-to-Point Protocol">PPP</a></li>
+<li><a href="/wiki/Media_access_control" title="Media access control">Media access control</a>
+<ul>
+<li><a href="/wiki/Ethernet" title="Ethernet">Ethernet</a></li>
+<li><a href="/wiki/Digital_subscriber_line" title="Digital subscriber line">DSL</a></li>
+<li><a href="/wiki/Integrated_Services_Digital_Network" title="Integrated Services Digital Network">ISDN</a></li>
+<li><a href="/wiki/Fiber_Distributed_Data_Interface" title="Fiber Distributed Data Interface">FDDI</a></li>
+</ul>
+</li>
+<li><a href="/wiki/Category:Link_protocols" title="Category:Link protocols">(more)</a></li>
+</ul>
+</td>
+</tr>
+<tr>
+<td style="text-align: right;"><span class="noprint plainlinks navbar" style=""><span style="white-space:nowrap;word-spacing:-.12em;"><a href="/wiki/Template:IPstack" title="Template:IPstack"><span style="" title="View this template">v</span></a> <span style=""><b>·</b></span> <a href="/wiki/Template_talk:IPstack" title="Template talk:IPstack"><span style="" title="Discuss this template">d</span></a> <span style=""><b>·</b></span> <a class="external text" href="http://en.wikipedia.org/w/index.php?title=Template:IPstack&amp;action=edit"><span style="" title="Edit this template">e</span></a></span></span></td>
+</tr>
+</table>
+<p><b>Simple Mail Transfer Protocol</b> (<b>SMTP</b>) is an <a href="/wiki/Internet_standard" title="Internet standard" class="mw-redirect">Internet standard</a> for <a href="/wiki/E-mail" title="E-mail" class="mw-redirect">electronic mail</a> (e-mail) transmission across <a href="/wiki/Internet_Protocol" title="Internet Protocol">Internet Protocol</a> (IP) networks. SMTP was first defined by <a class="external mw-magiclink-rfc" href="http://tools.ietf.org/html/rfc821">RFC 821</a> (1982, eventually declared <a href="/wiki/Internet_standard" title="Internet standard" class="mw-redirect">STD</a> 10),<sup id="cite_ref-rfc821_0-0" class="reference"><a href="#cite_note-rfc821-0"><span>[</span>1<span>]</span></a></sup> and last updated by <a class="external mw-magiclink-rfc" href="http://tools.ietf.org/html/rfc5321">RFC 5321</a> (2008)<sup id="cite_ref-rfc5321_1-0" class="reference"><a href="#cite_note-rfc5321-1"><span>[</span>2<span>]</span></a></sup> which includes the <a href="/wiki/Extended_SMTP" title="Extended SMTP">extended SMTP</a> (ESMTP) additions, and is the protocol in widespread use today. SMTP is specified for outgoing mail transport and uses <a href="/wiki/Transmission_Control_Protocol" title="Transmission Control Protocol">TCP</a> <a href="/wiki/Computer_port_(software)" title="Computer port (software)">port</a> 25. The protocol for new submissions is effectively the same as SMTP, but it uses port 587 instead. SMTP connections secured by <a href="/wiki/Secure_Sockets_Layer" title="Secure Sockets Layer" class="mw-redirect">SSL</a> are known by the shorthand <a href="/wiki/SMTPS" title="SMTPS">SMTPS</a>, though SMTPS is not a protocol in its own right.</p>
+<p>While electronic <a href="/wiki/Mail_server" title="Mail server" class="mw-redirect">mail servers</a> and other <a href="/wiki/Mail_transfer_agent" title="Mail transfer agent" class="mw-redirect">mail transfer agents</a> use SMTP to send and receive mail messages, user-level client mail applications typically only use SMTP for sending messages to a mail server for <a href="/wiki/Mail_relay" title="Mail relay" class="mw-redirect">relaying</a>. For receiving messages, client applications usually use either the <a href="/wiki/Post_Office_Protocol" title="Post Office Protocol">Post Office Protocol</a> (POP) or the <a href="/wiki/Internet_Message_Access_Protocol" title="Internet Message Access Protocol">Internet Message Access Protocol</a> (IMAP) or a proprietary system (such as Microsoft Exchange or <a href="/wiki/Lotus_Notes" title="Lotus Notes" class="mw-redirect">Lotus Notes</a>/<a href="/wiki/IBM_Lotus_Domino" title="IBM Lotus Domino">Domino</a>) to access their mail box accounts on a mail server.</p>
+<table id="toc" class="toc">
+<tr>
+<td>
+<div id="toctitle">
+<h2>Contents</h2>
+</div>
+<ul>
+<li class="toclevel-1 tocsection-1"><a href="#History"><span class="tocnumber">1</span> <span class="toctext">History</span></a></li>
+<li class="toclevel-1 tocsection-2"><a href="#Mail_processing_model"><span class="tocnumber">2</span> <span class="toctext">Mail processing model</span></a></li>
+<li class="toclevel-1 tocsection-3"><a href="#Protocol_overview"><span class="tocnumber">3</span> <span class="toctext">Protocol overview</span></a>
+<ul>
+<li class="toclevel-2 tocsection-4"><a href="#SMTP_vs_mail_retrieval"><span class="tocnumber">3.1</span> <span class="toctext">SMTP vs mail retrieval</span></a></li>
+<li class="toclevel-2 tocsection-5"><a href="#Remote_Message_Queue_Starting"><span class="tocnumber">3.2</span> <span class="toctext">Remote Message Queue Starting</span></a></li>
+<li class="toclevel-2 tocsection-6"><a href="#On-Demand_Mail_Relay"><span class="tocnumber">3.3</span> <span class="toctext">On-Demand Mail Relay</span></a></li>
+<li class="toclevel-2 tocsection-7"><a href="#Internationalization"><span class="tocnumber">3.4</span> <span class="toctext">Internationalization</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-8"><a href="#Outgoing_mail_SMTP_server"><span class="tocnumber">4</span> <span class="toctext">Outgoing mail SMTP server</span></a>
+<ul>
+<li class="toclevel-2 tocsection-9"><a href="#Outgoing_mail_server_access_restrictions"><span class="tocnumber">4.1</span> <span class="toctext">Outgoing mail server access restrictions</span></a>
+<ul>
+<li class="toclevel-3 tocsection-10"><a href="#Restricting_access_by_location"><span class="tocnumber">4.1.1</span> <span class="toctext">Restricting access by location</span></a></li>
+<li class="toclevel-3 tocsection-11"><a href="#Client_authentication"><span class="tocnumber">4.1.2</span> <span class="toctext">Client authentication</span></a></li>
+<li class="toclevel-3 tocsection-12"><a href="#Open_relay"><span class="tocnumber">4.1.3</span> <span class="toctext">Open relay</span></a></li>
+</ul>
+</li>
+<li class="toclevel-2 tocsection-13"><a href="#Ports"><span class="tocnumber">4.2</span> <span class="toctext">Ports</span></a></li>
+</ul>
+</li>
+<li class="toclevel-1 tocsection-14"><a href="#SMTP_transport_example"><span class="tocnumber">5</span> <span class="toctext">SMTP transport example</span></a></li>
+<li class="toclevel-1 tocsection-15"><a href="#Optional_extensions"><span class="tocnumber">6</span> <span class="toctext">Optional extensions</span></a></li>
+<li class="toclevel-1 tocsection-16"><a href="#Security_and_spamming"><span class="tocnumber">7</span> <span class="toctext">Security and spamming</span></a></li>
+<li class="toclevel-1 tocsection-17"><a href="#Implementations"><span class="tocnumber">8</span> <span class="toctext">Implementations</span></a></li>
+<li class="toclevel-1 tocsection-18"><a href="#Related_Requests_For_Comments"><span class="tocnumber">9</span> <span class="toctext">Related Requests For Comments</span></a></li>
+<li class="toclevel-1 tocsection-19"><a href="#See_also"><span class="tocnumber">10</span> <span class="toctext">See also</span></a></li>
+<li class="toclevel-1 tocsection-20"><a href="#References"><span class="tocnumber">11</span> <span class="toctext">References</span></a></li>
+<li class="toclevel-1 tocsection-21"><a href="#Further_reading"><span class="tocnumber">12</span> <span class="toctext">Further reading</span></a></li>
+<li class="toclevel-1 tocsection-22"><a href="#External_links"><span class="tocnumber">13</span> <span class="toctext">External links</span></a></li>
+</ul>
+</td>
+</tr>
+</table>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=1" title="Edit section: History">edit</a>]</span> <span class="mw-headline" id="History">History</span></h2>
+<p>Various forms of one-to-one <a href="/wiki/Electronic_messaging" title="Electronic messaging">electronic messaging</a> were used in the 1960s. People communicated with one another using systems developed for specific <a href="/wiki/Mainframe_computer" title="Mainframe computer">mainframe</a> computers. As more computers were interconnected, especially in the US Government's <a href="/wiki/ARPANET" title="ARPANET">ARPANET</a>, standards were developed to allow users of different systems to <a href="/wiki/E-mail" title="E-mail" class="mw-redirect">e-mail</a> one another. SMTP grew out of these standards developed during the 1970s.</p>
+<p>SMTP can trace its roots to two implementations described in 1971, the <a href="/w/index.php?title=Mail_Box_Protocol&amp;action=edit&amp;redlink=1" class="new" title="Mail Box Protocol (page does not exist)">Mail Box Protocol</a>, which has been disputed to actually have been implemented,<sup id="cite_ref-2" class="reference"><a href="#cite_note-2"><span>[</span>3<span>]</span></a></sup> but is discussed in <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc196">RFC 196</a> and other RFCs, and the SNDMSG program, which, according to <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2235">RFC 2235</a>, <a href="/wiki/Ray_Tomlinson" title="Ray Tomlinson">Ray Tomlinson</a> of <a href="/wiki/BBN_Technologies" title="BBN Technologies">BBN</a> "invents" for <a href="/wiki/TOPS-20#TENEX" title="TOPS-20">TENEX</a> computers the sending of mail across the ARPANET.<sup id="cite_ref-3" class="reference"><a href="#cite_note-3"><span>[</span>4<span>]</span></a></sup><sup id="cite_ref-4" class="reference"><a href="#cite_note-4"><span>[</span>5<span>]</span></a></sup><sup id="cite_ref-5" class="reference"><a href="#cite_note-5"><span>[</span>6<span>]</span></a></sup> Fewer than 50 hosts were connected to the ARPANET at this time.<sup id="cite_ref-6" class="reference"><a href="#cite_note-6"><span>[</span>7<span>]</span></a></sup></p>
+<p>Further implementations include <a href="/w/index.php?title=FTP_Mail&amp;action=edit&amp;redlink=1" class="new" title="FTP Mail (page does not exist)">FTP Mail</a> <sup id="cite_ref-7" class="reference"><a href="#cite_note-7"><span>[</span>8<span>]</span></a></sup> and <a href="/w/index.php?title=Mail_Protocol&amp;action=edit&amp;redlink=1" class="new" title="Mail Protocol (page does not exist)">Mail Protocol</a>, both from 1973.<sup id="cite_ref-8" class="reference"><a href="#cite_note-8"><span>[</span>9<span>]</span></a></sup> Development work continued throughout the 1970s, until the ARPANET converted into the modern <a href="/wiki/Internet" title="Internet">Internet</a> around 1980. <a href="/wiki/Jon_Postel" title="Jon Postel">Jon Postel</a> then proposed a <a href="/wiki/Mail_Transfer_Protocol" title="Mail Transfer Protocol">Mail Transfer Protocol</a> in 1980 that began to remove the mail's reliance on <a href="/wiki/FTP" title="FTP" class="mw-redirect">FTP</a>.<sup id="cite_ref-9" class="reference"><a href="#cite_note-9"><span>[</span>10<span>]</span></a></sup> SMTP was published as <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc821">RFC 821</a> in August 1982, also by Postel.</p>
+<p>The SMTP standard was developed around the same time as <a href="/wiki/Usenet" title="Usenet">Usenet</a>, a one-to-many communication network with some similarities.</p>
+<p>SMTP became widely used in the early 1980s. At the time, it was a complement to <a href="/wiki/UUCP" title="UUCP">Unix to Unix Copy Program</a> (UUCP) mail, which was better suited for handling e-mail transfers between machines that were intermittently connected. SMTP, on the other hand, works best when both the sending and receiving machines are connected to the network all the time. Both use a <a href="/wiki/Store_and_forward" title="Store and forward">store and forward</a> mechanism and are examples of <a href="/wiki/Push_technology" title="Push technology">push technology</a>. Though Usenet's <a href="/wiki/Newsgroups" title="Newsgroups" class="mw-redirect">newsgroups</a> are still propagated with UUCP between servers,<sup id="cite_ref-10" class="reference"><a href="#cite_note-10"><span>[</span>11<span>]</span></a></sup> UUCP mail has virtually disappeared<sup id="cite_ref-11" class="reference"><a href="#cite_note-11"><span>[</span>12<span>]</span></a></sup> along with the "<a href="/wiki/Bang_path" title="Bang path" class="mw-redirect">bang paths</a>" it used as message routing headers.</p>
+<p>The article about <a href="/wiki/Sender_Rewriting_Scheme" title="Sender Rewriting Scheme">sender rewriting</a> contains technical background info about the early SMTP history and source routing before <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1123">RFC 1123</a>.</p>
+<p><a href="/wiki/Sendmail" title="Sendmail">Sendmail</a> was one of the first (if not the first) mail transfer agents to implement SMTP.<sup class="Template-Fact" style="white-space:nowrap;">[<i><a href="/wiki/Wikipedia:Citation_needed" title="Wikipedia:Citation needed"><span title="This claim needs references to reliable sources from July 2009">citation needed</span></a></i>]</sup> Some other popular SMTP server programs include <a href="/wiki/Postfix_(software)" title="Postfix (software)">Postfix</a>, <a href="/wiki/Qmail" title="Qmail">qmail</a>, <a href="/wiki/Novell_GroupWise" title="Novell GroupWise">Novell GroupWise</a>, <a href="/wiki/Exim" title="Exim">Exim</a>, <a href="/wiki/Novell_NetMail" title="Novell NetMail" class="mw-redirect">Novell NetMail</a>, <a href="/wiki/Microsoft_Exchange_Server" title="Microsoft Exchange Server">Microsoft Exchange Server</a>, <a href="/wiki/Sun_Java_System_Messaging_Server" title="Sun Java System Messaging Server" class="mw-redirect">Sun Java System Messaging Server</a>.</p>
+<p>Message submission (<a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2476">RFC 2476</a>) and <a href="/wiki/SMTP-AUTH" title="SMTP-AUTH" class="mw-redirect">SMTP-AUTH</a> (<a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2554">RFC 2554</a>) were introduced in 1998 and 1999, both describing new trends in e-mail delivery. Originally, SMTP servers were typically internal to an organization, receiving mail for the organization <i>from the outside</i>, and relaying messages from the organization <i>to the outside</i>. But as time went on, SMTP servers (Mail transfer agents), in practice, were expanding their roles to become <a href="/wiki/Message_submission_agent" title="Message submission agent" class="mw-redirect">message submission agents</a> for <a href="/wiki/Mail_user_agent" title="Mail user agent" class="mw-redirect">Mail user agents</a>, some of which were now relaying mail <i>from the outside</i> of an organization. (e.g. a company executive wishes to send e-mail while on a trip using the corporate SMTP server.) This issue, a consequence of the rapid expansion and popularity of the <a href="/wiki/World_Wide_Web" title="World Wide Web">World Wide Web</a>, meant that SMTP had to include specific rules and methods for relaying mail and authenticating users to prevent abuses such as relaying of unsolicited e-mail (<a href="/wiki/E-mail_spam" title="E-mail spam" class="mw-redirect">spam</a>).</p>
+<p>As this protocol started out purely <a href="/wiki/ASCII" title="ASCII">ASCII</a> text-based, it did not deal well with binary files. Standards such as Multipurpose Internet Mail Extensions (<a href="/wiki/MIME" title="MIME">MIME</a>) were developed to encode binary files for transfer through SMTP. Mail transfer agents (MTAs) developed after <a href="/wiki/Sendmail" title="Sendmail">Sendmail</a> also tended to be implemented <a href="/wiki/8-bit-clean" title="8-bit-clean" class="mw-redirect">8-bit-clean</a>, so that the alternate "just send eight" strategy could be used to transmit arbitrary text data (in any 8-bit ASCII-like character encoding) via SMTP. 8-bit-clean MTAs today tend to support the <a href="/wiki/8BITMIME" title="8BITMIME" class="mw-redirect">8BITMIME</a> extension, permitting binary files to be transmitted almost as easily as plain text.</p>
+<p>Many people contributed to the core SMTP specifications, among them <a href="/wiki/Jon_Postel" title="Jon Postel">Jon Postel</a>, <a href="/wiki/Eric_Allman" title="Eric Allman">Eric Allman</a>, <a href="/w/index.php?title=Dave_Crocker&amp;action=edit&amp;redlink=1" class="new" title="Dave Crocker (page does not exist)">Dave Crocker</a>, <a href="/wiki/Ned_Freed" title="Ned Freed">Ned Freed</a>, <a href="/w/index.php?title=Randall_Gellens&amp;action=edit&amp;redlink=1" class="new" title="Randall Gellens (page does not exist)">Randall Gellens</a>, <a href="/wiki/John_Klensin" title="John Klensin">John Klensin</a>, and <a href="/wiki/Keith_Moore" title="Keith Moore">Keith Moore</a>.</p>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=2" title="Edit section: Mail processing model">edit</a>]</span> <span class="mw-headline" id="Mail_processing_model">Mail processing model</span></h2>
+<div class="thumb tright">
+<div class="thumbinner" style="width:302px;"><a href="/wiki/File:SMTP-transfer-model.svg" class="image"><img alt="" src=http://upload.wikimedia.org/wikipedia/commons/thumb/6/69/SMTP-transfer-model.svg/300px-SMTP-transfer-model.svg.png" width="300" height="179" class="thumbimage" /></a>
+<div class="thumbcaption">
+<div class="magnify"><a href="/wiki/File:SMTP-transfer-model.svg" class="internal" title="Enlarge"><img src=http://bits.wikimedia.org/skins-1.18/common/images/magnify-clip.png" width="15" height="11" alt="" /></a></div>
+Blue arrows can be implemented using SMTP variations.</div>
+</div>
+</div>
+<p>Email is submitted by a mail client (MUA, <a href="/wiki/Mail_user_agent" title="Mail user agent" class="mw-redirect">mail user agent</a>) to a mail server (MSA, <a href="/wiki/Mail_submission_agent" title="Mail submission agent">mail submission agent</a>) using SMTP on <a href="/wiki/Transmission_Control_Protocol" title="Transmission Control Protocol">TCP</a> port 587. Most mailbox providers still allow submission on traditional port 25. From there, the MSA delivers the mail to its mail transfer agent (MTA, <a href="/wiki/Mail_transfer_agent" title="Mail transfer agent" class="mw-redirect">mail transfer agent</a>). Often, these two agents are just different instances of the same software launched with different options on the same machine. Local processing can be done either on a single machine, or split among various appliances; in the former case, involved processes can share files; in the latter case, SMTP is used to transfer the message internally, with each host configured to use the next appliance as a <a href="/wiki/Smart_host" title="Smart host">smart host</a>. Each process is an MTA in its own right; that is, an SMTP server.</p>
+<p>The boundary MTA has to locate the target host. It uses the <a href="/wiki/Domain_name_system" title="Domain name system" class="mw-redirect">Domain name system</a> (DNS) to look up the mail exchanger record (MX record) for the recipient's domain (the part of the <a href="/wiki/Email_address" title="Email address">address</a> on the right of <tt>@</tt>). The returned MX record contains the name of the target host. The MTA next connects to the exchange server as an SMTP client. (The article on <a href="/wiki/MX_record" title="MX record">MX record</a> discusses many factors in determining which server the sending MTA connects to.)</p>
+<p>Once the MX target accepts the incoming message, it hands it to a <a href="/wiki/Mail_delivery_agent" title="Mail delivery agent">mail delivery agent</a> (MDA) for local mail delivery. An MDA is able to save messages in the relevant <a href="/wiki/Email_mailbox" title="Email mailbox" class="mw-redirect">mailbox</a> format. Again, mail reception can be done using many computers or just one —the picture displays two nearby boxes in either case. An MDA may deliver messages directly to storage, or <a href="/wiki/E-mail_forwarding" title="E-mail forwarding" class="mw-redirect">forward</a> them over a network using SMTP, or any other means, including the <a href="/wiki/Local_Mail_Transfer_Protocol" title="Local Mail Transfer Protocol">Local Mail Transfer Protocol</a> (LMTP), a derivative of SMTP designed for this purpose.</p>
+<p>Once delivered to the local mail server, the mail is stored for batch retrieval by authenticated mail clients (MUAs). Mail is retrieved by end-user applications, called email clients, using <a href="/wiki/Internet_Message_Access_Protocol" title="Internet Message Access Protocol">Internet Message Access Protocol</a> (IMAP), a protocol that both facilitates access to mail and manages stored mail, or the <a href="/wiki/Post_Office_Protocol" title="Post Office Protocol">Post Office Protocol</a> (POP) which typically uses the traditional <a href="/wiki/Mbox" title="Mbox">mbox</a> mail file format or a proprietary system such as Microsoft Exchange/Outlook or <a href="/wiki/Lotus_Notes" title="Lotus Notes" class="mw-redirect">Lotus Notes</a>/<a href="/wiki/IBM_Lotus_Domino" title="IBM Lotus Domino">Domino</a>. <a href="/wiki/Webmail" title="Webmail">Webmail</a> clients may use either method, but the retrieval protocol is often not a formal standard.</p>
+<p><span id="Internet_Message_Format"></span> SMTP defines message <i>transport</i>, not the message <i>content</i>. Thus, it defines the mail <i>envelope</i> and its parameters, such as the <a href="/wiki/Envelope_sender" title="Envelope sender" class="mw-redirect">envelope sender</a>, but not the header or the body of the message itself. STD 10 and <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc5321">RFC 5321</a> define SMTP (the envelope), while STD 11 and <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc5322">RFC 5322</a> define the message (header and body), formally referred to as the <a href="/wiki/Internet_Message_Format" title="Internet Message Format" class="mw-redirect">Internet Message Format</a>.</p>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=3" title="Edit section: Protocol overview">edit</a>]</span> <span class="mw-headline" id="Protocol_overview">Protocol overview</span></h2>
+<p>SMTP is a <a href="/wiki/Connection-oriented_communication" title="Connection-oriented communication">connection-oriented</a>, <a href="/wiki/Text-based_(computing)" title="Text-based (computing)">text-based</a> protocol in which a mail sender communicates with a mail receiver by issuing command strings and supplying necessary data over a reliable ordered data stream channel, typically a <a href="/wiki/Transmission_Control_Protocol" title="Transmission Control Protocol">Transmission Control Protocol</a> (TCP) connection. An <i>SMTP session</i> consists of commands originated by an SMTP <a href="/wiki/Client_(computing)" title="Client (computing)">client</a> (the initiating <a href="/wiki/Software_agent" title="Software agent">agent</a>, sender, or transmitter) and corresponding responses from the SMTP <a href="/wiki/Server_(computing)" title="Server (computing)">server</a> (the listening agent, or receiver) so that the session is opened, and session parameters are exchanged. A session may include zero or more SMTP transactions. An <i>SMTP transaction</i> consists of three command/reply sequences (see example below.) They are:</p>
+<ol>
+<li><b>MAIL</b> command, to establish the return address, a.k.a. Return-Path, 5321.From, mfrom, or envelope sender. This is the address for <a href="/wiki/Bounce_message" title="Bounce message" class="mw-redirect">bounce messages</a>.</li>
+<li><b>RCPT</b> command, to establish a recipient of this message. This command can be issued multiple times, one for each recipient. These addresses are also part of the envelope.</li>
+<li><b>DATA</b> to send the <i>message text</i>. This is the content of the message, as opposed to its envelope. It consists of a <i>message header</i> and a <i>message body</i> separated by an empty line. DATA is actually a group of commands, and the server replies twice: once to the <i>DATA command</i> proper, to acknowledge that it is ready to receive the text, and the second time after the end-of-data sequence, to either accept or reject the entire message.</li>
+</ol>
+<p>Besides the intermediate reply for DATA, each server's reply can be either positive (2xx reply codes) or negative. Negative replies can be permanent (5xx codes) or transient (4xx codes). A <b>reject</b> is a permanent failure by an SMTP server; in this case the SMTP client should send a bounce message. A <b>drop</b> is a positive response followed by message discard rather than delivery.</p>
+<p>The initiating host, the SMTP client, can be either an end-user's <a href="/wiki/Email_client" title="Email client">email client</a>, functionally identified as a <a href="/wiki/Mail_user_agent" title="Mail user agent" class="mw-redirect">mail user agent</a> (MUA), or a relay server's <a href="/wiki/Mail_transfer_agent" title="Mail transfer agent" class="mw-redirect">mail transfer agent</a> (MTA), that is an SMTP server acting as an SMTP client, in the relevant session, in order to relay mail. Fully capable SMTP servers maintain queues of messages for retrying message transmissions that resulted in transient failures.</p>
+<p>A MUA knows the <i>outgoing mail</i> SMTP server from its configuration. An SMTP server acting as client, i.e. <i>relaying</i>, typically determines which SMTP server to connect to by looking up the <a href="/wiki/MX_record" title="MX record">MX</a> (Mail eXchange) <a href="/wiki/Domain_Name_System" title="Domain Name System">DNS</a> resource record for each recipient's <a href="/wiki/Domain_name" title="Domain name">domain name</a>. Conformant MTAs (not all) fall back to a simple <a href="/wiki/A_record" title="A record" class="mw-redirect">A record</a> in case no MX record can be found. Relaying servers can also be configured to use a <a href="/wiki/Smart_host" title="Smart host">smart host</a>.</p>
+<p>An SMTP server acting as client initiates a <a href="/wiki/Transmission_Control_Protocol" title="Transmission Control Protocol">TCP</a> connection to the server on the "<a href="/wiki/Well-known_port" title="Well-known port" class="mw-redirect">well-known port</a>" designated for SMTP: <a href="/wiki/TCP_and_UDP_port" title="TCP and UDP port" class="mw-redirect">port</a> 25. MUAs should use port 587 to connect to an MSA. The main difference between an MTA and an MSA is that <a href="/wiki/SMTP_Authentication" title="SMTP Authentication">SMTP Authentication</a> is mandatory for the latter only.</p>
+<h3><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=4" title="Edit section: SMTP vs mail retrieval">edit</a>]</span> <span class="mw-headline" id="SMTP_vs_mail_retrieval">SMTP vs mail retrieval</span></h3>
+<p>SMTP is a delivery protocol only. It cannot <i>pull</i> messages from a remote server on demand. Other protocols, such as the <a href="/wiki/Post_Office_Protocol" title="Post Office Protocol">Post Office Protocol</a> (POP) and the <a href="/wiki/Internet_Message_Access_Protocol" title="Internet Message Access Protocol">Internet Message Access Protocol</a> (IMAP) are specifically designed for retrieving messages and managing <a href="/wiki/Email_mailbox" title="Email mailbox" class="mw-redirect">mail boxes</a>. However, SMTP has a feature to initiate mail queue processing on a remote server so that the requesting system may receive any messages destined for it (see <a href="#Remote_Message_Queue_Starting">Remote Message Queue Starting</a> below). POP and IMAP are preferred protocols when a user's personal computer is only intermittently powered up, or Internet connectivity is only transient and hosts cannot receive message during off-line periods.</p>
+<h3><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=5" title="Edit section: Remote Message Queue Starting">edit</a>]</span> <span class="mw-headline" id="Remote_Message_Queue_Starting">Remote Message Queue Starting</span></h3>
+<p>Remote Message Queue Starting is a feature of SMTP that permits a remote host to start processing of the mail queue on a server so it may receive messages destined to it by sending the <tt>TURN</tt> command. This feature however was deemed insecure<sup id="cite_ref-12" class="reference"><a href="#cite_note-12"><span>[</span>13<span>]</span></a></sup> and was extended in <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1985">RFC 1985</a> with the <tt>ETRN</tt> command which operates more securely using an <a href="/wiki/Authentication" title="Authentication">authentication</a> method based on Domain Name System information.</p>
+<h3><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=6" title="Edit section: On-Demand Mail Relay">edit</a>]</span> <span class="mw-headline" id="On-Demand_Mail_Relay">On-Demand Mail Relay</span></h3>
+<div class="rellink relarticle mainarticle">Main article: <a href="/wiki/On-Demand_Mail_Relay" title="On-Demand Mail Relay">On-Demand Mail Relay</a></div>
+<p><b>On-Demand Mail Relay</b> (<b>ODMR</b>) is an <a href="/wiki/SMTP_extension" title="SMTP extension" class="mw-redirect">SMTP extension</a> standardized in <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2645">RFC 2645</a> that allows e-mail to be relayed to an authenticated recipient.</p>
+<h3><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=7" title="Edit section: Internationalization">edit</a>]</span> <span class="mw-headline" id="Internationalization">Internationalization</span></h3>
+<p><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc5336">RFC 5336</a> describes internationalization features for SMTP, the UTF8SMTP extension, which provides support for multi-byte and non-ASCII characters in email addresses, such as Pelé@live.com (simple diacritic), δοκιμή@παράδειγμα.δοκιμή, and 测试@测试.测试.</p>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=8" title="Edit section: Outgoing mail SMTP server">edit</a>]</span> <span class="mw-headline" id="Outgoing_mail_SMTP_server">Outgoing mail SMTP server</span></h2>
+<p>An <a href="/wiki/E-mail_client" title="E-mail client" class="mw-redirect">e-mail client</a> needs to know the IP address of an SMTP server and this has to be given as part of its configuration (usually given as a <a href="/wiki/Domain_name_system" title="Domain name system" class="mw-redirect">DNS</a> name). The server will deliver outgoing messages on behalf of the user.</p>
+<h3><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=9" title="Edit section: Outgoing mail server access restrictions">edit</a>]</span> <span class="mw-headline" id="Outgoing_mail_server_access_restrictions">Outgoing mail server access restrictions</span></h3>
+<p>Server administrators need to impose some control on which clients can use the server. This enables them to deal with abuse, for example <a href="/wiki/Spam" title="Spam">spamming</a>. Two solutions have been in common use:</p>
+<ul>
+<li>In the past, many systems imposed usage restrictions by the <i>location</i> of the client, only permitting usage by clients whose IP address is one that the server administrators control. Usage from any other client IP address is disallowed.</li>
+<li>Modern SMTP servers typically offer an alternative system that requires <a href="/wiki/Authentication" title="Authentication">authentication</a> of clients by credentials before allowing access.</li>
+</ul>
+<h4><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=10" title="Edit section: Restricting access by location">edit</a>]</span> <span class="mw-headline" id="Restricting_access_by_location">Restricting access by location</span></h4>
+<p>Under this system, an <i><a href="/wiki/ISP" title="ISP" class="mw-redirect">ISP</a>'s</i> SMTP server will not allow access by users who are 'outside the ISP's network'. More precisely, the server may only allow access to users with an IP address provided by the ISP, which is equivalent to requiring that they are connected to the Internet using that same ISP. A mobile user may often be on a network other than that of their normal ISP, and will then find that sending email fails because the configured SMTP server choice is no longer accessible.</p>
+<p>This system has several variations. For example, an organisation's SMTP server may only provide service to users on the same network, enforcing this by firewalling to block access by users on the wider Internet. Or the server may perform range checks on the client's IP address. These methods were typically used by corporations and institutions such as universities which provided an SMTP server for outbound mail only for use internally within the organisation. However, most of these bodies now use client authentication methods, as described below.</p>
+<p>By restricting access to certain IP addresses, server administrators can readily recognise the IP address of any abuser. As it will be a meaningful address to them, the administrators can deal with the rogue machine or user.</p>
+<p>Where a user is mobile, and may use different ISPs to connect to the internet, this kind of usage restriction is onerous, and altering the configured outbound email SMTP server address is impractical. It is highly desirable to be able to use email client configuration information that does not need to change.</p>
+<h4><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=11" title="Edit section: Client authentication">edit</a>]</span> <span class="mw-headline" id="Client_authentication">Client authentication</span></h4>
+<p>Modern SMTP servers typically require <a href="/wiki/Authentication" title="Authentication">authentication</a> of clients by credentials before allowing access, rather than restricting access by location as described earlier. This more flexible system is friendly to mobile users and allows them to have a fixed choice of configured outbound SMTP server.</p>
+<h4><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=12" title="Edit section: Open relay">edit</a>]</span> <span class="mw-headline" id="Open_relay">Open relay</span></h4>
+<p>A server that is accessible on the wider Internet and does not enforce these kinds of access restrictions is known as an <a href="/wiki/Open_relay" title="Open relay" class="mw-redirect">open relay</a>. This is now generally considered a bad practice worthy of <a href="/wiki/Blacklist_(computing)" title="Blacklist (computing)">blacklisting</a>.</p>
+<h3><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=13" title="Edit section: Ports">edit</a>]</span> <span class="mw-headline" id="Ports">Ports</span></h3>
+<p>Server administrators choose whether clients use <a href="/wiki/Transmission_Control_Protocol" title="Transmission Control Protocol">TCP</a> port 25 (SMTP) or port 587 (Submission), as formalized in <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc6409">RFC 6409</a>, for relaying outbound mail to a <a href="/wiki/Mail_server" title="Mail server" class="mw-redirect">mail server</a>. The specifications and many servers support both. Although some servers support port 465 for legacy <i>secure SMTP</i> in violation of the specifications, it is preferable to use standard ports and standard ESMTP commands<sup id="cite_ref-13" class="reference"><a href="#cite_note-13"><span>[</span>14<span>]</span></a></sup> according to <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc3207">RFC 3207</a> if a secure session needs to be used between the client and the server.</p>
+<p>Some servers are set up to reject all relaying on port 25, but valid users authenticating on port 587 are allowed to relay mail to any valid address.</p>
+<p>Some <a href="/wiki/Internet_service_provider" title="Internet service provider">Internet service providers</a> intercept port 25, redirecting traffic to their own SMTP server regardless of the destination address. This means that it is not possible for their users to access an SMTP server outside the ISP's network using port 25.</p>
+<p>Some SMTP servers support authenticated access on an additional port other than 25 to allow users to connect to them even if port 25 is blocked.</p>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=14" title="Edit section: SMTP transport example">edit</a>]</span> <span class="mw-headline" id="SMTP_transport_example">SMTP transport example</span></h2>
+<p>A typical example of sending a message via SMTP to two mailboxes (<i>alice</i> and <i>theboss</i>) located in the same mail domain (<i>example.com</i>) is reproduced in the following session exchange.</p>
+<p>For illustration purposes here (not part of protocol), the protocol exchanges are prefixed for the server (<i>S:</i>) and the client (<i>C:</i>).</p>
+<p>After the message sender (SMTP client) establishes a reliable communications channel to the message receiver (SMTP server), the session is opened with a greeting by the server, usually containing its <a href="/wiki/Fully_qualified_domain_name" title="Fully qualified domain name">fully qualified domain name</a> (FQDN), in this case <i>smtp.example.com</i>. The client initiates its dialog by responding with a <code>HELO</code> command identifying itself in the command's parameter with its FQDN (or an address literal if none is available).<sup id="cite_ref-rfc5321_1-1" class="reference"><a href="#cite_note-rfc5321-1"><span>[</span>2<span>]</span></a></sup></p>
+<pre>
+<code><font color="blue">S: 220 smtp.example.com ESMTP Postfix</font>
+C: HELO relay.example.org
+<font color="blue">S: 250 Hello relay.example.org, I am glad to meet you</font>
+C: MAIL FROM:&lt;bob@example.org&gt;
+<font color="blue">S: 250 Ok</font>
+C: RCPT TO:&lt;alice@example.com&gt;
+<font color="blue">S: 250 Ok</font>
+C: RCPT TO:&lt;theboss@example.com&gt;
+<font color="blue">S: 250 Ok</font>
+C: DATA
+<font color="blue">S: 354 End data with &lt;CR&gt;&lt;LF&gt;.&lt;CR&gt;&lt;LF&gt;</font>
+C: From: "Bob Example" &lt;bob@example.org&gt;
+C: To: "Alice Example" &lt;alice@example.com&gt;
+C: Cc: theboss@example.com
+C: Date: Tue, 15 Jan 2008 16:02:43 -0500
+C: Subject: Test message
+C:
+C: Hello Alice.
+C: This is a test message with 5 header fields and 4 lines in the message body.
+C: Your friend,
+C: Bob
+C: .
+<font color="blue">S: 250 Ok: queued as 12345</font>
+C: QUIT
+<font color="blue">S: 221 Bye</font>
+{The server closes the connection}</code>
+</pre>
+<p>The client notifies the receiver of the originating email address of the message in a <code>MAIL FROM</code> command. In this example, the email message is sent to two mailboxes on the same SMTP server: one each for each recipient listed in the <tt>To</tt> and <tt>Cc</tt> header fields. The corresponding SMTP command is <code>RCPT TO</code>. Each successful reception and execution of a command is acknowledged by the server with a result code and response message (e.g., 250 Ok).</p>
+<p>The transmission of the body of the mail message is initiated with a <code>DATA</code> command after which it is transmitted verbatim line by line and is terminated with an end-of-data sequence. This sequence consists of a new-line (&lt;CR&gt;&lt;LF&gt;), a single <a href="/wiki/Full_stop" title="Full stop">full stop</a> (period), followed by another new-line. Since a message body can contain a line with just a period as part of the text, the client sends <i>two</i> periods every time a line starts with a period; correspondingly, the server replaces every sequence of two periods at the beginning of a line with a single one. Such escaping method is called <i>dot-stuffing</i>.</p>
+<p>The server's positive reply to the end-of-data, as exemplified, implies that the server has taken the responsibility of delivering the message. A message can be doubled if there is a communication failure at this time, e.g. due to a power shortage: Until the sender has received that <tt>250</tt> reply, it must assume the message was not delivered. On the other hand, after the receiver has decided to accept the message, it must assume the message has been delivered to it. Thus, during this time span, both agents have active copies of the message that they will try to deliver.<sup id="cite_ref-14" class="reference"><a href="#cite_note-14"><span>[</span>15<span>]</span></a></sup> The probability that a communication failure occurs exactly at this step is directly proportional to the amount of filtering that the server performs on the message body, most often for anti-spam purposes. The limiting timeout is specified to be 10 minutes.<sup id="cite_ref-15" class="reference"><a href="#cite_note-15"><span>[</span>16<span>]</span></a></sup></p>
+<p>The <code>QUIT</code> command ends the session. If the second recipient were located elsewhere, the client would <code>QUIT</code> and connect to the appropriate SMTP server after the first message had been queued. The information that the client sends in the <code>HELO</code> and <code>MAIL FROM</code> commands are added (not seen in example code) as additional header fields to the message by the receiving server. It adds a <code>Received</code> and <code>Return-Path</code> header field, respectively.</p>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=15" title="Edit section: Optional extensions">edit</a>]</span> <span class="mw-headline" id="Optional_extensions">Optional extensions</span></h2>
+<p>Although optional and not shown in this example, many clients ask the server for the SMTP extensions that the server supports, by using the <code>EHLO</code> greeting of the extended SMTP specification (<a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1870">RFC 1870</a>). Clients fall back to <code>HELO</code> only if the server does not respond to <code>EHLO</code>.</p>
+<p>Modern clients may use the ESMTP extension keyword <code>SIZE</code> to query the server for the maximum message size that will be accepted. Older clients and servers may try to transfer excessively sized messages that will be rejected after consuming network resources, including connect time to network links that is paid by the minute.</p>
+<p>Users can manually determine in advance the maximum size accepted by ESMTP servers. The client replaces the <code>HELO</code> command with the <code>EHLO</code> command.</p>
+<pre>
+<font color="blue">S: 220 smtp2.example.com ESMTP Postfix</font>
+C: EHLO bob.example.org
+<font color="blue">S: 250-smtp2.example.com Hello bob.example.org [192.0.2.201]</font>
+<font color="blue">S: 250-SIZE 14680064</font>
+<font color="blue">S: 250-PIPELINING</font>
+<font color="blue">S: 250 HELP</font>
+</pre>
+<p>Thus <i>smtp2.example.com</i> declares that it will accept a fixed maximum message size no larger than 14,680,064 <a href="/wiki/Octet_(computing)" title="Octet (computing)">octets</a> (8-bit bytes). Depending on the server's actual resource usage, it may be currently unable to accept a message this large. In the simplest case, an ESMTP server will declare a maximum SIZE with only the EHLO user interaction.</p>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=16" title="Edit section: Security and spamming">edit</a>]</span> <span class="mw-headline" id="Security_and_spamming">Security and spamming</span></h2>
+<div class="rellink relarticle mainarticle">Main article: <a href="/wiki/Anti-spam_techniques_(e-mail)" title="Anti-spam techniques (e-mail)" class="mw-redirect">Anti-spam techniques (e-mail)</a></div>
+<p>The original SMTP specification did not include a facility for authentication of senders. Subsequently, the <a href="/wiki/SMTP-AUTH" title="SMTP-AUTH" class="mw-redirect">SMTP-AUTH</a> extension was defined by <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2554">RFC 2554</a>.<sup id="cite_ref-16" class="reference"><a href="#cite_note-16"><span>[</span>17<span>]</span></a></sup> The <a href="/wiki/ESMTP" title="ESMTP" class="mw-redirect">SMTP extension</a> (ESMTP) provides a mechanism for email clients to specify a security mechanism to a mail server, authenticate the exchange, and negotiate a security profile (<a href="/wiki/Simple_Authentication_and_Security_Layer" title="Simple Authentication and Security Layer">Simple Authentication and Security Layer</a>, SASL) for subsequent message transfers.</p>
+<p>Microsoft products implement the proprietary <a href="/wiki/Secure_Password_Authentication" title="Secure Password Authentication">Secure Password Authentication</a> (SPA) protocol through the use of the SMTP-AUTH extension.</p>
+<p>However, the impracticality of widespread SMTP-AUTH implementation and management means that E-mail <a href="/wiki/Spamming" title="Spamming" class="mw-redirect">spamming</a> is not and cannot be addressed by it.</p>
+<p>Modifying SMTP extensively, or replacing it completely, is not believed to be practical, due to the <a href="/wiki/Network_effect" title="Network effect">network effects</a> of the huge installed base of SMTP. <a href="/wiki/Internet_Mail_2000" title="Internet Mail 2000">Internet Mail 2000</a> was one such proposal for replacement.</p>
+<p>Spam is enabled by several factors, including vendors implementing <i>broken</i> <a href="/wiki/Mail_Transfer_Agent" title="Mail Transfer Agent" class="mw-redirect">MTAs</a> (that do not adhere to standards, and therefore make it difficult for other MTAs to enforce standards), security vulnerabilities within the operating system (often exacerbated by <i>always-on</i> broadband connections) that allow spammers to remotely control end-user PCs and cause them to send spam, and a lack of "intelligence" in many MTAs.</p>
+<p>There are a number of proposals for sideband protocols that will assist SMTP operation. The <a href="/wiki/Anti-Spam_Research_Group" title="Anti-Spam Research Group">Anti-Spam Research Group</a> (ASRG) of the <a href="/wiki/Internet_Research_Task_Force" title="Internet Research Task Force">Internet Research Task Force</a> (IRTF) is working on a number of <a href="/wiki/E-mail_authentication" title="E-mail authentication" class="mw-redirect">E-mail authentication</a> and other proposals for providing simple source authentication that is flexible, lightweight, and scalable. Recent <a href="/wiki/Internet_Engineering_Task_Force" title="Internet Engineering Task Force">Internet Engineering Task Force</a> (IETF) activities include <a href="/wiki/MARID" title="MARID">MARID</a> (2004) leading to two approved IETF experiments in 2005, and <a href="/wiki/DomainKeys_Identified_Mail" title="DomainKeys Identified Mail">DomainKeys Identified Mail</a> in 2006.</p>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=17" title="Edit section: Implementations">edit</a>]</span> <span class="mw-headline" id="Implementations">Implementations</span></h2>
+<div class="rellink relarticle mainarticle">Main article: <a href="/wiki/List_of_mail_servers" title="List of mail servers">List of mail servers</a></div>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=18" title="Edit section: Related Requests For Comments">edit</a>]</span> <span class="mw-headline" id="Related_Requests_For_Comments">Related Requests For Comments</span></h2>
+<ul>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1123">RFC 1123</a> – Requirements for Internet Hosts—Application and Support (STD 3)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1870">RFC 1870</a> – SMTP Service Extension for Message Size Declaration (оbsoletes: <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1653">RFC 1653</a>)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2505">RFC 2505</a> – Anti-Spam Recommendations for SMTP MTAs (BCP 30)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2920">RFC 2920</a> – SMTP Service Extension for Command Pipelining (STD 60)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc3030">RFC 3030</a> – SMTP Service Extensions for Transmission of Large and Binary MIME Messages</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc3207">RFC 3207</a> – SMTP Service Extension for Secure SMTP over Transport Layer Security (obsoletes <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2487">RFC 2487</a>)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc3461">RFC 3461</a> – SMTP Service Extension for Delivery Status Notifications (obsoletes <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1891">RFC 1891</a>)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc3462">RFC 3462</a> – The Multipart/Report Content Type for the Reporting of Mail System Administrative Messages (obsoletes <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1892">RFC 1892</a>)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc3463">RFC 3463</a> – Enhanced Status Codes for SMTP (obsoletes <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1893">RFC 1893</a> )</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc3464">RFC 3464</a> – An Extensible Message Format for Delivery Status Notifications (obsoletes <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1894">RFC 1894</a>)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc3834">RFC 3834</a> – Recommendations for Automatic Responses to Electronic Mail</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc4952">RFC 4952</a> – Overview and Framework for Internationalized E-mail</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc4954">RFC 4954</a> – SMTP Service Extension for Authentication (obsoletes <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2554">RFC 2554</a>)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc5068">RFC 5068</a> – E-mail Submission Operations: Access and Accountability Requirements (BCP 134)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc5321">RFC 5321</a> – The Simple Mail Transfer Protocol (obsoletes <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc821">RFC 821</a> aka STD 10, <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc974">RFC 974</a>, <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1869">RFC 1869</a>, <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2821">RFC 2821</a>)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc5322">RFC 5322</a> – Internet Message Format (obsoletes <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc822">RFC 822</a> aka STD 11, and <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2822">RFC 2822</a>)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc5336">RFC 5336</a> - SMTP Extension for Internationalized Email Addresses (updates <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2821">RFC 2821</a>, <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2822">RFC 2822</a>, and <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc4952">RFC 4952</a>)</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc5504">RFC 5504</a> - Downgrading Mechanism for Email Address Internationalization</li>
+<li><a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc6409">RFC 6409</a> – Message Submission for Mail (obsoletes <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc4409">RFC 4409</a>, <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2476">RFC 2476</a>)</li>
+</ul>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=19" title="Edit section: See also">edit</a>]</span> <span class="mw-headline" id="See_also">See also</span></h2>
+<ul>
+<li><a href="/wiki/Bounce_message" title="Bounce message" class="mw-redirect">Bounce messages</a> (SMTP non-delivery reports), <a href="/wiki/Bounce_address" title="Bounce address">bounce address</a></li>
+<li><a href="/wiki/Comparison_of_mail_servers" title="Comparison of mail servers">Comparison of mail servers</a></li>
+<li><a href="/wiki/E-mail_authentication" title="E-mail authentication" class="mw-redirect">E-mail authentication</a></li>
+<li><a href="/wiki/E-mail_encryption" title="E-mail encryption" class="mw-redirect">E-mail encryption</a></li>
+<li><a href="/wiki/Extended_SMTP" title="Extended SMTP">Extended SMTP</a> (ESMTP)</li>
+<li><a href="/wiki/Ident" title="Ident">Ident</a></li>
+<li><a href="/wiki/List_of_mail_servers" title="List of mail servers">List of mail servers</a></li>
+<li><a href="/wiki/POP_before_SMTP" title="POP before SMTP">POP before SMTP</a> / <a href="/wiki/SMTP_after_POP" title="SMTP after POP" class="mw-redirect">SMTP after POP</a></li>
+<li><a href="/wiki/Sender_Policy_Framework" title="Sender Policy Framework">Sender Policy Framework</a> (SPF)</li>
+<li><a href="/wiki/SMTP-AUTH" title="SMTP-AUTH" class="mw-redirect">SMTP-AUTH</a> (ESMTPA)</li>
+<li><a href="/wiki/SMTPS" title="SMTPS">SMTPS</a></li>
+<li><a href="/wiki/Variable_envelope_return_path" title="Variable envelope return path">Variable envelope return path</a></li>
+</ul>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=20" title="Edit section: References">edit</a>]</span> <span class="mw-headline" id="References">References</span></h2>
+<div class="reflist" style="list-style-type: decimal;">
+<ol class="references">
+<li id="cite_note-rfc821-0"><b><a href="#cite_ref-rfc821_0-0">^</a></b> <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc821">RFC 821</a>, <i>Simple Mail Transfer Protocol</i>, J.B. Postel, The Internet Society (August 1982)</li>
+<li id="cite_note-rfc5321-1">^ <a href="#cite_ref-rfc5321_1-0"><sup><i><b>a</b></i></sup></a> <a href="#cite_ref-rfc5321_1-1"><sup><i><b>b</b></i></sup></a> <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc5321">RFC 5321</a>, <i>Simple Mail Transfer Protocol</i>, J. Klensin, The Internet Society (October 2008)</li>
+<li id="cite_note-2"><b><a href="#cite_ref-2">^</a></b> <a rel="nofollow" class="external text" href="http://www.multicians.org/thvv/mail-history.html">The History of Electronic Mail</a><i>, <a href="/wiki/Tom_Van_Vleck" title="Tom Van Vleck">Tom Van Vleck</a>: "</i>It is not clear this protocol was ever implemented<i>"</i></li>
+<li id="cite_note-3"><b><a href="#cite_ref-3">^</a></b> <a rel="nofollow" class="external text" href="http://openmap.bbn.com/~tomlinso/ray/firstemailframe.html"><i>The First Network Email</i></a>, <a href="/wiki/Ray_Tomlinson" title="Ray Tomlinson">Ray Tomlinson</a>, BBN</li>
+<li id="cite_note-4"><b><a href="#cite_ref-4">^</a></b> Picture of "<a rel="nofollow" class="external text" href="http://openmap.bbn.com/~tomlinso/ray/ka10.html">The First Email Computer</a>" by Dan Murphy, a <a href="/wiki/PDP-10" title="PDP-10">PDP-10</a></li>
+<li id="cite_note-5"><b><a href="#cite_ref-5">^</a></b> <a rel="nofollow" class="external text" href="http://www.opost.com/dlm/tenex/">Dan Murphy's TENEX and TOPS-20 Papers</a></li>
+<li id="cite_note-6"><b><a href="#cite_ref-6">^</a></b> <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2235">RFC 2235</a></li>
+<li id="cite_note-7"><b><a href="#cite_ref-7">^</a></b> <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc469">RFC 469</a> - Network Mail Meeting Summary</li>
+<li id="cite_note-8"><b><a href="#cite_ref-8">^</a></b> <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc524">RFC 524</a> - A Proposed Mail Protocol</li>
+<li id="cite_note-9"><b><a href="#cite_ref-9">^</a></b> <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc772">RFC 772</a> - Mail Transfer Protocol</li>
+<li id="cite_note-10"><b><a href="#cite_ref-10">^</a></b> <a rel="nofollow" class="external text" href="http://tldp.org/HOWTO/Usenet-News-HOWTO/x64.html">Tldp.org</a></li>
+<li id="cite_note-11"><b><a href="#cite_ref-11">^</a></b> <a rel="nofollow" class="external text" href="http://tools.ietf.org/html/draft-barber-uucp-project-conclusion-05">draft-barber-uucp-project-conclusion-05 - The Conclusion of the UUCP Mapping Project</a></li>
+<li id="cite_note-12"><b><a href="#cite_ref-12">^</a></b> <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1985">RFC 1985</a>, <i>SMTP Service Extension for Remote Message Queue Starting</i>, J. De Winter, The Internet Society (August 1996)</li>
+<li id="cite_note-13"><b><a href="#cite_ref-13">^</a></b> <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc3207">RFC 3207</a> specifies only the well-known port 25 and the "Submission port," which is TCP port 587, for the STARTTLS command, the precursor for an encrypted SMTP session using <a href="/wiki/Transport_Layer_Security" title="Transport Layer Security">TLS</a>. It makes no mention of the unofficial port 465.</li>
+<li id="cite_note-14"><b><a href="#cite_ref-14">^</a></b> <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc1047">RFC 1047</a></li>
+<li id="cite_note-15"><b><a href="#cite_ref-15">^</a></b> <a rel="nofollow" class="external text" href="http://tools.ietf.org/html/rfc5321#section-4.5.3.2.6">rfc5321#section-4.5.3.2.6</a></li>
+<li id="cite_note-16"><b><a href="#cite_ref-16">^</a></b> <a class="external mw-magiclink-rfc" href=http://tools.ietf.org/html/rfc2554">RFC 2554</a>, <i>SMTP Service Extension for Authentication</i>, J. Myers (March 1999)</li>
+</ol>
+</div>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=21" title="Edit section: Further reading">edit</a>]</span> <span class="mw-headline" id="Further_reading">Further reading</span></h2>
+<ul>
+<li><span class="citation book">Hughes, L (1998). <i>Internet e-mail Protocols, Standards and Implementation</i>. Artech House Publishers. <a href="/wiki/International_Standard_Book_Number" title="International Standard Book Number">ISBN</a>&#160;<a href="/wiki/Special:BookSources/0890069395" title="Special:BookSources/0890069395">0890069395</a>.</span><span class="Z3988" title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=book&amp;rft.btitle=Internet+e-mail+Protocols%2C+Standards+and+Implementation&amp;rft.aulast=Hughes&amp;rft.aufirst=L&amp;rft.au=Hughes%2C%26%2332%3BL&amp;rft.date=1998&amp;rft.pub=Artech+House+Publishers&amp;rft.isbn=0890069395&amp;rfr_id=info:sid/en.wikipedia.org:Simple_Mail_Transfer_Protocol"><span style="display: none;">&#160;</span></span></li>
+<li><span class="citation book">Hunt, C (2003). <i>sendmail Cookbook</i>. O'Reilly Media. <a href="/wiki/International_Standard_Book_Number" title="International Standard Book Number">ISBN</a>&#160;<a href="/wiki/Special:BookSources/0596004710" title="Special:BookSources/0596004710">0596004710</a>.</span><span class="Z3988" title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=book&amp;rft.btitle=sendmail+Cookbook&amp;rft.aulast=Hunt&amp;rft.aufirst=C&amp;rft.au=Hunt%2C%26%2332%3BC&amp;rft.date=2003&amp;rft.pub=O%27Reilly+Media&amp;rft.isbn=0596004710&amp;rfr_id=info:sid/en.wikipedia.org:Simple_Mail_Transfer_Protocol"><span style="display: none;">&#160;</span></span></li>
+<li><span class="citation book">Johnson, K (2000). <i>Internet Email Protocols: A Developer's Guide</i>. Addison-Wesley Professional. <a href="/wiki/International_Standard_Book_Number" title="International Standard Book Number">ISBN</a>&#160;<a href="/wiki/Special:BookSources/0201432889" title="Special:BookSources/0201432889">0201432889</a>.</span><span class="Z3988" title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=book&amp;rft.btitle=Internet+Email+Protocols%3A+A+Developer%27s+Guide&amp;rft.aulast=Johnson&amp;rft.aufirst=K&amp;rft.au=Johnson%2C%26%2332%3BK&amp;rft.date=2000&amp;rft.pub=Addison-Wesley+Professional&amp;rft.isbn=0201432889&amp;rfr_id=info:sid/en.wikipedia.org:Simple_Mail_Transfer_Protocol"><span style="display: none;">&#160;</span></span></li>
+<li><span class="citation book">Loshin, P (1999). <i>Essential Email Standards: RFCs and Protocols Made Practical</i>. John Wiley &amp; Sons. <a href="/wiki/International_Standard_Book_Number" title="International Standard Book Number">ISBN</a>&#160;<a href="/wiki/Special:BookSources/0471345970" title="Special:BookSources/0471345970">0471345970</a>.</span><span class="Z3988" title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=book&amp;rft.btitle=Essential+Email+Standards%3A+RFCs+and+Protocols+Made+Practical&amp;rft.aulast=Loshin&amp;rft.aufirst=P&amp;rft.au=Loshin%2C%26%2332%3BP&amp;rft.date=1999&amp;rft.pub=John+Wiley+%26+Sons&amp;rft.isbn=0471345970&amp;rfr_id=info:sid/en.wikipedia.org:Simple_Mail_Transfer_Protocol"><span style="display: none;">&#160;</span></span></li>
+<li><span class="citation book">Rhoton, J (1999). <i>Programmer's Guide to Internet Mail: SMTP, POP, IMAP, and LDAP</i>. Elsevier. <a href="/wiki/International_Standard_Book_Number" title="International Standard Book Number">ISBN</a>&#160;<a href="/wiki/Special:BookSources/1555582125" title="Special:BookSources/1555582125">1555582125</a>.</span><span class="Z3988" title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=book&amp;rft.btitle=Programmer%27s+Guide+to+Internet+Mail%3A+SMTP%2C+POP%2C+IMAP%2C+and+LDAP&amp;rft.aulast=Rhoton&amp;rft.aufirst=J&amp;rft.au=Rhoton%2C%26%2332%3BJ&amp;rft.date=1999&amp;rft.pub=Elsevier&amp;rft.isbn=1555582125&amp;rfr_id=info:sid/en.wikipedia.org:Simple_Mail_Transfer_Protocol"><span style="display: none;">&#160;</span></span></li>
+<li><span class="citation book">Wood, D (1999). <i>Programming Internet Mail</i>. O'Reilly. <a href="/wiki/International_Standard_Book_Number" title="International Standard Book Number">ISBN</a>&#160;<a href="/wiki/Special:BookSources/1565924797" title="Special:BookSources/1565924797">1565924797</a>.</span><span class="Z3988" title="ctx_ver=Z39.88-2004&amp;rft_val_fmt=info%3Aofi%2Ffmt%3Akev%3Amtx%3Abook&amp;rft.genre=book&amp;rft.btitle=Programming+Internet+Mail&amp;rft.aulast=Wood&amp;rft.aufirst=D&amp;rft.au=Wood%2C%26%2332%3BD&amp;rft.date=1999&amp;rft.pub=O%27Reilly&amp;rft.isbn=1565924797&amp;rfr_id=info:sid/en.wikipedia.org:Simple_Mail_Transfer_Protocol"><span style="display: none;">&#160;</span></span></li>
+</ul>
+<h2><span class="editsection">[<a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit&amp;section=22" title="Edit section: External links">edit</a>]</span> <span class="mw-headline" id="External_links">External links</span></h2>
+<ul>
+<li><a rel="nofollow" class="external text" href="http://www.vanemery.com/Protocols/SMTP/smtp.html">Essential Internet Protocols - SMTP</a></li>
+<li><a rel="nofollow" class="external text" href="http://www.eventhelix.com/RealtimeMantra/Networking/SMTP_Sequence_Diagram.pdf">SMTP Sequence Diagram</a> (PDF)</li>
+<li><a rel="nofollow" class="external text" href="http://www.openspf.org/mailflows.pdf">Diagram of e-mail flow</a> (PDF, <a rel="nofollow" class="external text" href="http://www.openspf.org/mailflows-l.png">PNG</a> )</li>
+<li><a rel="nofollow" class="external text" href="http://luxsci.com/extranet/articles/email-security.html">The Case For E-mail Security</a> - Security and Insecurity in SMTP, POP and IMAP.</li>
+<li><a rel="nofollow" class="external text" href="http://history-computer.com/Internet/Maturing/Tomlinson.html">Picture of the first computers to send and receive a network email, 2 PDP-10s</a></li>
+<li><a rel="nofollow" class="external text" href="http://www.ietf.org/html.charters/eai-charter.html">Email Address Internationalization IETF Working Group</a></li>
+<li><a rel="nofollow" class="external text" href="http://www.CheckTLS.com/TestReceiver?LEVEL=3">SMTP TLS Transport real-time test</a> - Live version of above example, mostly for TLS (i.e. secure) email but useful for non-TLS too</li>
+</ul>
+<table class="navbox" cellspacing="0" style=";">
+<tr>
+<td style="padding:2px;">
+<table cellspacing="0" class="nowraplinks collapsible autocollapse" style="width:100%;background:transparent;color:inherit;;">
+<tr>
+<th style=";" colspan="3" class="navbox-title"><span style="float:left;width:6em;text-align:left;"><span class="noprint plainlinks navbar" style=""><span style="white-space:nowrap;word-spacing:-.12em;"><a href="/wiki/Template:Email_clients" title="Template:Email clients"><span style=";;background:none transparent;border:none;font-size:100%;" title="View this template">v</span></a> <span style=";;background:none transparent;border:none;font-size:100%;"><b>·</b></span> <a href="/wiki/Template_talk:Email_clients" title="Template talk:Email clients"><span style=";;background:none transparent;border:none;font-size:100%;" title="Discuss this template">d</span></a> <span style=";;background:none transparent;border:none;font-size:100%;"><b>·</b></span> <a class="external text" href=http://en.wikipedia.org/w/index.php?title=Template:Email_clients&amp;action=edit"><span style=";;background:none transparent;border:none;font-size:100%;" title="Edit this template">e</span></a></span></span></span><span class="" style="font-size:110%;"><a href="/wiki/Email_client" title="Email client">Email clients</a></span></th>
+</tr>
+<tr style="height:2px;">
+<td></td>
+</tr>
+<tr>
+<td class="navbox-group" style=";;"><a href="/wiki/Open_source_software" title="Open source software" class="mw-redirect">Open source</a></td>
+<td style="text-align:left;border-left-width:2px;border-left-style:solid;width:100%;padding:0px;;;" class="navbox-list navbox-odd">
+<div style="padding:0em 0.25em"><span style="white-space:nowrap;"><a href="/wiki/Alpine_(email_client)" title="Alpine (email client)">Alpine</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Arachne_(web_browser)" title="Arachne (web browser)">Arachne</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Balsa_(email_client)" title="Balsa (email client)" class="mw-redirect">Balsa</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/BlitzMail" title="BlitzMail">BlitzMail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Citadel/UX" title="Citadel/UX">Citadel/UX</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Classilla" title="Classilla">Classilla</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Claws_Mail" title="Claws Mail">Claws Mail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Columba_(email_client)" title="Columba (email client)">Columba</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Cone_(software)" title="Cone (software)">Cone</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Elm_(email_client)" title="Elm (email client)" class="mw-redirect">Elm</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Evolution_(software)" title="Evolution (software)">Evolution</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Fetchmail" title="Fetchmail">fetchmail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Getmail" title="Getmail">getmail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/GNUMail" title="GNUMail">GNUMail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Gnus" title="Gnus">Gnus</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Gnuzilla" title="Gnuzilla">Gnuzilla</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/KMail" title="KMail" class="mw-redirect">KMail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Mahogany_(email_client)" title="Mahogany (email client)">Mahogany</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Mailody" title="Mailody">Mailody</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Modest_(email_client)" title="Modest (email client)">Modest</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Mozilla_Thunderbird" title="Mozilla Thunderbird">Mozilla Thunderbird</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Mpop_(email_client)" title="Mpop (email client)">mpop</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Mulberry_(email_client)" title="Mulberry (email client)" class="mw-redirect">Mulberry</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Mutt_(email_client)" title="Mutt (email client)">Mutt</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/MH_Message_Handling_System" title="MH Message Handling System">nmh / MH</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/RoundCube" title="RoundCube" class="mw-redirect">RoundCube</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/SeaMonkey" title="SeaMonkey">SeaMonkey</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/SendEmail" title="SendEmail">sendEmail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/SimpleMail" title="SimpleMail">SimpleMail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Spicebird" title="Spicebird">Spicebird</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/SquirrelMail" title="SquirrelMail">SquirrelMail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Sylpheed" title="Sylpheed">Sylpheed</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Wanderlust_(software)" title="Wanderlust (software)" class="mw-redirect">Wanderlust</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/YAM_(Yet_Another_Mailer)" title="YAM (Yet Another Mailer)">YAM</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Zimbra" title="Zimbra">Zimbra</a></span></div>
+</td>
+<td style="width:0%;padding:0px 0px 0px 2px;" rowspan="15"><a href="/wiki/File:Internet-mail.svg" class="image" title="Email"><img alt="Email" src=http://upload.wikimedia.org/wikipedia/commons/thumb/5/54/Internet-mail.svg/48px-Internet-mail.svg.png" width="48" height="48" /></a></td>
+</tr>
+<tr style="height:2px">
+<td></td>
+</tr>
+<tr>
+<td class="navbox-group" style=";;"><a href="/wiki/Freeware" title="Freeware">Freeware</a></td>
+<td style="text-align:left;border-left-width:2px;border-left-style:solid;width:100%;padding:0px;;;" class="navbox-list navbox-even">
+<div style="padding:0em 0.25em"><span style="white-space:nowrap;"><a href="/wiki/ChatterEmail" title="ChatterEmail">ChatterEmail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Denshin_8_go" title="Denshin 8 go">Denshin 8 go</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/EM_Client" title="EM Client">eM Client</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/EmailTray" title="EmailTray">EmailTray</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Eudora_(email_client)" title="Eudora (email client)">Eudora</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Foxmail" title="Foxmail">Foxmail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Scribe_Mail" title="Scribe Mail">i.Scribe</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/IncrediMail" title="IncrediMail">IncrediMail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Opera_Mail" title="Opera Mail">Opera Mail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Wanderlust_(software)" title="Wanderlust (software)" class="mw-redirect">Wanderlust</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Windows_Live_Mail" title="Windows Live Mail">Windows Live Mail</a></span></div>
+</td>
+</tr>
+<tr style="height:2px">
+<td></td>
+</tr>
+<tr>
+<td class="navbox-group" style=";;">Retail</td>
+<td style="text-align:left;border-left-width:2px;border-left-style:solid;width:100%;padding:0px;;;" class="navbox-list navbox-odd">
+<div style="padding:0em 0.25em"><span style="white-space:nowrap;"><a href="/wiki/Mail_(application)" title="Mail (application)">Apple Mail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/IBM_Lotus_Notes" title="IBM Lotus Notes">IBM Lotus Notes</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Scribe_Mail" title="Scribe Mail">InScribe</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Microsoft_Outlook" title="Microsoft Outlook">Microsoft Outlook</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Novell_GroupWise" title="Novell GroupWise">Novell GroupWise</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Sparrow_(email_client)" title="Sparrow (email client)">Sparrow</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Turnpike_(software)" title="Turnpike (software)">Turnpike</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Bloomba" title="Bloomba">Bloomba/WordPerfect Mail</a></span></div>
+</td>
+</tr>
+<tr style="height:2px">
+<td></td>
+</tr>
+<tr>
+<td class="navbox-group" style=";;"><a href="/wiki/Shareware" title="Shareware">Shareware</a></td>
+<td style="text-align:left;border-left-width:2px;border-left-style:solid;width:100%;padding:0px;;;" class="navbox-list navbox-even">
+<div style="padding:0em 0.25em"><span style="white-space:nowrap;"><a href="/wiki/Becky!" title="Becky!">Becky!</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Eureka_Email" title="Eureka Email">Eureka Email</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Fort%C3%A9_Agent" title="Forté Agent">Forté Agent</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Gemini_(mail/news)" title="Gemini (mail/news)">Gemini (mail/news)</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/GyazMail" title="GyazMail">GyazMail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Pocomail" title="Pocomail">Pocomail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/The_Bat!" title="The Bat!">The Bat!</a></span></div>
+</td>
+</tr>
+<tr style="height:2px">
+<td></td>
+</tr>
+<tr>
+<td class="navbox-group" style=";;"><a href="/wiki/Donationware" title="Donationware">Donationware</a></td>
+<td style="text-align:left;border-left-width:2px;border-left-style:solid;width:100%;padding:0px;;;" class="navbox-list navbox-odd">
+<div style="padding:0em 0.25em"><span style="white-space:nowrap;"><a href="/wiki/Fort%C3%A9_Agent" title="Forté Agent">Forté Agent</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Pegasus_Mail" title="Pegasus Mail">Pegasus Mail</a></span></div>
+</td>
+</tr>
+<tr style="height:2px">
+<td></td>
+</tr>
+<tr>
+<td class="navbox-group" style=";;">Discontinued</td>
+<td style="text-align:left;border-left-width:2px;border-left-style:solid;width:100%;padding:0px;;;" class="navbox-list navbox-even">
+<div style="padding:0em 0.25em"><span style="white-space:nowrap;"><a href="/wiki/Beonex_Communicator" title="Beonex Communicator">Beonex Communicator</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Cc:Mail" title="Cc:Mail">cc:Mail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Claris_Emailer" title="Claris Emailer">Claris Emailer</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Columbia_MM" title="Columbia MM">Columbia MM</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Courier_(email_client)" title="Courier (email client)">Courier</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Cyberdog" title="Cyberdog">Cyberdog</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Cyberjack" title="Cyberjack">Cyberjack</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Hula_(software)" title="Hula (software)">Hula</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Meldware_Communication_Suite" title="Meldware Communication Suite">Meldware Communication Suite</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Microsoft_Entourage" title="Microsoft Entourage">Microsoft Entourage</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Microsoft_Internet_Mail_and_News" title="Microsoft Internet Mail and News">Microsoft Internet Mail and News</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Minnesota_Internet_Users_Essential_Tool" title="Minnesota Internet Users Essential Tool">MINUET</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Mozilla_Mail_%26_Newsgroups" title="Mozilla Mail &amp; Newsgroups">Mozilla Mail &amp; Newsgroups</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/NeXTMail" title="NeXTMail">NeXTMail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Netscape_Mail_%26_Newsgroups" title="Netscape Mail &amp; Newsgroups">Netscape Mail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Netscape_Messenger_9" title="Netscape Messenger 9">Netscape Messenger 9</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Omni_Mobile" title="Omni Mobile">Omni Mobile</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Outlook_Express" title="Outlook Express">Outlook Express</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Pine_(email_client)" title="Pine (email client)">Pine</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/POPmail" title="POPmail">POPmail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Windows_Mail" title="Windows Mail">Windows Mail</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Windows_Messaging" title="Windows Messaging">Windows Messaging</a></span></div>
+</td>
+</tr>
+<tr style="height:2px">
+<td></td>
+</tr>
+<tr>
+<td class="navbox-group" style=";;">Related technologies</td>
+<td style="text-align:left;border-left-width:2px;border-left-style:solid;width:100%;padding:0px;;;" class="navbox-list navbox-odd">
+<div style="padding:0em 0.25em"><span style="white-space:nowrap;"><a href="/wiki/Extended_SMTP" title="Extended SMTP">Extended SMTP</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Internet_Message_Access_Protocol" title="Internet Message Access Protocol">IMAP</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Post_Office_Protocol" title="Post Office Protocol">POP</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Push-IMAP" title="Push-IMAP">Push-IMAP</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Simple_Mail_Access_Protocol" title="Simple Mail Access Protocol">SMAP</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><strong class="selflink">SMTP</strong>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/UUCP" title="UUCP">UUCP</a></span></div>
+</td>
+</tr>
+<tr style="height:2px">
+<td></td>
+</tr>
+<tr>
+<td class="navbox-group" style=";;">Related articles</td>
+<td style="text-align:left;border-left-width:2px;border-left-style:solid;width:100%;padding:0px;;;" class="navbox-list navbox-even">
+<div style="padding:0em 0.25em"><span style="white-space:nowrap;"><a href="/wiki/Email" title="Email">Email</a>&#160;<b>·</b></span> <span style="white-space:nowrap;"><a href="/wiki/Unicode_and_email" title="Unicode and email">Unicode and email</a></span></div>
+</td>
+</tr>
+<tr style="height:2px;">
+<td></td>
+</tr>
+<tr>
+<td class="navbox-abovebelow" style=";font-weight:bold;" colspan="3">
+<div><a href="/wiki/Category:Email_clients" title="Category:Email clients">Category</a>&#160;<span style="font-weight:bold;">·</span> <a href="/wiki/Comparison_of_email_clients" title="Comparison of email clients">Comparison</a>&#160;<span style="font-weight:bold;">·</span> <a href="/wiki/List_of_email_clients" title="List of email clients">List</a></div>
+</td>
+</tr>
+</table>
+</td>
+</tr>
+</table>
+
+
+<!-- 
+NewPP limit report
+Preprocessor node count: 6179/1000000
+Post-expand include size: 81393/2048000 bytes
+Template argument size: 45390/2048000 bytes
+Expensive parser function count: 1/500
+-->
+
+<!-- Saved in parser cache with key enwiki:pcache:idhash:27675-0!*!0!!en!4!* and timestamp 20111121133002 -->
+</div>            <!-- /bodycontent -->
+                        <!-- printfooter -->
+            <div class="printfooter">
+            Retrieved from "<a href="http://en.wikipedia.org/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;oldid=460927081">http://en.wikipedia.org/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;oldid=460927081</a>"           </div>
+            <!-- /printfooter -->
+                                    <!-- catlinks -->
+            <div id='catlinks' class='catlinks'><div id="mw-normal-catlinks"><a href="/wiki/Special:Categories" title="Special:Categories">Categories</a>: <ul><li><a href="/wiki/Category:Email" title="Category:Email">Email</a></li><li><a href="/wiki/Category:Internet_mail_protocols" title="Category:Internet mail protocols">Internet mail protocols</a></li></ul></div><div id="mw-hidden-catlinks" class="mw-hidden-cats-hidden">Hidden categories: <ul><li><a href="/wiki/Category:All_articles_with_unsourced_statements" title="Category:All articles with unsourced statements">All articles with unsourced statements</a></li><li><a href="/wiki/Category:Articles_with_unsourced_statements_from_July_2009" title="Category:Articles with unsourced statements from July 2009">Articles with unsourced statements from July 2009</a></li></ul></div></div>          <!-- /catlinks -->
+                                    <div class="visualClear"></div>
+            <!-- debughtml -->
+                        <!-- /debughtml -->
+         </div>
+         <!-- /bodyContent -->
+      </div>
+      <!-- /content -->
+      <!-- header -->
+      <div id="mw-head" class="noprint">
+         
+<!-- 0 -->
+<div id="p-personal" class="">
+   <h5>Personal tools</h5>
+   <ul>
+      <li id="pt-login"><a href="/w/index.php?title=Special:UserLogin&amp;returnto=Simple_Mail_Transfer_Protocol" title="You are encouraged to log in; however, it is not mandatory. [o]" accesskey="o">Log in / create account</a></li>
+   </ul>
+</div>
+
+<!-- /0 -->
+         <div id="left-navigation">
+            
+<!-- 0 -->
+<div id="p-namespaces" class="vectorTabs">
+   <h5>Namespaces</h5>
+   <ul>
+               <li  id="ca-nstab-main" class="selected"><span><a href="/wiki/Simple_Mail_Transfer_Protocol"  title="View the content page [c]" accesskey="c">Article</a></span></li>
+               <li  id="ca-talk"><span><a href="/wiki/Talk:Simple_Mail_Transfer_Protocol"  title="Discussion about the content page [t]" accesskey="t">Discussion</a></span></li>
+         </ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-variants" class="vectorMenu emptyPortlet">
+      <h5><span>Variants</span><a href="#"></a></h5>
+   <div class="menu">
+      <ul>
+               </ul>
+   </div>
+</div>
+
+<!-- /1 -->
+         </div>
+         <div id="right-navigation">
+            
+<!-- 0 -->
+<div id="p-views" class="vectorTabs">
+   <h5>Views</h5>
+   <ul>
+               <li id="ca-view" class="selected"><span><a href="/wiki/Simple_Mail_Transfer_Protocol" >Read</a></span></li>
+               <li id="ca-edit"><span><a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=edit"  title="You can edit this page. &#10;Please use the preview button before saving. [e]" accesskey="e">Edit</a></span></li>
+               <li id="ca-history" class="collapsible"><span><a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;action=history"  title="Past versions of this page [h]" accesskey="h">View history</a></span></li>
+         </ul>
+</div>
+
+<!-- /0 -->
+
+<!-- 1 -->
+<div id="p-cactions" class="vectorMenu emptyPortlet">
+   <h5><span>Actions</span><a href="#"></a></h5>
+   <div class="menu">
+      <ul>
+               </ul>
+   </div>
+</div>
+
+<!-- /1 -->
+
+<!-- 2 -->
+<div id="p-search">
+   <h5><label for="searchInput">Search</label></h5>
+   <form action="/w/index.php" id="searchform">
+      <input type='hidden' name="title" value="Special:Search"/>
+            <div id="simpleSearch">
+                  <input type="text" name="search" value="" title="Search Wikipedia [f]" accesskey="f" id="searchInput" />                <button type="submit" name="button" title="Search Wikipedia for this text" id="searchButton"><img src=http://bits.wikimedia.org/skins-1.18/vector/images/search-ltr.png?303-4" alt="Search" /></button>               </div>
+         </form>
+</div>
+
+<!-- /2 -->
+         </div>
+      </div>
+      <!-- /header -->
+      <!-- panel -->
+         <div id="mw-panel" class="noprint">
+            <!-- logo -->
+               <div id="p-logo"><a style="background-image: url(//upload.wikimedia.org/wikipedia/en/b/bc/Wiki.png);" href="/wiki/Main_Page"  title="Visit the main page"></a></div>
+            <!-- /logo -->
+            
+<!-- navigation -->
+<div class="portal" id='p-navigation'>
+   <h5>Navigation</h5>
+   <div class="body">
+      <ul>
+         <li id="n-mainpage-description"><a href="/wiki/Main_Page" title="Visit the main page [z]" accesskey="z">Main page</a></li>
+         <li id="n-contents"><a href="/wiki/Portal:Contents" title="Guides to browsing Wikipedia">Contents</a></li>
+         <li id="n-featuredcontent"><a href="/wiki/Portal:Featured_content" title="Featured content – the best of Wikipedia">Featured content</a></li>
+         <li id="n-currentevents"><a href="/wiki/Portal:Current_events" title="Find background information on current events">Current events</a></li>
+         <li id="n-randompage"><a href="/wiki/Special:Random" title="Load a random article [x]" accesskey="x">Random article</a></li>
+         <li id="n-sitesupport"><a href=http://wikimediafoundation.org/wiki/Special:Landingcheck?landing_page=WMFJA085&amp;language=en&amp;utm_source=donate&amp;utm_medium=sidebar&amp;utm_campaign=20101204SB002" title="Support us">Donate to Wikipedia</a></li>
+      </ul>
+   </div>
+</div>
+
+<!-- /navigation -->
+
+<!-- SEARCH -->
+
+<!-- /SEARCH -->
+
+<!-- interaction -->
+<div class="portal" id='p-interaction'>
+   <h5>Interaction</h5>
+   <div class="body">
+      <ul>
+         <li id="n-help"><a href="/wiki/Help:Contents" title="Guidance on how to use and edit Wikipedia">Help</a></li>
+         <li id="n-aboutsite"><a href="/wiki/Wikipedia:About" title="Find out about Wikipedia">About Wikipedia</a></li>
+         <li id="n-portal"><a href="/wiki/Wikipedia:Community_portal" title="About the project, what you can do, where to find things">Community portal</a></li>
+         <li id="n-recentchanges"><a href="/wiki/Special:RecentChanges" title="A list of recent changes in the wiki [r]" accesskey="r">Recent changes</a></li>
+         <li id="n-contact"><a href="/wiki/Wikipedia:Contact_us" title="How to contact Wikipedia">Contact Wikipedia</a></li>
+      </ul>
+   </div>
+</div>
+
+<!-- /interaction -->
+
+<!-- TOOLBOX -->
+<div class="portal" id='p-tb'>
+   <h5>Toolbox</h5>
+   <div class="body">
+      <ul>
+         <li id="t-whatlinkshere"><a href="/wiki/Special:WhatLinksHere/Simple_Mail_Transfer_Protocol" title="List of all English Wikipedia pages containing links to this page [j]" accesskey="j">What links here</a></li>
+         <li id="t-recentchangeslinked"><a href="/wiki/Special:RecentChangesLinked/Simple_Mail_Transfer_Protocol" title="Recent changes in pages linked from this page [k]" accesskey="k">Related changes</a></li>
+         <li id="t-upload"><a href="/wiki/Wikipedia:Upload" title="Upload files [u]" accesskey="u">Upload file</a></li>
+         <li id="t-specialpages"><a href="/wiki/Special:SpecialPages" title="A list of all special pages [q]" accesskey="q">Special pages</a></li>
+         <li id="t-permalink"><a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;oldid=460927081" title="Permanent link to this revision of the page">Permanent link</a></li>
+<li id="t-cite"><a href="/w/index.php?title=Special:Cite&amp;page=Simple_Mail_Transfer_Protocol&amp;id=460927081" title="Information on how to cite this page">Cite this page</a></li>    </ul>
+   </div>
+</div>
+
+<!-- /TOOLBOX -->
+
+<!-- coll-print_export -->
+<div class="portal" id='p-coll-print_export'>
+   <h5>Print/export</h5>
+   <div class="body">
+      <ul id="collectionPortletList"><li id="coll-create_a_book"><a href="/w/index.php?title=Special:Book&amp;bookcmd=book_creator&amp;referer=Simple+Mail+Transfer+Protocol" title="Create a book or page collection" rel="nofollow">Create a book</a></li><li id="coll-download-as-rl"><a href="/w/index.php?title=Special:Book&amp;bookcmd=render_article&amp;arttitle=Simple+Mail+Transfer+Protocol&amp;oldid=460927081&amp;writer=rl" title="Download a PDF version of this wiki page" rel="nofollow">Download as PDF</a></li><li id="t-print"><a href="/w/index.php?title=Simple_Mail_Transfer_Protocol&amp;printable=yes" title="Printable version of this page [p]" accesskey="p">Printable version</a></li></ul>  </div>
+</div>
+
+<!-- /coll-print_export -->
+
+<!-- LANGUAGES -->
+<div class="portal" id='p-lang'>
+   <h5>Languages</h5>
+   <div class="body">
+      <ul>
+         <li class="interwiki-ar"><a href=http://ar.wikipedia.org/wiki/%D8%A8%D8%B1%D9%88%D8%AA%D9%88%D9%83%D9%88%D9%84_%D8%A5%D8%B1%D8%B3%D8%A7%D9%84_%D8%A7%D9%84%D8%A8%D8%B1%D9%8A%D8%AF_%D8%A7%D9%84%D8%A8%D8%B3%D9%8A%D8%B7">العربية</a></li>
+         <li class="interwiki-az"><a href=http://az.wikipedia.org/wiki/SMTP">Azərbaycanca</a></li>
+         <li class="interwiki-bs"><a href=http://bs.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Bosanski</a></li>
+         <li class="interwiki-ca"><a href=http://ca.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Català</a></li>
+         <li class="interwiki-cs"><a href=http://cs.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Česky</a></li>
+         <li class="interwiki-da"><a href=http://da.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Dansk</a></li>
+         <li class="interwiki-de"><a href=http://de.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Deutsch</a></li>
+         <li class="interwiki-et"><a href=http://et.wikipedia.org/wiki/Lihtne_meiliedastusprotokoll">Eesti</a></li>
+         <li class="interwiki-el"><a href=http://el.wikipedia.org/wiki/SMTP">Ελληνικά</a></li>
+         <li class="interwiki-es"><a href=http://es.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Español</a></li>
+         <li class="interwiki-eo"><a href=http://eo.wikipedia.org/wiki/SMTP">Esperanto</a></li>
+         <li class="interwiki-eu"><a href=http://eu.wikipedia.org/wiki/SMTP">Euskara</a></li>
+         <li class="interwiki-fa"><a href=http://fa.wikipedia.org/wiki/%D9%82%D8%B1%D8%A7%D8%B1%D8%AF%D8%A7%D8%AF_%D8%B3%D8%A7%D8%AF%D9%87_%D9%86%D8%A7%D9%85%D9%87%E2%80%8C%D8%B1%D8%B3%D8%A7%D9%86%DB%8C">فارسی</a></li>
+         <li class="interwiki-fr"><a href=http://fr.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Français</a></li>
+         <li class="interwiki-gl"><a href=http://gl.wikipedia.org/wiki/SMTP">Galego</a></li>
+         <li class="interwiki-ko"><a href=http://ko.wikipedia.org/wiki/%EA%B0%84%EC%9D%B4_%EC%9A%B0%ED%8E%B8_%EC%A0%84%EC%86%A1_%ED%94%84%EB%A1%9C%ED%86%A0%EC%BD%9C">한국어</a></li>
+         <li class="interwiki-hr"><a href=http://hr.wikipedia.org/wiki/SMTP">Hrvatski</a></li>
+         <li class="interwiki-id"><a href=http://id.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Bahasa Indonesia</a></li>
+         <li class="interwiki-is"><a href=http://is.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Íslenska</a></li>
+         <li class="interwiki-it"><a href=http://it.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Italiano</a></li>
+         <li class="interwiki-he"><a href=http://he.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">עברית</a></li>
+         <li class="interwiki-ku"><a href=http://ku.wikipedia.org/wiki/SMTP">Kurdî</a></li>
+         <li class="interwiki-lv"><a href=http://lv.wikipedia.org/wiki/SMTP">Latviešu</a></li>
+         <li class="interwiki-lb"><a href=http://lb.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Lëtzebuergesch</a></li>
+         <li class="interwiki-lt"><a href=http://lt.wikipedia.org/wiki/SMTP">Lietuvių</a></li>
+         <li class="interwiki-hu"><a href=http://hu.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Magyar</a></li>
+         <li class="interwiki-mk"><a href=http://mk.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Македонски</a></li>
+         <li class="interwiki-ml"><a href=http://ml.wikipedia.org/wiki/%E0%B4%B8%E0%B4%BF%E0%B4%AE%E0%B5%8D%E0%B4%AA%E0%B4%BF%E0%B5%BE_%E0%B4%AE%E0%B5%86%E0%B4%AF%E0%B4%BF%E0%B5%BD_%E0%B4%9F%E0%B5%8D%E0%B4%B0%E0%B4%BE%E0%B5%BB%E0%B4%B8%E0%B5%8D%E0%B4%AB%E0%B5%BC_%E0%B4%AA%E0%B5%8D%E0%B4%B0%E0%B5%8B%E0%B4%9F%E0%B5%8D%E0%B4%9F%E0%B5%8B%E0%B4%95%E0%B5%8B%E0%B5%BE">മലയാളം</a></li>
+         <li class="interwiki-ms"><a href=http://ms.wikipedia.org/wiki/Protokol_Pindahan_Mel_Mudah">Bahasa Melayu</a></li>
+         <li class="interwiki-nl"><a href=http://nl.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Nederlands</a></li>
+         <li class="interwiki-ja"><a href=http://ja.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">日本語</a></li>
+         <li class="interwiki-no"><a href=http://no.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">‪Norsk (bokmål)‬</a></li>
+         <li class="interwiki-nn"><a href=http://nn.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">‪Norsk (nynorsk)‬</a></li>
+         <li class="interwiki-mhr"><a href=http://mhr.wikipedia.org/wiki/SMTP">Олык Марий</a></li>
+         <li class="interwiki-pl"><a href=http://pl.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Polski</a></li>
+         <li class="interwiki-pt"><a href=http://pt.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Português</a></li>
+         <li class="interwiki-ro"><a href=http://ro.wikipedia.org/wiki/SMTP">Română</a></li>
+         <li class="interwiki-ru"><a href=http://ru.wikipedia.org/wiki/SMTP">Русский</a></li>
+         <li class="interwiki-simple"><a href=http://simple.wikipedia.org/wiki/SMTP">Simple English</a></li>
+         <li class="interwiki-sk"><a href=http://sk.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Slovenčina</a></li>
+         <li class="interwiki-sl"><a href=http://sl.wikipedia.org/wiki/SMTP">Slovenščina</a></li>
+         <li class="interwiki-sr"><a href=http://sr.wikipedia.org/wiki/SMTP">Српски / Srpski</a></li>
+         <li class="interwiki-sh"><a href=http://sh.wikipedia.org/wiki/SMTP">Srpskohrvatski / Српскохрватски</a></li>
+         <li class="interwiki-fi"><a href=http://fi.wikipedia.org/wiki/SMTP">Suomi</a></li>
+         <li class="interwiki-sv"><a href=http://sv.wikipedia.org/wiki/SMTP">Svenska</a></li>
+         <li class="interwiki-th"><a href=http://th.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">ไทย</a></li>
+         <li class="interwiki-tr"><a href=http://tr.wikipedia.org/wiki/SMTP">Türkçe</a></li>
+         <li class="interwiki-uk"><a href=http://uk.wikipedia.org/wiki/SMTP">Українська</a></li>
+         <li class="interwiki-vi"><a href=http://vi.wikipedia.org/wiki/SMTP">Tiếng Việt</a></li>
+         <li class="interwiki-yo"><a href=http://yo.wikipedia.org/wiki/Simple_Mail_Transfer_Protocol">Yorùbá</a></li>
+         <li class="interwiki-zh"><a href=http://zh.wikipedia.org/wiki/%E7%AE%80%E5%8D%95%E9%82%AE%E4%BB%B6%E4%BC%A0%E8%BE%93%E5%8D%8F%E8%AE%AE">中文</a></li>
+      </ul>
+   </div>
+</div>
+
+<!-- /LANGUAGES -->
+         </div>
+      <!-- /panel -->
+      <!-- footer -->
+      <div id="footer">
+                     <ul id="footer-info">
+                                 <li id="footer-info-lastmod"> This page was last modified on 16 November 2011 at 10:42.<br /></li>
+                                 <li id="footer-info-copyright">Text is available under the <a rel="license" href=http://en.wikipedia.org/wiki/Wikipedia:Text_of_Creative_Commons_Attribution-ShareAlike_3.0_Unported_License">Creative Commons Attribution-ShareAlike License</a><a rel="license" href=http://creativecommons.org/licenses/by-sa/3.0/" style="display:none;"></a>;
+additional terms may apply.
+See <a href=http://wikimediafoundation.org/wiki/Terms_of_use">Terms of use</a> for details.<br/>
+Wikipedia&reg; is a registered trademark of the <a href=http://www.wikimediafoundation.org/">Wikimedia Foundation, Inc.</a>, a non-profit organization.<br /></li><li class="noprint"><a class='internal' href=http://en.wikipedia.org/wiki/Wikipedia:Contact_us">Contact us</a></li>
+                           </ul>
+                     <ul id="footer-places">
+                                 <li id="footer-places-privacy"><a href=http://wikimediafoundation.org/wiki/Privacy_policy" title="wikimedia:Privacy policy">Privacy policy</a></li>
+                                 <li id="footer-places-about"><a href="/wiki/Wikipedia:About" title="Wikipedia:About">About Wikipedia</a></li>
+                                 <li id="footer-places-disclaimer"><a href="/wiki/Wikipedia:General_disclaimer" title="Wikipedia:General disclaimer">Disclaimers</a></li>
+                                 <li id="footer-places-mobileview"><a href='/w/index.php?title=Smtp&amp;useformat=mobile'>Mobile view</a></li>
+                           </ul>
+                              <ul id="footer-icons" class="noprint">
+               <li id="footer-copyrightico">
+                  <a href=http://wikimediafoundation.org/"><img src=http://bits.wikimedia.org/images/wikimedia-button.png" width="88" height="31" alt="Wikimedia Foundation"/></a>
+               </li>
+               <li id="footer-poweredbyico">
+                  <a href=http://www.mediawiki.org/"><img src=http://bits.wikimedia.org/skins-1.18/common/images/poweredby_mediawiki_88x31.png" alt="Powered by MediaWiki" width="88" height="31" /></a>
+               </li>
+            </ul>
+                  <div style="clear:both"></div>
+      </div>
+      <!-- /footer -->
+      <!-- fixalpha -->
+      <script type="text/javascript"> if ( window.isMSIE55 ) fixalpha(); </script>
+      <!-- /fixalpha -->
+      <script src=http://bits.wikimedia.org/en.wikipedia.org/load.php?debug=false&amp;lang=en&amp;modules=skins.vector&amp;only=scripts&amp;skin=vector&amp;*" type="text/javascript"></script>
+<script type="text/javascript">if ( window.mediaWiki ) {
+   mw.loader.load(["mediawiki.user", "mediawiki.util", "mediawiki.page.ready", "mediawiki.legacy.wikibits", "mediawiki.legacy.ajax", "mediawiki.legacy.mwsuggest", "ext.gadget.wmfFR2011Style", "ext.vector.collapsibleNav", "ext.vector.collapsibleTabs", "ext.vector.editWarning", "ext.vector.simpleSearch", "ext.UserBuckets", "ext.articleFeedback.startup"]);
+}
+</script>
+<script src="/w/index.php?title=Special:BannerController&amp;cache=/cn.js&amp;303-4" type="text/javascript"></script>
+<script src=http://bits.wikimedia.org/en.wikipedia.org/load.php?debug=false&amp;lang=en&amp;modules=site&amp;only=scripts&amp;skin=vector&amp;*" type="text/javascript"></script>
+<script type="text/javascript">if ( window.mediaWiki ) {
+   mw.user.options.set({"ccmeonemails":0,"cols":80,"date":"default","diffonly":0,"disablemail":0,"disablesuggest":0,"editfont":"default","editondblclick":0,"editsection":1,"editsectiononrightclick":0,"enotifminoredits":0,"enotifrevealaddr":0,"enotifusertalkpages":1,"enotifwatchlistpages":0,"extendwatchlist":0,"externaldiff":0,"externaleditor":0,"fancysig":0,"forceeditsummary":0,"gender":"unknown","hideminor":0,"hidepatrolled":0,"highlightbroken":1,"imagesize":2,"justify":0,"math":1,"minordefault":0,"newpageshidepatrolled":0,"nocache":0,"noconvertlink":0,"norollbackdiff":0,"numberheadings":0,"previewonfirst":0,"previewontop":1,"quickbar":5,"rcdays":7,"rclimit":50,"rememberpassword":0,"rows":25,"searchlimit":20,"showhiddencats":false,"showjumplinks":1,"shownumberswatching":1,"showtoc":1,"showtoolbar":1,"skin":"vector","stubthreshold":0,"thumbsize":4,"underline":2,"uselivepreview":0,"usenewrc":0,"watchcreations":1,"watchdefault":0,"watchdeletion":0,"watchlistdays":3,"watchlisthideanons":0,
+   "watchlisthidebots":0,"watchlisthideliu":0,"watchlisthideminor":0,"watchlisthideown":0,"watchlisthidepatrolled":0,"watchmoves":0,"wllimit":250,"flaggedrevssimpleui":1,"flaggedrevsstable":0,"flaggedrevseditdiffs":true,"flaggedrevsviewdiffs":false,"vector-simplesearch":1,"useeditwarning":1,"vector-collapsiblenav":1,"usebetatoolbar":1,"usebetatoolbar-cgd":1,"wikilove-enabled":1,"variant":"en","language":"en","searchNs0":true,"searchNs1":false,"searchNs2":false,"searchNs3":false,"searchNs4":false,"searchNs5":false,"searchNs6":false,"searchNs7":false,"searchNs8":false,"searchNs9":false,"searchNs10":false,"searchNs11":false,"searchNs12":false,"searchNs13":false,"searchNs14":false,"searchNs15":false,"searchNs100":false,"searchNs101":false,"searchNs108":false,"searchNs109":false,"gadget-wmfFR2011Style":1});;mw.user.tokens.set({"editToken":"+\\","watchToken":false});;mw.loader.state({"user.options":"ready","user.tokens":"ready"});
+   
+   /* cache key: enwiki:resourceloader:filter:minify-js:4:b41a86ec4e0fe8329bc3ce917e792339 */
+}
+</script><script src=http://geoiplookup.wikimedia.org/" type="text/javascript"></script><!-- Served by srv213 in 0.081 secs. -->
+   </body>
+</html>
