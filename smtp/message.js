@@ -205,8 +205,6 @@ var MessageStream = function(message)
       data = data.concat(["Content-Type:text/html; charset=", self.message.html.charset, CRLF, "Content-Transfer-Encoding: base64", CRLF]);
       data = data.concat(["Content-Disposition: inline", CRLF, CRLF]);
             
-/*       data = data.concat([(new Buffer(self.message.html.message)).toString("base64"), CRLF, CRLF]); */
-
       var mimechunk = 76; // MIME standard wants 76 char chunks when sending out.
               
       var info      = (new Buffer(self.message.html.message)).toString("base64");
@@ -217,17 +215,8 @@ var MessageStream = function(message)
       {
          data = data.concat(info.substring(step*mimechunk, mimechunk*(step + 1)) + CRLF);
       }
-      
-      if(leftover > 0)
-      {
-/*         console.log(info.substr(-leftover)); */
-        data = data.concat(info.substr(-leftover) + CRLF + CRLF);
-      }
-      else
-      {
-        data = data.concat(CRLF);
-      }
-      
+
+      data = data.concat(CRLF);      
       data = data.concat(["--", boundary, "--", CRLF, CRLF]);
 
       self.emit('data', data.join(""));
