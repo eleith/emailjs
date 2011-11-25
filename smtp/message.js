@@ -239,7 +239,9 @@ var MessageStream = function(message)
                }
                else if(!err)
                {
-                  output_chunk(buffer.toString("base64", 0, bytes));
+                  var data    = buffer.toString("base64", 0, bytes);
+                  var leftover= data.length % MIMECHUNK;
+                  output_chunk(data);
 
                   if(bytes == chunk) // gauranteed no leftovers
                   {
@@ -247,6 +249,7 @@ var MessageStream = function(message)
                   }
                   else
                   {
+                     self.emit('data', leftover ? data.substr(-leftover) + CRLF + CRLF : CRLF); // important!
                      fs.close(fd, next);
                   }
                }
@@ -268,16 +271,12 @@ var MessageStream = function(message)
 
    var output_chunk = function(data)
    {
-      var leftover= data.length % MIMECHUNK;
       var loops   = Math.round(data.length / MIMECHUNK);
 
       for(var step = 0; step < loops; step++)
       {
          self.emit('data', data.substring(step*MIMECHUNK, MIMECHUNK*(step + 1)) + CRLF);
       }
-
-      if(leftover)
-         self.emit('data', leftover ? data.substr(-leftover) + CRLF + CRLF : CRLF); // important!
    };
 
    var output_text = function(next)
