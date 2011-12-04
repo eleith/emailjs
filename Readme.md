@@ -123,14 +123,16 @@ send emails, html and attachments from node.js to any smtp server
 	html // string representing the html version of the email message
 	charset // defaults to utf-8 if not passed
 
-## Message.attach(path, mime_type, name)
+## Message.attach(options)
 
 	// can be called multiple times, each creating a new
 	// attachment on the email itself
 
-	path 			// string to where the file is located
-	mime_type	// string of the file mime type
-	name			// name to give the file as perceived by the recipient
+  // options is an object with the following possible keys:
+	path      // string to where the file is located
+	type	    // string of the file mime type
+	name      // name to give the file as perceived by the recipient
+  headers   // object containing header=>value pairs for inclusion in this attachment's header
 	
 ## Authors
 
