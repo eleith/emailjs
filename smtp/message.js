@@ -48,9 +48,13 @@ var Message = function(headers)
 Message.prototype = 
 {
 
-   attach: function(path, type, name)
+   attach: function(options/*{path, type, name, headers}*/)
    {
-      this.attachments.push({path:path, type:type, name:name});
+      /* legacy support */
+      if (arguments.length > 1)
+        options = {path:options, type:arguments[1], name:arguments[2]};
+
+      this.attachments.push(options);
       return this;
    },
 
@@ -216,11 +220,61 @@ var MessageStream = function(message)
 
    var output_attachment = function(attachment, next)
    {
-      var data = ["Content-Type: ", attachment.type, CRLF, "Content-Transfer-Encoding: base64", CRLF];
-      data     = data.concat(["Content-Disposition: attachment; filename=\"", attachment.name, "\"", CRLF, CRLF]);
+      var keys = (attachment.headers ? Object.keys(attachment.headers) : []),
+          data = new Array(10/*default headers*/+(4*keys.length)),
+          hasType = false,
+          hasXferEncoding = false,
+          hasDisposition = false,
+          d = 0;
+
+      for(var k=0,m,len=keys.length; k<len; ++k)
+      {
+        if(m = keys[k].match(/^content-(type|transfer-encoding|disposition)$/i))
+        {
+          switch(m[1].toLowerCase())
+          {
+            case 'type':
+              hasType = true;
+            break;
+            case 'transfer-encoding':
+              hasXferEncoding = true;
+            break;
+            case 'disposition':
+              hasDisposition = true;
+            break;
+          }
+        }
+        data[d++] = keys[k];
+        data[d++] = ': ';
+        data[d++] = attachment.headers[keys[k]];
+        data[d++] = CRLF;
+      }
+
+      if(!hasType)
+      {
+        data[d++] = 'Content-Type: ';
+        data[d++] = attachment.type;
+        data[d++] = CRLF;
+      }
+
+      if(!hasXferEncoding)
+      {
+        data[d++] = 'Content-Transfer-Encoding: base64';
+        data[d++] = CRLF;
+      }
+
+      if(!hasDisposition)
+      {
+        data[d++] = 'Content-Disposition: attachment; filename="';
+        data[d++] = attachment.name;
+        data[d++] = '"';
+        data[d++] = CRLF;
+      }
+
+      data[d] = CRLF;
 
       self.emit('data', data.join(""));
-      
+
       var chunk      = MIMECHUNK*25*3; // 5700
       var buffer     = new Buffer(chunk);
       var opened     = function(err, fd)
