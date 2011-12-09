@@ -6,7 +6,6 @@ var address      = require('./address');
 var Client = function(server)
 {
    this.smtp         = new smtp.SMTP(server);
-
    //this.smtp.debug(1);
 
    this.queue        = [];
@@ -31,8 +30,8 @@ Client.prototype =
          else if(self.smtp.state() == smtp.state.CONNECTED && !self.sending && self.ready)
             self._sendmail(self.queue.shift());
       }
-      // wait around 1 seconds in case something does come in, otherwise close out SMTP connection
-      else
+      // wait around 1 seconds in case something does come in, otherwise close out SMTP connection if still open
+      else if(self.smtp.state() == smtp.state.CONNECTED)
          self.timer = setTimeout(function() { self.smtp.quit(); }, 1000);
    },
 
@@ -120,7 +119,7 @@ Client.prototype =
          {
             // if we snag on SMTP commands, call done, passing the error
             // but first reset SMTP state so queue can continue polling
-            self.smtp.rset(function(err) { self._senddone(stack, err); });
+            self.smtp.rset(function(err) { self._senddone(err, stack); });
          }
       };
 
@@ -151,14 +150,16 @@ Client.prototype =
       var self = this, stream = stack.message.stream();
 
       stream.on('data', function(data) { self.smtp.message(data); });
-      stream.on('end', function() { self.smtp.data_end(self._sendsmtp(stack, self._senddone)); });
-      stream.on('error', function(err) { self.smtp.data_end(function() { self._senddone(stack, err); }); });
+      stream.on('end', function() { self.smtp.data_end(self._sendsmtp(stack, function() { self._senddone(null, stack) })); });
+
+      // there is no way to cancel a message while in the DATA portion, so we have to close the socket to prevent
+      // a bad email from going out
+      stream.on('error', function(err) { self.smtp.close(); self._senddone(err, stack); });
    },
 
-   _senddone: function(stack, err)
+   _senddone: function(err, stack)
    {
       var self = this;
-
       self.sending = false;
       stack.callback(err, stack.message);
       self._poll();
