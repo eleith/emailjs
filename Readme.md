@@ -1,14 +1,12 @@
-#v0.2.0
-
-### emailjs
+# emailjs (v0.2.0)
 
 send emails, html and attachments (files, streams and strings) from node.js to any smtp server
 
-### Installing 
+## INSTALLING
 
 	npm install emailjs
 
-# FEATURES
+## FEATURES
  - works with SSL and TLS smtp servers (ex: gmail)
  - supports smtp authentication (PLAIN, LOGIN, CRAMMD5)
  - emails are queued and the queue is sent asynchronously
@@ -16,10 +14,10 @@ send emails, html and attachments (files, streams and strings) from node.js to a
  - attachments can be added as strings, streams or file paths
  - works with nodejs 3.8 and above
 
-# REQUIRES
+## REQUIRES
  - access to an SMTP Server (ex: gmail)
 
-# EXAMPLE USAGE - text only emails
+## EXAMPLE USAGE - text only emails
 
 ```javascript
 var email 	= require("./path/to/emailjs/email");
@@ -41,7 +39,7 @@ server.send({
 }, function(err, message) { console.log(err || message); });
 ```
 
-# EXAMPLE USAGE - html emails and attachments
+## EXAMPLE USAGE - html emails and attachments
 
 ```javascript
 var email 	= require("./path/to/emailjs/email");
