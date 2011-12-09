@@ -144,7 +144,30 @@ var tests =
       {
          console.log(err ? err.message : "text+2+streamed+attachments email successfully sent");
       });
+   },
+
+   legacy_apis: function(email, server, config)
+   {
+      var path    = require('path');
+      var fs      = require('fs');
+      var message = email.message.create(
+      {
+         subject: "this is a test of legacy API ATTACHMENTS message from emailjs",
+         from:    /^.+@.+$/.test(config.username) ? config.username : config.username + '@' + config.host,
+         to:      config.email,
+         text:    "hello friend, i hope this message and html and attachments finds you well."
+      });
+
+      // attach an alternative html email for those with advanced email clients
+      message.attach_alternative(fs.readFileSync(path.join(__dirname, "attachments/smtp.html"), "utf-8"));
+      message.attach(path.join(__dirname, "attachments/smtp.pdf"), "application/pdf", "smtp-info.pdf");
+
+      server.send(message, function(err, message)
+      {
+         console.log(err ? err.message : "text+legacy+attachments email successfully sent");
+      });
    }
+
 };
 
 for(var test in tests)
