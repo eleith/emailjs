@@ -150,8 +150,8 @@ eleith
 
 ## Testing
 
-   npm install -d
-   npm test
+	npm install -d
+	npm test
 
 ## Contributions
 
