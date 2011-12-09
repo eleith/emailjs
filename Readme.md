@@ -101,43 +101,44 @@ send emails, html and attachments from node.js to any smtp server
 
 ## email.message.create(headers)
 
-	// headers is an object ('from' and 'to' are required)
-	// returns a Message object
+   // headers is an object ('from' and 'to' are required)
+   // returns a Message object
 
-	// you can actually pass more message headers than listed, the below are just the
-	// most common ones you would want to use
+   // you can actually pass more message headers than listed, the below are just the
+   // most common ones you would want to use
 
-	headers =
-	{
-		text		// text of the email 
-		from		// sender of the format (address or name <address> or "name" <address>)
-		to			// recipients (same format as above), multiple recipients are separated by a comma
-		cc			// carbon copied recipients (same format as above)
-		bcc		// blind carbon copied recipients (same format as above)
-		subject	// string subject of the email
-	}
+   headers =
+   {
+      text		// text of the email 
+      from		// sender of the format (address or name <address> or "name" <address>)
+      to			// recipients (same format as above), multiple recipients are separated by a comma
+      cc			// carbon copied recipients (same format as above)
+      bcc		// blind carbon copied recipients (same format as above)
+      subject	// string subject of the email
+   }
 
 ## Message.attach(options)
 
    // can be called multiple times, each adding a new attachment
    // options is an object with the following possible keys:
-
-   // one of these fields is required
-
-   path      // string to where the file is located
-   data      // string of the data you want to attach
-   stream    // binary stream that will provide attachment data (make sure it is in the paused state)
-             // better performance for binary streams is achieved if buffer.length % (76*6) == 0
-             // current max size of buffer must be no larger than Message.BUFFERSIZE
-
-   // optionally these fields are also accepted
-
-   type	      // string of the file mime type
-   name        // name to give the file as perceived by the recipient
-   alternative // if true, will be attached inline as an alternative to the text (also defaults type='text/html' and inline=true)
-   inline      // if true, will be attached inline
-   encoded     // set this to true if the data is already base64 encoded, (avoid this if possible)
-   headers     // object containing header=>value pairs for inclusion in this attachment's header
+   
+   options =
+   {
+      // one of these fields is required
+      path      // string to where the file is located
+      data      // string of the data you want to attach
+      stream    // binary stream that will provide attachment data (make sure it is in the paused state)
+                // better performance for binary streams is achieved if buffer.length % (76*6) == 0
+                // current max size of buffer must be no larger than Message.BUFFERSIZE
+      
+      // optionally these fields are also accepted
+      type	      // string of the file mime type
+      name        // name to give the file as perceived by the recipient
+      alternative // if true, will be attached inline as an alternative to the text (also defaults type='text/html' and inline=true)
+      inline      // if true, will be attached inline
+      encoded     // set this to true if the data is already base64 encoded, (avoid this if possible)
+      headers     // object containing header=>value pairs for inclusion in this attachment's header
+   }
 	
 ## Authors
 
