@@ -2,7 +2,7 @@
 
 ### emailjs
 
-send emails, html and attachments from node.js to any smtp server
+send emails, html and attachments (files, streams and strings) from node.js to any smtp server
 
 ### Installing 
 
