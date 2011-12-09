@@ -13,7 +13,7 @@ send emails, html and attachments (files, streams and strings) from node.js to a
  - supports smtp authentication (PLAIN, LOGIN, CRAMMD5)
  - emails are queued and the queue is sent asynchronously
  - supports sending html emails and emails with multiple attachments (MIME)
- - attachments can added as strings, streams or file paths
+ - attachments can be added as strings, streams or file paths
  - works with nodejs 3.8 and above
 
 # REQUIRES
