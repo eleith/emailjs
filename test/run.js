@@ -1,8 +1,8 @@
-var prompt  = require('prompt');
-var os      = require('os');
-var path    = require('path');
-var tests   = require('./tests');
-var email   = require('../email');
+var prompt     = require('prompt');
+var os         = require('os');
+var path       = require('path');
+var tests      = require('./tests');
+var email      = require('../email');
 
 var run =
 {
@@ -112,10 +112,17 @@ var run =
 
          prompt.message = "";
          prompt.delimiter = ">";
-         prompt.addProperties(config, ask, function(err) { run.tests(config); });
+         prompt.addProperties(config, ask, function(err) 
+         { 
+            process.stdin.destroy();
+            run.tests(config); 
+         });
       }
       else
+      {
+         process.stdin.destroy();
          run.tests(config);
+      }
    }
 };
 

@@ -2,9 +2,13 @@ var stream     = require('stream');
 var util       = require('util');
 var fs         = require('fs');
 var os         = require('os');
+var buffertools= require('buffertools');
 var path       = require('path');
 var CRLF       = "\r\n";
 var MIMECHUNK  = 76; // MIME standard wants 76 char chunks when sending out.
+var BASE64CHUNK= 24; // BASE64 bits needed before padding is used
+var MIME64CHUNK= MIMECHUNK * 6; // meets both base64 and mime divisibility
+var BUFFERSIZE = MIMECHUNK*24*7; // size of the message stream buffer
 var counter    = 0;
 
 var generate_boundary = function()
@@ -20,9 +24,9 @@ var generate_boundary = function()
 
 var Message = function(headers)
 {
-   this.attachments   = [];
-   this.html         = null;
-   this.header         = {"message-id":"<" + (new Date()).getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">"};
+   this.attachments  = [];
+   this.alternative  = null;
+   this.header       = {"message-id":"<" + (new Date()).getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">"};
    this.content      = "text/plain; charset=utf-8";
 
    for(var header in headers)
@@ -47,20 +51,43 @@ var Message = function(headers)
 
 Message.prototype = 
 {
-
-   attach: function(options/*{path, type, name, headers}*/)
+   attach: function(options)
    {
-      /* legacy support */
+      /* 
+         legacy support, will remove eventually... 
+         arguments -> (path, type, name, headers)
+      */
       if (arguments.length > 1)
         options = {path:options, type:arguments[1], name:arguments[2]};
 
-      this.attachments.push(options);
+      // sender can specify an attachment as an alternative
+      if(options.alternative)
+      {
+         this.alternative           = options;
+         this.alternative.charset   = options.charset || "utf-8";
+         this.alternative.type      = options.type || "text/html";
+         this.alternative.inline    = true;
+      }
+      else
+         this.attachments.push(options);
+
       return this;
    },
 
+   /* 
+      legacy support, will remove eventually...
+      should use Message.attach() instead
+   */
    attach_alternative: function(html, charset)
    {
-      this.html = {message:html, charset:charset || "utf-8"};
+      this.alternative =
+      {
+         data:    html,
+         charset: charset || "utf-8",
+         type:    "text/html",
+         inline:  true
+      };
+
       return this;
    },
 
@@ -82,19 +109,28 @@ Message.prototype =
       }
       else
       {
+         var check  = [];
          var failed = [];
 
          self.attachments.forEach(function(attachment, index)
          {
-            path.exists(attachment.path, function(exists)
+            if(attachment.path)
             {
-               if(!exists)
+               if(!path.existsSync(attachment.path))
                   failed.push(attachment.path + " does not exist");
-
-               if(index + 1 == self.attachments.length)
-                  callback(failed.length === 0, failed.join(", "));
-            });
+            }
+            else if(attachment.stream)
+            {
+               if(!attachment.stream.readable)
+                  failed.push("attachment stream is not readable");
+            }
+            else if(!attachment.data)
+            {
+               failed.push("attachment has no data associated with it");
+            }
          });
+
+         callback(failed.length === 0, failed.join(", "));
       }
    },
 
@@ -127,194 +163,132 @@ Message.prototype =
 
 var MessageStream = function(message)
 {
-   var self         = this;
+   var self       = this;
 
    stream.Stream.call(self);
 
    self.message   = message;
    self.readable  = true;
-   self.resume    = null;
    self.paused    = false;
-   self.stopped   = false;
-   self.stream    = null;
+   self.buffer    = new Buffer(MIMECHUNK*24*7);
+   self.bufferIndex = 0;
 
-   var output_process = function(next)
+   var output_process = function(next, args)
    {
-      var check = function()
+      if(self.paused)
       {
-         if(self.stopped)
-            return;
-
-         else if(self.paused)
-            self.resume = next;
-
-         else
-            next();
-      };
-
-      process.nextTick(check);
-   };
-
-   var output_mixed = function()
-   {
-      var data       = [];
-      var boundary   = generate_boundary();
-
-      self.emit('data', ["Content-Type: multipart/mixed; boundary=\"", boundary, "\"", CRLF, CRLF].join(""));
-      output_process(function() { output_message(-1, boundary); });
-   };
-
-   var output_message = function(index, boundary)
-   {
-      var next = function()
-      {
-         output_process(function() { output_message(index + 1, boundary); });
-      };
-
-      if(index < 0)
-      {
-         self.emit('data', ["--", boundary, CRLF].join(""));
-
-         if(self.message.html)
-         {
-            output_process(function() { output_alternatives(next); });
-         }
-         else
-         {
-            output_text(next);
-         }
-      }
-      else if(index < self.message.attachments.length)
-      {
-         self.emit('data', ["--", boundary, CRLF].join(""));
-         output_process(function() { output_attachment(self.message.attachments[index], next); });
+         self.resumed = function() { next.apply(null, args); };
       }
       else
       {
-         self.emit('data', ["--", boundary, "--", CRLF, CRLF].join(""));
-         self.emit('end');
+         next.apply(null, args);
       }
+   
+      next.apply(null, args);
    };
-
-   var output_alternatives = function(next)
+   
+   var output_mixed = function()
    {
       var boundary   = generate_boundary();
+      var data       = ["Content-Type: multipart/mixed; boundary=\"", boundary, "\"", CRLF, CRLF, "--", boundary, CRLF];
 
-      self.emit('data', ["Content-Type: multipart/alternative; boundary=\"", boundary, "\"", CRLF, CRLF].join(""));
-      self.emit('data', ["--", boundary, CRLF].join(""));
+      output(data.join(''));
 
-      output_text(function(){});
-
-      var data = ["--", boundary, CRLF];
-
-      data = data.concat(["Content-Type:text/html; charset=", self.message.html.charset, CRLF, "Content-Transfer-Encoding: base64", CRLF]);
-      data = data.concat(["Content-Disposition: inline", CRLF, CRLF]);
-
-      self.emit('data', data.join(""));
-
-      output_chunk(new Buffer(self.message.html.message).toString("base64"));
-
-      self.emit('data', [CRLF, "--", boundary, "--", CRLF, CRLF].join(""));
-      next();
+      if(!self.message.alternative)
+      {
+         output_text();
+         output_message(boundary, 0);
+      }
+      else
+         output_alternative(function() { output_message(boundary, 0); });
    };
 
-   var output_attachment = function(attachment, next)
+   var output_message = function(boundary, index)
    {
-      var keys = (attachment.headers ? Object.keys(attachment.headers) : []),
-          data = new Array(10/*default headers*/+(4*keys.length)),
-          hasType = false,
-          hasXferEncoding = false,
-          hasDisposition = false,
-          d = 0;
-
-      for(var k=0,m,len=keys.length; k<len; ++k)
+      if(index < self.message.attachments.length)
       {
-        if(m = keys[k].match(/^content-(type|transfer-encoding|disposition)$/i))
-        {
-          switch(m[1].toLowerCase())
+         output(["--", boundary, CRLF].join(''));
+         output_attachment(self.message.attachments[index], function() { output_message(boundary, index + 1); });
+      }
+      else
+      {
+         output([CRLF, "--", boundary, "--", CRLF, CRLF].join(''));
+         close();
+      }
+   };
+
+   var output_attachment_headers = function(attachment)
+   {
+      var data = [],
+          header,
+          headers = 
           {
-            case 'type':
-              hasType = true;
-            break;
-            case 'transfer-encoding':
-              hasXferEncoding = true;
-            break;
-            case 'disposition':
-              hasDisposition = true;
-            break;
-          }
-        }
-        data[d++] = keys[k];
-        data[d++] = ': ';
-        data[d++] = attachment.headers[keys[k]];
-        data[d++] = CRLF;
-      }
+            'content-type': attachment.type + (attachment.charset ? "; charset=" + attachment.charset : ""),
+            'content-transfer-encoding': 'base64', 
+            'content-disposition': attachment.inline ? 'inline' : 'attachment; filename="' + attachment.name + '"'
+          };
 
-      if(!hasType)
+      for(header in (attachment.headers || {}))
       {
-        data[d++] = 'Content-Type: ';
-        data[d++] = attachment.type;
-        data[d++] = CRLF;
+         // allow sender to override default headers
+         headers[header.toLowerCase()] = attachment.headers[header];
       }
 
-      if(!hasXferEncoding)
+      for(header in headers)
       {
-        data[d++] = 'Content-Transfer-Encoding: base64';
-        data[d++] = CRLF;
+         data = data.concat([header, ': ', headers[header], CRLF]);
       }
 
-      if(!hasDisposition)
-      {
-        data[d++] = 'Content-Disposition: attachment; filename="';
-        data[d++] = attachment.name;
-        data[d++] = '"';
-        data[d++] = CRLF;
-      }
+      output(data.concat([CRLF]).join(''));
+   };
 
-      data[d] = CRLF;
+   var output_attachment = function(attachment, callback)
+   {
+      var build = attachment.path ? output_file : attachment.stream ? output_stream : output_data;
+      output_attachment_headers(attachment);
+      build(attachment, callback);
+   };
 
-      self.emit('data', data.join(""));
+   var output_data = function(attachment, callback)
+   {
+      output_base64(attachment.encoded ? attachment.data : new Buffer(attachment.data).toString("base64"), callback);
+   };
 
-      var chunk      = MIMECHUNK*25*3; // 5700
+   var output_file = function(attachment, next)
+   {
+      var chunk      = MIME64CHUNK*16;
       var buffer     = new Buffer(chunk);
+      var closed     = function(fd) { fs.close(fd); };
       var opened     = function(err, fd)
       {
          if(!err)
          {
             var read = function(err, bytes)
             {
-               if(self.paused)
+               if(!err && self.readable)
                {
-                  self.resume = function() { read(err, bytes); };
-               }
-               else if(self.stopped)
-               {
-                  fs.close(fd);
-               }
-               else if(!err)
-               {
-                  var data    = buffer.toString("base64", 0, bytes);
-                  var leftover= data.length % MIMECHUNK;
-                  output_chunk(data);
-
-                  if(bytes == chunk) // gauranteed no leftovers
+                  // guaranteed to be encoded without padding unless it is our last read
+                  output_base64(buffer.toString("base64", 0, bytes), function()
                   {
-                     fs.read(fd, buffer, 0, chunk, null, read);
-                  }
-                  else
-                  {
-                     self.emit('data', leftover ? data.substr(-leftover) + CRLF + CRLF : CRLF); // important!
-                     fs.close(fd, next);
-                  }
+                     if(bytes == chunk) // we read a full chunk, there might be more
+                     {
+                        fs.read(fd, buffer, 0, chunk, null, read);
+                     }
+                     else // that was the last chunk, we are done reading the file
+                     {
+                        self.removeListener("error", closed);
+                        fs.close(fd, next);
+                     }
+                  });
                }
                else
                {
-                  fs.close(fd);
-                  self.emit('error', err);
+                  self.emit('error', err || {message:"message stream was interrupted somehow!"});
                }
             };
 
             fs.read(fd, buffer, 0, chunk, null, read);
+            self.once("error", closed);
          }
          else
             self.emit('error', err);
@@ -323,39 +297,113 @@ var MessageStream = function(message)
       fs.open(attachment.path, 'r+', opened);
    };
 
-   var output_chunk = function(data)
+   var output_stream = function(attachment, callback)
    {
-      var loops   = Math.round(data.length / MIMECHUNK);
-
-      for(var step = 0; step < loops; step++)
+      if(attachment.stream.readable)
       {
-         self.emit('data', data.substring(step*MIMECHUNK, MIMECHUNK*(step + 1)) + CRLF);
+         var previous = null;
+
+         attachment.stream.resume();
+         attachment.stream.on('end', function()
+         {
+            output_base64((previous || new Buffer(0)).toString("base64"), callback);
+            self.removeListener('pause', attachment.stream.pause);
+            self.removeListener('resume', attachment.stream.resume);
+            self.removeListener('error', attachment.stream.resume);
+         });
+
+         attachment.stream.on('data', function(buffer)
+         {
+            // do we have bytes from a previous stream data event?
+            if(previous)
+            {
+               var buffer2 = buffertools.concat(previous, buffer);
+               previous    = null; // free up the buffer
+               buffer      = null; // free up the buffer
+               buffer      = buffer2;
+            }
+
+            var padded = buffer.length % (MIME64CHUNK);
+
+            // encode as much of the buffer to base64 without empty bytes
+            if(padded)
+            {
+               previous = new Buffer(padded);
+               // copy dangling bytes into previous buffer
+               buffer.copy(previous, 0, buffer.length - padded);
+            }
+
+            output_base64(buffer.toString("base64", 0, buffer.length - padded));
+         });
+
+         self.on('pause', attachment.stream.pause);
+         self.on('resume', attachment.stream.resume);
+         self.on('error', attachment.stream.resume);
       }
+      else 
+         self.emit('error', {message:"stream not readable"});
    };
 
-   var output_text = function(next)
+   var output_base64 = function(data, callback)
    {
-      var data = ["Content-Type:", self.message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF];
+      var loops   = Math.floor(data.length / MIMECHUNK);
+      var leftover= Math.abs(data.length - loops*MIMECHUNK);
+
+      var loop = function(index)
+      {
+         if(index < loops)
+            output(data.substring(MIMECHUNK * index, MIMECHUNK * (index + 1)) + CRLF, loop, [index + 1]);
+
+         else if(leftover)
+            output(data.substring(index*MIMECHUNK) + CRLF, callback);
+
+         else if(callback)
+            callback();
+      };
+
+      loop(0);
+   };
+
+   var output_text = function()
+   {
+      var data = [];
+
+      data = data.concat(["Content-Type:", self.message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF]);
       data = data.concat(["Content-Disposition: inline", CRLF, CRLF]);
       data = data.concat([self.message.text || "", CRLF, CRLF]);
 
-      self.emit('data', data.join(""));
-      next();
+      output(data.join(''));
    };
 
-   var output_data = function()
+   var output_alternative = function(callback)
    {
-      // are there attachments or alternatives?
-      if(self.message.attachments.length || self.message.html)
-      {
-         self.emit('data', "MIME-Version: 1.0" + CRLF);
-         output_process(output_mixed);
-      }
+      var data = [], boundary = generate_boundary();
 
-      // otherwise, you only have a text message
-      else
+      data     = data.concat(["Content-Type: multipart/alternative; boundary=\"", boundary, "\"", CRLF, CRLF]);
+      data     = data.concat(["--", boundary, CRLF]);
+
+      output(data.join(''));
+      output_text();
+      output(["--", boundary, CRLF].join(''));
+
+      output_attachment(self.message.alternative, function()
       {
-         output_text(function() { self.emit('end'); });
+         output([CRLF, "--", boundary, "--", CRLF, CRLF].join(''));
+         callback();
+      });
+   };
+
+   var output_header_data = function()
+   {
+      if(self.message.attachments.length || self.message.alternative)
+      {
+         output("MIME-Version: 1.0" + CRLF);
+         output_mixed();
+      }
+      else // you only have a text message!
+      {
+         output_text();
+         close();
       }
    };
 
@@ -370,44 +418,102 @@ var MessageStream = function(message)
             data = data.concat([header, ": ", self.message.header[header], CRLF]);
       }
 
-      self.emit('data', data.join(''));
-      output_process(output_data);
+      output(data.join(''));
+      output_header_data();
    };
 
-   output_process(output_header);
-   return;
-};
-
-MessageStream.prototype.pause = function()
-{
-   self.paused = true;
-};
-
-MessageStream.prototype.resume = function()
-{
-   self.paused = false;
-
-   if(self.resume)
+   var output = function(data, callback, args)
    {
-      var resume   = self.resume;
-      self.resume = null;
-      resume();
-   }
-};
+      // can we buffer the data?
+      if(data.length + self.bufferIndex < self.buffer.length)
+      {
+         self.buffer.write(data, self.bufferIndex);
+         self.bufferIndex += data.length;
 
-MessageStream.prototype.destroy = function()
-{
-   self.stopped = true;
-};
+         if(callback)
+            callback.apply(null, args);
+      }
+      else if(data.length > self.buffer.length)
+      {
+         close({message:"internal buffer got too large to handle!"});
+      }
+      else // we need to clean out the buffer, it is getting full
+      {
+         if(!self.paused)
+         {
+            self.emit('data', self.buffer.toString("utf-8", 0, self.bufferIndex));
+            self.buffer.write(data, 0);
+            self.bufferIndex = data.length;
 
-MessageStream.prototype.destroySoon = function()
-{
-   self.stopped = true;
+            // we could get paused after emitting data...
+            if(self.paused)
+            {
+               self.once("resume", function() { callback.apply(null, args); });
+            }
+            else if(callback)
+            {
+               callback.apply(null, args);
+            }
+         }
+         else // we can't empty out the buffer, so let's wait till we resume before adding to it
+         {
+            self.once("resume", function() { output(data, callback, args); });
+         }
+      }
+   };
+
+   var close = function(err)
+   {
+      if(err)
+      {
+         self.emit("error", err);
+      }
+      else
+      {
+         self.emit('data', self.buffer.toString("utf-8", 0, self.bufferIndex));
+         self.emit('end');
+      }
+
+      self.buffer = null;
+      self.bufferIndex = 0;
+      self.readable = false;
+      self.removeAllListeners("resume");
+      self.removeAllListeners("pause");
+      self.removeAllListeners("error");
+      self.removeAllListeners("data");
+      self.removeAllListeners("end");
+   };
+
+   self.once("destroy", close);
+   process.nextTick(output_header);
 };
 
 util.inherits(MessageStream, stream.Stream);
 
+MessageStream.prototype.pause = function()
+{
+   this.paused = true;
+   this.emit('pause');
+};
+
+MessageStream.prototype.resume = function()
+{
+   this.paused = false;
+   this.emit('resume');
+};
+
+MessageStream.prototype.destroy = function()
+{
+   this.emit("destroy", self.bufferIndex > 0 ? {message:"message stream destroyed"} : null);
+};
+
+MessageStream.prototype.destroySoon = function()
+{
+   this.emit("destroy");
+};
+
 exports.Message = Message;
+exports.BUFFERSIZE = BUFFERSIZE;
 exports.create = function(headers) 
 {
    return new Message(headers);

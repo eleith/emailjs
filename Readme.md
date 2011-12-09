@@ -1,4 +1,4 @@
-#v0.1.19
+#v0.2.0
 
 ### emailjs
 
@@ -13,6 +13,7 @@ send emails, html and attachments from node.js to any smtp server
  - supports smtp authentication (PLAIN, LOGIN, CRAMMD5)
  - emails are queued and the queue is sent asynchronously
  - supports sending html emails and emails with multiple attachments (MIME)
+ - attachments can added as strings, streams or file paths
  - works with nodejs 3.8 and above
 
 # REQUIRES
@@ -59,10 +60,10 @@ send emails, html and attachments from node.js to any smtp server
 		var message = email.message.create(headers);
 
 		// attach an alternative html email for those with advanced email clients
-		message.attach_alternative("<html>i <i>hope</i> this works!</html>");
+		message.attach({data:"<html>i <i>hope</i> this works!</html>", alternative:true});
 
 		// attach attachments because you can!
-		message.attach("path/to/file.zip", "application/zip", "renamed.zip");
+		message.attach({path:"path/to/file.zip", type:"application/zip", name:"renamed.zip"});
 
 		// send the message and get a callback with an error or details of the message that was sent
 		server.send(message, function(err, message) { console.log(err || message); });
@@ -116,24 +117,37 @@ send emails, html and attachments from node.js to any smtp server
 		subject	// string subject of the email
 	}
 
-## Message.attach_alternative(html, charset)
-
-	// should only be called once
-
-	html // string representing the html version of the email message
-	charset // defaults to utf-8 if not passed
-
 ## Message.attach(options)
 
-	// can be called multiple times, each creating a new
-	// attachment on the email itself
+	// can be called multiple times, each adding a new attachment
+   // options is an object with the following possible keys:
 
-  // options is an object with the following possible keys:
+   // one of these fields is required
+
 	path      // string to where the file is located
-	type	    // string of the file mime type
-	name      // name to give the file as perceived by the recipient
-  headers   // object containing header=>value pairs for inclusion in this attachment's header
+   data      // string of the data you want to attach
+   stream    // binary stream that will provide attachment data (make sure it is in the paused state)
+             // better performance for binary streams is achieved if buffer.length % (76*6) == 0
+             // current max size of buffer must be no larger than Message.BUFFERSIZE
+
+   // optionally these fields are also accepted
+
+	type	      // string of the file mime type
+	name        // name to give the file as perceived by the recipient
+   alternative // if true, will be attached inline as an alternative to the text (also defaults type='text/html' and inline=true)
+   inline      // if true, will be attached inline
+   encoded     // set this to true if the data is already base64 encoded, (avoid this if possible)
+   headers     // object containing header=>value pairs for inclusion in this attachment's header
 	
 ## Authors
 
 eleith
+
+## Testing
+
+   npm install -d
+   npm test
+
+## Contributions
+
+issues and pull requests are welcome
