@@ -119,12 +119,12 @@ send emails, html and attachments from node.js to any smtp server
 
 ## Message.attach(options)
 
-	// can be called multiple times, each adding a new attachment
+   // can be called multiple times, each adding a new attachment
    // options is an object with the following possible keys:
 
    // one of these fields is required
 
-	path      // string to where the file is located
+   path      // string to where the file is located
    data      // string of the data you want to attach
    stream    // binary stream that will provide attachment data (make sure it is in the paused state)
              // better performance for binary streams is achieved if buffer.length % (76*6) == 0
@@ -132,8 +132,8 @@ send emails, html and attachments from node.js to any smtp server
 
    // optionally these fields are also accepted
 
-	type	      // string of the file mime type
-	name        // name to give the file as perceived by the recipient
+   type	      // string of the file mime type
+   name        // name to give the file as perceived by the recipient
    alternative // if true, will be attached inline as an alternative to the text (also defaults type='text/html' and inline=true)
    inline      // if true, will be attached inline
    encoded     // set this to true if the data is already base64 encoded, (avoid this if possible)
