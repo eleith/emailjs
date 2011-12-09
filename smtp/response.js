@@ -1,6 +1,6 @@
 var SMTPError = require('./error');
 
-function SMTPResponse(stream, timeout, onerror) 
+var SMTPResponse = function(stream, timeout, onerror) 
 {
 	var buffer = '',
 	
@@ -20,13 +20,11 @@ function SMTPResponse(stream, timeout, onerror)
 	error = function(err)
 	{
 		stream.emit('response', {code:SMTPError.ERROR, message:"connection encountered an error", error:err});
-		destroy(err);
 	},
 
    timedout = function(err)
    {
       stream.emit('response', {code:SMTPError.TIMEDOUT, message:"timedout while connecting to smtp server", error:err});
-      destroy(err);
    },
 
 	watch = function(data) 
@@ -42,24 +40,22 @@ function SMTPResponse(stream, timeout, onerror)
 	close = function(err)
 	{
 		stream.emit('response', {code:SMTPError.CONNECTIONCLOSED, message:"connection has closed", error:err});
-		destroy(err);
 	},
 
 	end = function(err)
 	{
 		stream.emit('response', {code:SMTPError.CONNECTIONENDED, message:"connection has ended", error:err});
-      destroy(err);
 	};
 
-   destroy = function()
+   this.stop = function(err)
    {
-   	stream.removeAllListeners('response');
+      stream.removeAllListeners('response');
 		stream.removeListener('data', watch);
 		stream.removeListener('end', end);
 		stream.removeListener('close', close);
 		stream.removeListener('error', error);
 
-      if(typeof(onerror) == "function")
+      if(err && typeof(onerror) == "function")
          onerror(err);
    };
 
@@ -68,7 +64,7 @@ function SMTPResponse(stream, timeout, onerror)
 	stream.on('close', close);
 	stream.on('error', error);
    stream.setTimeout(timeout, timedout);
-}
+};
 
 exports.monitor = function(stream) 
 {
