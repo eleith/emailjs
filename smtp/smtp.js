@@ -74,6 +74,7 @@ var SMTP = function(options)
    this.port      = options.port || (options.ssl ? SMTP_SSL_PORT : options.tls ? SMTP_TLS_PORT : SMTP_PORT);
    this.ssl       = options.ssl || false;
    this.tls       = options.tls || false;
+   this.monitor   = null;
 
    // keep private
    SMTP_USER      = options.user;
@@ -158,6 +159,7 @@ SMTP.prototype =
       };
 
       self._state = SMTPState.CONNECTING;
+      log("connecting: " + self.host + ":" + self.port);
    
       if(self.ssl)
       {
@@ -169,7 +171,7 @@ SMTP.prototype =
          self.sock.connect(self.port, self.host, connected);
       }
 
-      SMTPResponse.monitor(self.sock, self.timeout, function() { self.close(true); });
+      self.monitor = SMTPResponse.monitor(self.sock, self.timeout, function() { self.close(true); });
       self.sock.once('response', response);
    },
 
@@ -533,12 +535,23 @@ SMTP.prototype =
       if(this.sock)
       {
          if(force)
+         {
+            log("smtp connection destroyed!");
             this.sock.destroy();
-   
+         }
          else
+         {
+            log("smtp connection closed.");
             this.sock.end();
+         }
       }
-   
+
+      if(this.monitor)
+      {
+         this.monitor.stop();
+         this.monitor   = null;
+      }
+
       this._state    = SMTPState.NOTCONNECTED;
       this._secure   = false;
       this.sock      = null;
