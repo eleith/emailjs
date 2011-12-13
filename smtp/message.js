@@ -424,16 +424,18 @@ var MessageStream = function(message)
 
    var output = function(data, callback, args)
    {
+      var bytes = Buffer.byteLength(data);
+
       // can we buffer the data?
-      if(data.length + self.bufferIndex < self.buffer.length)
+      if(bytes + self.bufferIndex < self.buffer.length)
       {
          self.buffer.write(data, self.bufferIndex);
-         self.bufferIndex += data.length;
+         self.bufferIndex += bytes;
 
          if(callback)
             callback.apply(null, args);
       }
-      else if(data.length > self.buffer.length)
+      else if(bytes > self.buffer.length)
       {
          close({message:"internal buffer got too large to handle!"});
       }
@@ -443,7 +445,7 @@ var MessageStream = function(message)
          {
             self.emit('data', self.buffer.toString("utf-8", 0, self.bufferIndex));
             self.buffer.write(data, 0);
-            self.bufferIndex = data.length;
+            self.bufferIndex = bytes;
 
             // we could get paused after emitting data...
             if(self.paused)
