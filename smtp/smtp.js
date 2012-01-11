@@ -19,8 +19,6 @@ var CRLF          = "\r\n";
 var AUTH_METHODS  = {PLAIN:'PLAIN', CRAM_MD5:'CRAM-MD5', LOGIN:'LOGIN'};
 var TIMEOUT       = 5000;
 var DEBUG         = 0;
-var SMTP_USER     = null;
-var SMTP_PASSWORD = null;
 
 var log = function() 
 {
@@ -75,10 +73,8 @@ var SMTP = function(options)
    this.ssl       = options.ssl || false;
    this.tls       = options.tls || false;
    this.monitor   = null;
-
-   // keep private
-   SMTP_USER      = options.user;
-   SMTP_PASSWORD  = options.password;
+   this.user      = options.user;
+   this.password  = options.password;
 };
 
 SMTP.prototype = 
@@ -417,8 +413,8 @@ SMTP.prototype =
       
       login = 
       {
-         user:       user || SMTP_USER, 
-         password:   password || SMTP_PASSWORD, 
+         user:       user || self.user,
+         password:   password || self.password,
          method:     options && options.method ? options.method.toUpperCase() : ''
       }, 
    
@@ -556,7 +552,7 @@ SMTP.prototype =
       this._secure   = false;
       this.sock      = null;
       this.features  = null;
-      this.loggedin  = (SMTP_USER && SMTP_PASSWORD) ? false : true;
+      this.loggedin  = !(this.user && this.password);
    },
    
    quit: function(callback)
