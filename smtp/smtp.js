@@ -73,8 +73,10 @@ var SMTP = function(options)
    this.ssl       = options.ssl || false;
    this.tls       = options.tls || false;
    this.monitor   = null;
-   this.user      = options.user;
-   this.password  = options.password;
+
+   // keep these strings hidden when quicky debugging/logging
+   this.user      = function() { return options.user; }
+   this.password  = function() { return options.password; }
 };
 
 SMTP.prototype = 
@@ -413,8 +415,8 @@ SMTP.prototype =
       
       login = 
       {
-         user:       user || self.user,
-         password:   password || self.password,
+         user:       user ? function() { return user; } : self.user,
+         password:   password ? function() { return password; } : self.password,
          method:     options && options.method ? options.method.toUpperCase() : ''
       }, 
    
@@ -447,15 +449,15 @@ SMTP.prototype =
          {
             challenge = (new Buffer(challenge, "base64")).toString("ascii");
 
-            var hmac = crypto.createHmac('md5', login.password);
+            var hmac = crypto.createHmac('md5', login.password());
             hmac.update(challenge);
 
-            return (new Buffer(login.user + " " + hmac.digest('hex')).toString("base64"));
+            return (new Buffer(login.user() + " " + hmac.digest('hex')).toString("base64"));
          },
    
          encode_plain = function()
          {
-            return (new Buffer("\\0" + login.user + "\\0" + login.password)).toString("base64");
+            return (new Buffer("\\0" + login.user() + "\\0" + login.password())).toString("base64");
          };
    
          // List of authentication methods we support: from preferred to
@@ -506,7 +508,7 @@ SMTP.prototype =
                   self.command(encode_cram_md5(msg), response, [235, 503]);
    
                else if(method == AUTH_METHODS.LOGIN)
-                  self.command((new Buffer(login.password)).toString("base64"), response, [235, 503]);
+                  self.command((new Buffer(login.password())).toString("base64"), response, [235, 503]);
             }
          };
    
@@ -514,10 +516,10 @@ SMTP.prototype =
             self.command("AUTH " + AUTH_METHODS.CRAM_MD5, attempt, [334]);
    
          else if(method == AUTH_METHODS.LOGIN)
-            self.command("AUTH " + AUTH_METHODS.LOGIN + " " + (new Buffer(login.user)).toString("base64"), attempt, [334]);
+            self.command("AUTH " + AUTH_METHODS.LOGIN + " " + (new Buffer(login.user())).toString("base64"), attempt, [334]);
    
          else if(method == AUTH_METHODS.PLAIN)
-            self.command("AUTH " + AUTH_METHODS.PLAIN + " " + encode_plain(login.user, login.password), response, [235, 503]);
+            self.command("AUTH " + AUTH_METHODS.PLAIN + " " + encode_plain(login.user(), login.password()), response, [235, 503]);
    
          else if(!method)
             caller(callback, {code:SMTPError.AUTHNOTSUPPORTED, message:"no form of authorization supported", smtp:data});
@@ -552,7 +554,7 @@ SMTP.prototype =
       this._secure   = false;
       this.sock      = null;
       this.features  = null;
-      this.loggedin  = !(this.user && this.password);
+      this.loggedin  = !(this.user() && this.password());
    },
    
    quit: function(callback)
