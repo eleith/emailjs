@@ -196,24 +196,34 @@ var MessageStream = function(message)
 
       if(!self.message.alternative)
       {
-         output_text();
-         output_message(boundary, 0);
+         output_text(self.message);
+         output_message(boundary, self.message.attachments, 0, close);
       }
       else
-         output_alternative(function() { output_message(boundary, 0); });
+      {
+         output_alternative(self.message, function() { output_message(boundary, self.message.attachments, 0, close); });
+      }
    };
 
-   var output_message = function(boundary, index)
+   var output_message = function(boundary, list, index, callback)
    {
-      if(index < self.message.attachments.length)
+      if(index < list.length)
       {
          output(["--", boundary, CRLF].join(''));
-         output_attachment(self.message.attachments[index], function() { output_message(boundary, index + 1); });
+
+         if(list[index].related)
+         {
+            output_related(list[index], function() { output_message(boundary, list, index + 1, callback); });
+         }
+         else
+         {
+            output_attachment(list[index], function() { output_message(boundary, list, index + 1, callback); });
+         }
       }
       else
       {
          output([CRLF, "--", boundary, "--", CRLF, CRLF].join(''));
-         close();
+         callback();
       }
    };
 
@@ -364,18 +374,18 @@ var MessageStream = function(message)
       loop(0);
    };
 
-   var output_text = function()
+   var output_text = function(message)
    {
       var data = [];
 
-      data = data.concat(["Content-Type:", self.message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF]);
+      data = data.concat(["Content-Type:", message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF]);
       data = data.concat(["Content-Disposition: inline", CRLF, CRLF]);
-      data = data.concat([self.message.text || "", CRLF, CRLF]);
+      data = data.concat([message.text || "", CRLF, CRLF]);
 
       output(data.join(''));
    };
 
-   var output_alternative = function(callback)
+   var output_alternative = function(message, callback)
    {
       var data = [], boundary = generate_boundary();
 
@@ -383,13 +393,41 @@ var MessageStream = function(message)
       data     = data.concat(["--", boundary, CRLF]);
 
       output(data.join(''));
-      output_text();
+      output_text(message);
       output(["--", boundary, CRLF].join(''));
 
-      output_attachment(self.message.alternative, function()
+      var finish = function()
       {
          output([CRLF, "--", boundary, "--", CRLF, CRLF].join(''));
          callback();
+      };
+
+      if(message.alternative.related)
+      {
+         output_related(message.alternative, finish);
+      }
+      else
+      {
+         output_attachment(message.alternative, finish);
+      }
+   };
+
+   var output_related = function(message, callback)
+   {
+      var data = [], boundary = generate_boundary();
+
+      data     = data.concat(["Content-Type: multipart/related; boundary=\"", boundary, "\"", CRLF, CRLF]);
+      data     = data.concat(["--", boundary, CRLF]);
+
+      output(data.join(''));
+
+      output_attachment(message, function()
+      {
+         output_message(boundary, message.related, 0, function()
+         {
+            output([CRLF, "--", boundary, "--", CRLF, CRLF].join(''));
+            callback();
+         });
       });
    };
 
@@ -402,7 +440,7 @@ var MessageStream = function(message)
       }
       else // you only have a text message!
       {
-         output_text();
+         output_text(self.message);
          close();
       }
    };

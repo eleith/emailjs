@@ -71,8 +71,21 @@ var tests =
       });
 
       // attach an alternative html email for those with advanced email clients
-      message.attach({path:path.join(__dirname, "attachments/smtp2.html"), alternative:true});
-      message.attach({path:path.join(__dirname, "attachments/smtp.gif"), type:"image/gif", name:"smtp-diagram.gif", headers:{"Content-ID":"smtp-diagram"}});
+      message.attach(
+      {
+         path:          path.join(__dirname, "attachments/smtp2.html"), 
+         alternative:   true,
+         related: 
+         [
+            {
+               path:    path.join(__dirname, "attachments/smtp.gif"),
+               type:    "image/gif", 
+               name:    "smtp-diagram.gif", 
+               headers: {"Content-ID":"<smtp-diagram@local>"}
+            }
+         ]
+      });
+      //message.attach({path:path.join(__dirname, "attachments/smtp.gif"), type:"image/gif", name:"smtp-diagram.gif", headers:{"Content-ID":"<smtp-diagram@local>"}});
 
       server.send(message, function(err, message)
       {
