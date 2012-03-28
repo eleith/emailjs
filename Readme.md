@@ -1,4 +1,4 @@
-# emailjs (v0.2.2)
+# emailjs (v0.2.3)
 
 send emails, html and attachments (files, streams and strings) from node.js to any smtp server
 
@@ -140,6 +140,7 @@ server.send(message, function(err, message) { console.log(err || message); });
         inline      // if true, will be attached inline
         encoded     // set this to true if the data is already base64 encoded, (avoid this if possible)
         headers     // object containing header=>value pairs for inclusion in this attachment's header
+        related     // an array of attachments that you want to be related to the parent attachment
     }
 	
 ## Authors
