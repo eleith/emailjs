@@ -1,4 +1,4 @@
-# emailjs (v0.2.7)
+# emailjs (v0.2.8)
 
 send emails, html and attachments (files, streams and strings) from node.js to any smtp server
 
