@@ -40,6 +40,22 @@ var Message = function(headers)
       {
          this.text = headers[header];
       }
+      else if(header == "attachment" && typeof (headers[header]) == "object")
+      {
+         if((headers[header]).constructor == Array)
+         {
+            var that = this;
+
+            headers[header].forEach(function(attachment)
+            {
+               that.attach(attachment);
+            });
+         }
+         else
+         {
+            this.attach(headers[header]);
+         }
+      }
       else
       {
          // allow any headers the user wants to set??

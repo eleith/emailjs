@@ -1,4 +1,4 @@
-# emailjs (v0.2.8)
+# emailjs (v0.2.9)
 
 send emails, html and attachments (files, streams and strings) from node.js to any smtp server
 
@@ -50,22 +50,18 @@ var server 	= email.server.connect({
    ssl:		true
 });
 
-var headers	= {
+var message	= {
    text:	"i hope this works", 
    from:	"you <username@gmail.com>", 
    to:		"someone <someone@gmail.com>, another <another@gmail.com>",
    cc:		"else <else@gmail.com>",
-   subject:	"testing emailjs"
+   subject:	"testing emailjs",
+   attachment: 
+   [
+      {data:"<html>i <i>hope</i> this works!</html>", alternative:true},
+      {path:"path/to/file.zip", type:"application/zip", name:"renamed.zip"}
+   ]
 };
-
-// create the message
-var message = email.message.create(headers);
-
-// attach an alternative html email for those with advanced email clients
-message.attach({data:"<html>i <i>hope</i> this works!</html>", alternative:true});
-
-// attach attachments because you can!
-message.attach({path:"path/to/file.zip", type:"application/zip", name:"renamed.zip"});
 
 // send the message and get a callback with an error or details of the message that was sent
 server.send(message, function(err, message) { console.log(err || message); });
@@ -101,7 +97,7 @@ server.send(message, function(err, message) { console.log(err || message); });
 	// callback will be executed with (err, message)
 	// either when message is sent or an error has occurred
 
-## email.message.create(headers)
+## message
 
 	// headers is an object ('from' and 'to' are required)
 	// returns a Message object
@@ -117,9 +113,10 @@ server.send(message, function(err, message) { console.log(err || message); });
 		cc			// carbon copied recipients (same format as above)
 		bcc		// blind carbon copied recipients (same format as above)
 		subject	// string subject of the email
+      attachment // one attachment or array of attachments
 	}
 
-## Message.attach(options)
+## attachment
 
 	// can be called multiple times, each adding a new attachment
 	// options is an object with the following possible keys:

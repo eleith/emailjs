@@ -119,7 +119,7 @@ Client.prototype =
          {
             // if we snag on SMTP commands, call done, passing the error
             // but first reset SMTP state so queue can continue polling
-            self.smtp.rset(function(err) { self._senddone(err, stack); });
+            self.smtp.rset(function() { self._senddone(err, stack); });
          }
       };
 

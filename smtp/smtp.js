@@ -75,8 +75,8 @@ var SMTP = function(options)
    this.monitor   = null;
 
    // keep these strings hidden when quicky debugging/logging
-   this.user      = function() { return options.user; }
-   this.password  = function() { return options.password; }
+   this.user      = function() { return options.user; };
+   this.password  = function() { return options.password; };
 };
 
 SMTP.prototype = 
@@ -511,12 +511,25 @@ SMTP.prototype =
                   self.command((new Buffer(login.password())).toString("base64"), response, [235, 503]);
             }
          };
-   
+
+         var attempt_user = function(err, data, msg)
+         {
+            if(err)
+            {
+               failed(err, data);
+            }
+            else
+            {
+               if(method == AUTH_METHODS.LOGIN)
+                  self.command((new Buffer(login.user())).toString("base64"), attempt, [334]);
+            }
+         };
+
          if(method == AUTH_METHODS.CRAM_MD5)
             self.command("AUTH " + AUTH_METHODS.CRAM_MD5, attempt, [334]);
    
          else if(method == AUTH_METHODS.LOGIN)
-            self.command("AUTH " + AUTH_METHODS.LOGIN + " " + (new Buffer(login.user())).toString("base64"), attempt, [334]);
+            self.command("AUTH " + AUTH_METHODS.LOGIN, attempt_user, [334]);
    
          else if(method == AUTH_METHODS.PLAIN)
             self.command("AUTH " + AUTH_METHODS.PLAIN + " " + encode_plain(login.user(), login.password()), response, [235, 503]);
