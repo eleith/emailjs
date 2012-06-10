@@ -22,6 +22,50 @@ var generate_boundary = function()
    return text;
 };
 
+var quotedPrintable = function(s, enc) 
+{
+  enc = enc || 'utf8';
+  var b = new Buffer(s, enc), t = new Buffer(s.length*3); //maximum length of target is trippled
+  var i, ti, ii;
+  for (i=0,ti=0,ii=b.length;i<ii;++i, ++ti) {
+    if (b[i] === 61) {
+      // =, escape to =3D
+      t.write("=3D", ti, "ascii");
+      ti += 2;
+    }
+    else if (b[i] < 128) {
+      t[ti] = b[i];
+    }
+    else {
+      t.write("=" + Number(b[i]).toString(16), ti, "ascii");
+      ti += 2;
+    }
+  }
+  return t.toString('ascii', 0, ti);
+};
+
+var maybeQuoted = function(s) 
+{
+  var q = quotedPrintable(s);
+  if (q !== s) {
+    return '=?utf-8?q?' + q + '?=';
+  }
+  return s;
+};
+
+function person2address(l) 
+{
+   // an array of emails or name+emails
+   if(l instanceof Array)
+      l = l.join(', ');
+
+   // a string of comma separated emails or comma separated name+<emails>
+   if(typeof l == 'string')
+      return l.replace(/([^<]+[^\s])\s*(<[^>]+>)/g, function(full, name, email) { return maybeQuoted(name) + '' + email; });
+
+   return null;
+}
+
 var Message = function(headers)
 {
    this.attachments  = [];
@@ -55,6 +99,14 @@ var Message = function(headers)
          {
             this.attach(headers[header]);
          }
+      }
+      else if(header == 'subject')
+      {
+         this.header.subject = maybeQuoted(headers.subject);
+      }
+      else if(/cc|bcc|to|from/i.test(header))
+      {
+         this.header[header.toLowerCase()] = person2address(headers[header]);
       }
       else
       {
@@ -394,7 +446,8 @@ var MessageStream = function(message)
    {
       var data = [];
 
-      data = data.concat(["Content-Type:", message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF]);
+      //data = data.concat(["Content-Type:", message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF]);
+      data = data.concat(["Content-Type:", message.content, CRLF, "Content-Transfer-Encoding: quoted-printable", CRLF]);
       data = data.concat(["Content-Disposition: inline", CRLF, CRLF]);
       data = data.concat([message.text || "", CRLF, CRLF]);
 
