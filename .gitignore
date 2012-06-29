@@ -1,2 +1,3 @@
-node_modules
-test/config.js
+/node_modules/
+/test/config.js
+/npm-debug.log
