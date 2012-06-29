@@ -2,8 +2,9 @@ var stream     = require('stream');
 var util       = require('util');
 var fs         = require('fs');
 var os         = require('os');
-var buffertools= require('buffertools');
 var path       = require('path');
+require('bufferjs');
+
 var CRLF       = "\r\n";
 var MIMECHUNK  = 76; // MIME standard wants 76 char chunks when sending out.
 var BASE64CHUNK= 24; // BASE64 bits needed before padding is used
@@ -343,7 +344,7 @@ var MessageStream = function(message)
             // do we have bytes from a previous stream data event?
             if(previous)
             {
-               var buffer2 = buffertools.concat(previous, buffer);
+               var buffer2 = Buffer.concat(previous, buffer);
                previous    = null; // free up the buffer
                buffer      = null; // free up the buffer
                buffer      = buffer2;

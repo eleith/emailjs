@@ -18,7 +18,7 @@
    },
    "dependencies":
    {
-      "buffertools" : ">= 1.0.8"
+      "bufferjs" : ">= 1.0.2"
    },
    "engine": 		["node >= 0.6.15"],
    "main": 			"email",
