@@ -19,7 +19,7 @@
    },
    "optionalDependencies":
    {
-      "buffertools" : ">= 1.1.0"
+      "bufferjs": "*"
    },
    "engine": ["node >= 0.6"],
    "main": "email",
