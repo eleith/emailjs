@@ -66,7 +66,7 @@ function person2address(l)
 
    // a string of comma separated emails or comma separated name+<emails>
    if(typeof l == 'string')
-      return l.replace(/([^<]+[^\s])\s*(<[^>]+>)/g, function(full, name, email) { return maybeQuoted(name) + '' + email; });
+      return l.replace(/([^<]+[^\s])(\s*)(<[^>]+>)/g, function(full, name, space, email) { return maybeQuoted(name) + space + email; });
 
    return null;
 }
