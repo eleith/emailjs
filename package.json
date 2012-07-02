@@ -14,7 +14,7 @@
     "mocha": ">= 1.0.3",
     "chai": ">= 1.0.3",
     "simplesmtp" : ">= 0.1.18",
-    "mailparser" : ">= 0.2.26"
+    "mailparser" : ">= 0.2.27"
    },
    "dependencies":
    {
