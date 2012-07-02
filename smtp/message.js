@@ -2,7 +2,6 @@ var stream     = require('stream');
 var util       = require('util');
 var fs         = require('fs');
 var os         = require('os');
-var buffertools= require('buffertools');
 var path       = require('path');
 var CRLF       = "\r\n";
 var MIMECHUNK  = 76; // MIME standard wants 76 char chunks when sending out.
@@ -10,6 +9,12 @@ var BASE64CHUNK= 24; // BASE64 bits needed before padding is used
 var MIME64CHUNK= MIMECHUNK * 6; // meets both base64 and mime divisibility
 var BUFFERSIZE = MIMECHUNK*24*7; // size of the message stream buffer
 var counter    = 0;
+
+// support for nodejs without Buffer.concat native function
+if(!Buffer.concat)
+{
+   require("bufferjs/concat");
+}
 
 var generate_boundary = function()
 {
@@ -344,7 +349,7 @@ var MessageStream = function(message)
             // do we have bytes from a previous stream data event?
             if(previous)
             {
-               var buffer2 = buffertools.concat(previous, buffer);
+               var buffer2 = Buffer.concat([previous, buffer]);
                previous    = null; // free up the buffer
                buffer      = null; // free up the buffer
                buffer      = buffer2;
