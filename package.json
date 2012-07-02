@@ -18,12 +18,12 @@
    },
    "dependencies":
    {
-      "buffertools" : ">= 1.0.8"
+      "buffertools" : ">= 1.1.0"
    },
    "engine": 		["node >= 0.6.15"],
    "main": 			"email",
    "scripts":
    {
-       "test": "mocha -R spec -t 5000"
+       "test": "mocha -R spec -t 5000 test"
    }
 }
