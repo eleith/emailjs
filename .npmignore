@@ -1,0 +1,6 @@
+/node_modules/
+/test/
+/.gitignore
+/.npmignore
+/.travis.yml
+/npm-debug.log
