@@ -138,7 +138,7 @@ Message.prototype =
             if(attachment.path)
             {
                // migrating path->fs for existsSync)
-               if(!(fs.existsSync || path.existsSync)(attachment.path))
+               if(!(fs.existsSync || fs.existsSync)(attachment.path))
                   failed.push(attachment.path + " does not exist");
             }
             else if(attachment.stream)
