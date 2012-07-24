@@ -1,6 +1,6 @@
 # warning
 
-please be aware that sending a string over 12k bytes long will crash the node process:
+please be aware that sending a string (large file attachments work fine) over 12k bytes long will crash the node process:
 
 https://github.com/eleith/emailjs/issues?direction=desc&sort=created&state=open
 
