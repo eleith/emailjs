@@ -378,22 +378,17 @@ var MessageStream = function(message)
 
    var output_base64 = function(data, callback)
    {
-      var loops   = Math.floor(data.length / MIMECHUNK);
-      var leftover= Math.abs(data.length - loops*MIMECHUNK);
+      var loops   = Math.ceil(data.length / MIMECHUNK);
+      var loop    = 0;
 
-      var loop = function(index)
+      while(loop < loops)
       {
-         if(index < loops)
-            output(data.substring(MIMECHUNK * index, MIMECHUNK * (index + 1)) + CRLF, loop, [index + 1]);
+        output(data.substring(MIMECHUNK * loop, MIMECHUNK * (loop + 1)) + CRLF);
+        loop++;
+      }
 
-         else if(leftover)
-            output(data.substring(index*MIMECHUNK) + CRLF, callback);
-
-         else if(callback)
-            callback();
-      };
-
-      loop(0);
+      if(callback)
+        callback();
    };
 
    var output_text = function(message)
@@ -495,9 +490,23 @@ var MessageStream = function(message)
          if(callback)
             callback.apply(null, args);
       }
+      // we can't buffer the data, so ship it out!
       else if(bytes > self.buffer.length)
       {
-         close({message:"internal buffer got too large to handle!"});
+         if(self.bufferIndex)
+         {
+            self.emit('data', self.buffer.toString("utf-8", 0, self.bufferIndex));
+            self.bufferIndex = 0;
+         }
+
+         var loops   = Math.ceil(data.length / self.buffer.length);
+         var loop    = 0;
+
+         while(loop < loops)
+         {
+           self.emit('data', data.substring(self.buffer.length*loop, self.buffer.length*(loop + 1)));
+           loop++;
+         }
       }
       else // we need to clean out the buffer, it is getting full
       {

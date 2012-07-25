@@ -20,7 +20,7 @@ var AUTH_METHODS  = {PLAIN:'PLAIN', CRAM_MD5:'CRAM-MD5', LOGIN:'LOGIN'};
 var TIMEOUT       = 5000;
 var DEBUG         = 0;
 
-var log = function() 
+var log = function()
 {
    if(DEBUG)
    {

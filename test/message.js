@@ -77,6 +77,50 @@ describe("messages", function()
       });
    });
 
+   it("very large text message", function(done)
+   {
+      // thanks to jart+loberstech for this one!
+      var message =
+      {
+         subject: "this is a test TEXT message from emailjs",
+         from:    "ninjas@gmail.com",
+         to:      "pirates@gmail.com",
+         text:    fs.readFileSync(path.join(__dirname, "attachments/smtp.txt"))
+      };
+
+      send(email.message.create(message), function(mail)
+      {
+         expect(mail.text).to.equal(message.text + "\n\n");
+         expect(mail.headers.subject).to.equal(message.subject);
+         expect(mail.headers.from).to.equal(message.from);
+         expect(mail.headers.to).to.equal(message.to);
+         done();
+      });
+   });
+
+   it("very large text data", function(done) 
+   {
+      var text = "<html><body><pre>" + fs.readFileSync(path.join(__dirname, "attachments/smtp.txt"), "utf-8") + "</pre></body></html>";
+      var message =
+      {
+         subject:    "this is a test TEXT+DATA message from emailjs",
+         from:       "lobsters@gmail.com",
+         to:         "lizards@gmail.com",
+         text:       "hello friend if you are seeing this, you can not view html emails. it is attached inline.",
+         attachment: {data:text, alternative:true}
+      };
+
+      send(message, function(mail)
+      {
+         expect(mail.html).to.equal(text);
+         expect(mail.text).to.equal(message.text + "\n");
+         expect(mail.headers.subject).to.equal(message.subject);
+         expect(mail.headers.from).to.equal(message.from);
+         expect(mail.headers.to).to.equal(message.to);
+         done();
+      });
+   });
+
    it("html data", function(done) 
    {
       var html = fs.readFileSync(path.join(__dirname, "attachments/smtp.html"), "utf-8");

@@ -1,12 +1,4 @@
-# warning
-
-please be aware that sending a string (large file attachments work fine) over 12k bytes long will crash the node process:
-
-https://github.com/eleith/emailjs/issues?direction=desc&sort=created&state=open
-
-this message will remain till the issue is closed.
-
-# emailjs (v0.3.0) [![Build Status](https://secure.travis-ci.org/eleith/emailjs.png)](http://travis-ci.org/eleith/emailjs)
+# emailjs (v0.3.1) [![Build Status](https://secure.travis-ci.org/eleith/emailjs.png)](http://travis-ci.org/eleith/emailjs)
 
 
 send emails, html and attachments (files, streams and strings) from node.js to any smtp server
