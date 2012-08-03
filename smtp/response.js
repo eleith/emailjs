@@ -19,12 +19,12 @@ var SMTPResponse = function(stream, timeout, onerror)
 
 	error = function(err)
 	{
-		stream.emit('response', {code:SMTPError.ERROR, message:"connection encountered an error", error:err});
+		stream.emit('response', SMTPError('connection encountered an error', SMTPError.ERROR, err));
 	},
 
    timedout = function(err)
    {
-      stream.emit('response', {code:SMTPError.TIMEDOUT, message:"timedout while connecting to smtp server", error:err});
+      stream.emit('response', SMTPError('timedout while connecting to smtp server', SMTPError.TIMEDOUT, err));
    },
 
 	watch = function(data) 
@@ -39,12 +39,12 @@ var SMTPResponse = function(stream, timeout, onerror)
 
 	close = function(err)
 	{
-		stream.emit('response', {code:SMTPError.CONNECTIONCLOSED, message:"connection has closed", error:err});
+		stream.emit('response', SMTPError('connection has closed', SMTPError.CONNECTIONCLOSED, err));
 	},
 
 	end = function(err)
 	{
-		stream.emit('response', {code:SMTPError.CONNECTIONENDED, message:"connection has ended", error:err});
+		stream.emit('response', SMTPError('connection has ended', SMTPError.CONNECTIONENDED, err));
 	};
 
    this.stop = function(err)

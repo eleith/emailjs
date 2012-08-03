@@ -99,11 +99,11 @@ Client.prototype =
                self._poll();
             }
             else
-               callback({code:-1, message:why}, msg);
+               callback(new Error(why), msg);
          });
       }
       else
-         callback({code:-1, message:"message is not a valid Message instance"}, msg);
+         callback(new Error("message is not a valid Message instance"), msg);
    },
 
    _sendsmtp: function(stack, next)

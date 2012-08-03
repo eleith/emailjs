@@ -121,7 +121,7 @@ SMTP.prototype =
                if(typeof(self.ssl) != 'boolean' && !self.sock.authorized)
                {
                   self.close(true);
-                  caller(callback, {code:SMTPError.CONNECTIONAUTH, message:"could not establish an ssl connection", error:err});
+                  caller(callback, SMTPError('could not establish an ssl connection', SMTPError.CONNECTIONAUTH, err));
                }
                else
                   self._secure = true;
@@ -130,7 +130,7 @@ SMTP.prototype =
          else
          {
             self.close(true);
-            caller(callback, {code:SMTPError.COULDNOTCONNECT, error:err});
+            caller(callback, SMTPError("could not connect", SMTPError.COULDNOTCONNECT, err));
          }
       };
    
@@ -152,7 +152,7 @@ SMTP.prototype =
          {
             log("response (data): " + msg.data);
             self.quit();
-            caller(callback, {code:SMTPError.BADRESPONSE, message:"bad response on connection", smtp:msg.data, error:err});
+            caller(callback, SMTPError("bad response on connection", SMTPError.BADRESPONSE, err, msg.data));
          }
       };
 
@@ -200,7 +200,7 @@ SMTP.prototype =
       else
       {
          self.close(true);
-         caller(callback, {code:SMTPError.NOCONNECTION, message:"no connection has been established"});
+         caller(callback, SMTPError('no connection has been established', SMTPError.NOCONNECTION));
       }
    },
    
@@ -220,7 +220,7 @@ SMTP.prototype =
                caller(callback, err, msg.data, msg.message);
 
             else
-               caller(callback, {code:SMTPError.BADRESPONSE, message:"bad response on command '" + cmd.split(' ')[0] + "'",  smtp:msg.data});
+               caller(callback, SMTPError("bad response on command '" + cmd.split(' ')[0] + "'", SMTPError.BADRESPONSE, null, msg.data));
          }
       };
    
@@ -480,7 +480,7 @@ SMTP.prototype =
          var failed = function(err, data)
          {
             self.loggedin = false;
-            caller(callback, {code:SMTPError.AUTHFAILED, message:"authorization failed", smtp:data, error:err.error});
+            caller(callback, SMTPError('authorization.failed', SMTPError.AUTHFAILED, err, data));
          };
    
          var response = function(err, data)
@@ -535,7 +535,7 @@ SMTP.prototype =
             self.command("AUTH " + AUTH_METHODS.PLAIN + " " + encode_plain(login.user(), login.password()), response, [235, 503]);
    
          else if(!method)
-            caller(callback, {code:SMTPError.AUTHNOTSUPPORTED, message:"no form of authorization supported", smtp:data});
+            caller(callback, SMTPError('no form of authorization supported', SMTPError.AUTHNOTSUPPORTED, null, data));
       };
    
       self.ehlo_or_helo_if_needed(initiate, domain);
