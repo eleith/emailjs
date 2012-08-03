@@ -93,7 +93,7 @@ Address.prototype =
 		if(this.pos >= this.field.length)
 		{
 			// Bad email address, no domain
-			if(plist)
+			if(plist.length)
 				returnlist = [{label:this.commentlist.join(SPACE), address:plist[0]}]; 
 		}
 
@@ -142,11 +142,11 @@ Address.prototype =
 
 		else
 		{
-			if(plist)
+			if(plist.length)
 				returnlist = {label:this.commentlist.join(SPACE), address:plist[0]};
 
 			else if(this.specials.indexOf(this.field[this.pos]) != -1)
-				this.post++;
+				this.pos++;
 		}
 
 		this.gotonext();
