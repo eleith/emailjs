@@ -3,6 +3,7 @@ var util       = require('util');
 var fs         = require('fs');
 var os         = require('os');
 var path       = require('path');
+var dateformat = require('dateformat');
 var CRLF       = "\r\n";
 var MIMECHUNK  = 76; // MIME standard wants 76 char chunks when sending out.
 var BASE64CHUNK= 24; // BASE64 bits needed before padding is used
@@ -31,7 +32,11 @@ var Message = function(headers)
 {
    this.attachments  = [];
    this.alternative  = null;
-   this.header       = {"message-id":"<" + (new Date()).getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">"};
+   var now = new Date();
+   this.header       = {
+      "message-id":"<" + now.getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">",
+      "date":dateformat(now, "ddd, dd mmm yyyy HH:MM:ss o")
+   };
    this.content      = "text/plain; charset=utf-8";
 
    for(var header in headers)
