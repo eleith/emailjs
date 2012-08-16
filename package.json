@@ -9,7 +9,7 @@
        "type": "git",
        "url": "http://github.com/eleith/emailjs.git"
    },
-   "devDependencies":
+   "dependencies":
    {
     "mocha": ">= 1.2.2",
     "chai": ">= 1.1.0",
