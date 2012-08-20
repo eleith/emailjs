@@ -3,7 +3,7 @@ var util       = require('util');
 var fs         = require('fs');
 var os         = require('os');
 var path       = require('path');
-var dateformat = require('dateformat');
+var moment     = require('moment');
 var CRLF       = "\r\n";
 var MIMECHUNK  = 76; // MIME standard wants 76 char chunks when sending out.
 var BASE64CHUNK= 24; // BASE64 bits needed before padding is used
@@ -35,7 +35,7 @@ var Message = function(headers)
    var now = new Date();
    this.header       = {
       "message-id":"<" + now.getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">",
-      "date":dateformat(now, "ddd, dd mmm yyyy HH:MM:ss o")
+      "date":moment().format("ddd, DD MMM YYYY HH:mm:ss ZZ")
    };
    this.content      = "text/plain; charset=utf-8";
 
