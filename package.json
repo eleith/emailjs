@@ -9,6 +9,10 @@
        "type": "git",
        "url": "http://github.com/eleith/emailjs.git"
    },
+   "dependencies":
+   {
+    "mimelib": ">=0.1.15"
+   },
    "devDependencies":
    {
     "mocha": ">= 1.2.2",

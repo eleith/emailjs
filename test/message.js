@@ -77,6 +77,36 @@ describe("messages", function()
       });
    });
 
+   it("unicode text message and headers", function(done)
+   {
+      var message =
+      {
+         subject: "this is a test TEXT message from emailjs with \u01dd\u0070\u006f\u0254\u0131\u0075\u006e", // unicode inverted
+         from:    "\u01dd\u0070\u006f\u0254\u0131\u0075\u006e <zelda@gmail.com>",
+         to:      ["\u01dd\u0070\u006f\u0254\u0131\u0075\u006e Joe <gannon@gmail.com>",
+                   "Jane Doe <janedoe@gmail.com>"],
+         text:    "hello friend, i hope this message finds you well.\n\n" +
+          "\u01dd\u0070\u006f\u0254\u0131\u0075\u006e"
+      };
+
+      var mail_to_send = email.message.create(message);
+      expect(mail_to_send.header.from,
+            'header to send').to.equal('=?UTF-8?Q?=C7=9Dpo=C9=94=C4=B1un?= <zelda@gmail.com>');
+      expect(mail_to_send.header.to,
+            'header to send').to.equal('=?UTF-8?Q?=C7=9Dpo=C9=94=C4=B1un_Joe?= <gannon@gmail.com>, Jane Doe <janedoe@gmail.com>');
+      send(mail_to_send, function(mail)
+      {
+         expect(mail.text).to.equal(message.text + "\n\n");
+         expect(mail.headers.subject,
+               'received subject header').to.equal(message.subject);
+         expect(mail.headers.from,
+               'received FROM header').to.equal(message.from);
+         expect(mail.headers.to,
+               'received TO header').to.equal(message.to.join(", "));
+         done();
+      });
+   });
+
    it("very large text message", function(done)
    {
       // thanks to jart+loberstech for this one!
