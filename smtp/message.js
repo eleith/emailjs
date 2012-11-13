@@ -125,7 +125,7 @@ Message.prototype =
       {
          callback(false, "message does not have a valid sender");
       }
-      if(!self.header.to)
+      if(!(self.header.to || self.header.cc || self.header.bcc))
       {
          callback(false, "message does not have a valid recipient");
       }

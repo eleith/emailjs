@@ -72,7 +72,10 @@ Client.prototype =
    {
       var self = this;
 
-      if(!(msg instanceof message.Message) && msg.from && msg.to && msg.text)
+      if(!(msg instanceof message.Message) 
+          && msg.from 
+          && (msg.to || msg.cc || msg.bcc)
+          && msg.text)
          msg = message.create(msg);
 
       if(msg instanceof message.Message)
