@@ -16,7 +16,7 @@ var SMTP_PORT     = 25;
 var SMTP_SSL_PORT = 465;
 var SMTP_TLS_PORT = 587;
 var CRLF          = "\r\n";
-var AUTH_METHODS  = {PLAIN:'PLAIN', CRAM_MD5:'CRAM-MD5', LOGIN:'LOGIN'};
+var AUTH_METHODS  = {PLAIN:'PLAIN', CRAM_MD5:'CRAM-MD5', LOGIN:'LOGIN', XOAUTH2:'XOAUTH2'};
 var TIMEOUT       = 5000;
 var DEBUG         = 0;
 
@@ -66,7 +66,7 @@ var SMTP = function(options)
    this.features  = null;
    this._state    = SMTPState.NOTCONNECTED;
    this._secure   = false;
-   this.loggedin  = (options.user && options.password) ? false : true;
+   this.loggedin  = (options.user && (options.password || options.accessToken)) ? false : true;
    this.domain    = options.domain || os.hostname();
    this.host      = options.host || 'localhost';
    this.port      = options.port || (options.ssl ? SMTP_SSL_PORT : options.tls ? SMTP_TLS_PORT : SMTP_PORT);
@@ -77,6 +77,7 @@ var SMTP = function(options)
    // keep these strings hidden when quicky debugging/logging
    this.user      = function() { return options.user; };
    this.password  = function() { return options.password; };
+   this.accessToken = function(){ return options.accessToken; };
 };
 
 SMTP.prototype = 
@@ -217,7 +218,7 @@ SMTP.prototype =
          else
          {
             if(codes.indexOf(Number(msg.code)) != -1)
-               caller(callback, err, msg.data, msg.message);
+               caller(callback, err, msg.data, msg.message, Number(msg.code));
 
             else
                caller(callback, SMTPError("bad response on command '" + cmd.split(' ')[0] + "'", SMTPError.BADRESPONSE, null, msg.data));
@@ -417,7 +418,8 @@ SMTP.prototype =
       {
          user:       user ? function() { return user; } : self.user,
          password:   password ? function() { return password; } : self.password,
-         method:     options && options.method ? options.method.toUpperCase() : ''
+         method:     options && options.method ? options.method.toUpperCase() : '',
+         accessToken: options && options.accessToken? function(){ return options.accessToken; } : self.accessToken
       }, 
    
       domain = options && options.domain ? options.domain : this.domain,
@@ -464,7 +466,7 @@ SMTP.prototype =
          // less preferred methods.
          if(!method)
          {
-            var preferred = [AUTH_METHODS.CRAM_MD5, AUTH_METHODS.LOGIN, AUTH_METHODS.PLAIN];
+            var preferred = [AUTH_METHODS.XOAUTH2, AUTH_METHODS.CRAM_MD5, AUTH_METHODS.LOGIN, AUTH_METHODS.PLAIN];
    
             for(var i = 0; i < preferred.length; i++)
             {
@@ -506,7 +508,6 @@ SMTP.prototype =
             {
                if(method == AUTH_METHODS.CRAM_MD5)
                   self.command(encode_cram_md5(msg), response, [235, 503]);
-   
                else if(method == AUTH_METHODS.LOGIN)
                   self.command((new Buffer(login.password())).toString("base64"), response, [235, 503]);
             }
@@ -525,7 +526,33 @@ SMTP.prototype =
             }
          };
 
-         if(method == AUTH_METHODS.CRAM_MD5)
+         var attempt_access_token  = function(err, data, msg, code){
+             if(err)
+             {
+                 failed(err, data);
+             }
+             else
+             {
+                 if(code == 334)
+                     self.command("", function(err, data, msg){
+                         if(err)
+                         {
+                             failed(err, data);
+                         }
+                         else
+                         {
+                            failed(SMTPError("invalid auth data", SMTPError.AUTHFAILED, null, msg), data);
+                         }
+                     }, [535]);
+                 else
+                     response(err, data, msg);
+             }
+         };
+
+         if(method == AUTH_METHODS.XOAUTH2) {
+             self.command("AUTH " + AUTH_METHODS.XOAUTH2 + " " + (new Buffer("user=" + login.user() + "\x01auth=Bearer " + login.accessToken() + "\x01\x01", "utf-8")).toString("base64") , attempt_access_token, [235, 334]);
+         }
+         else if(method == AUTH_METHODS.CRAM_MD5)
             self.command("AUTH " + AUTH_METHODS.CRAM_MD5, attempt, [334]);
    
          else if(method == AUTH_METHODS.LOGIN)
