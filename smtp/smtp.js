@@ -462,7 +462,7 @@ SMTP.prototype =
    
          encode_xoauth2 = function()
          {
-            console.log("user=" + login.user() + "\1auth=Bearer " + login.password()+"\1\1");
+            // console.log("user=" + login.user() + "\1auth=Bearer " + login.password()+"\1\1");
             return (new Buffer("user=" + login.user() + "\1auth=Bearer " + login.password()+"\1\1")).toString("base64");
          };
 
