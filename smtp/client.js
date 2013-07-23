@@ -75,7 +75,7 @@ Client.prototype =
       if(!(msg instanceof message.Message) 
           && msg.from 
           && (msg.to || msg.cc || msg.bcc)
-          && msg.text)
+          && (msg.text || this._containsInlinedHtml(msg.attachment)))
          msg = message.create(msg);
 
       if(msg instanceof message.Message)
@@ -107,6 +107,24 @@ Client.prototype =
       }
       else
          callback(new Error("message is not a valid Message instance"), msg);
+   },
+
+   _containsInlinedHtml: function(attachment) {
+	   if (Array.isArray(attachment)) {
+		   return attachment.some((function(ctx) {
+			   return function(att) {
+				   return ctx._isAttachmentInlinedHtml(att);
+			   };
+		   })(this));
+	   } else {
+		   return this._isAttachmentInlinedHtml(attachment);
+	   }   
+	},
+
+   _isAttachmentInlinedHtml: function(attachment) {
+	   return attachment && 
+		  (attachment.data || attachment.path) && 
+		   attachment.alternative === true;
    },
 
    _sendsmtp: function(stack, next)
