@@ -16,7 +16,7 @@ var SMTP_PORT     = 25;
 var SMTP_SSL_PORT = 465;
 var SMTP_TLS_PORT = 587;
 var CRLF          = "\r\n";
-var AUTH_METHODS  = {PLAIN:'PLAIN', CRAM_MD5:'CRAM-MD5', LOGIN:'LOGIN'};
+var AUTH_METHODS  = {PLAIN:'PLAIN', CRAM_MD5:'CRAM-MD5', LOGIN:'LOGIN', XOAUTH2: 'XOAUTH2'};
 var TIMEOUT       = 5000;
 var DEBUG         = 0;
 
@@ -461,11 +461,17 @@ SMTP.prototype =
             return (new Buffer("\0" + login.user() + "\0" + login.password())).toString("base64");
          };
    
+         encode_xoauth2 = function()
+         {
+            // console.log("user=" + login.user() + "\1auth=Bearer " + login.password()+"\1\1");
+            return (new Buffer("user=" + login.user() + "\1auth=Bearer " + login.password()+"\1\1")).toString("base64");
+         };
+
          // List of authentication methods we support: from preferred to
          // less preferred methods.
          if(!method)
          {
-            var preferred = [AUTH_METHODS.CRAM_MD5, AUTH_METHODS.LOGIN, AUTH_METHODS.PLAIN];
+            var preferred = [AUTH_METHODS.XOAUTH2, AUTH_METHODS.CRAM_MD5, AUTH_METHODS.LOGIN, AUTH_METHODS.PLAIN];
    
             for(var i = 0; i < preferred.length; i++)
             {
@@ -534,6 +540,9 @@ SMTP.prototype =
    
          else if(method == AUTH_METHODS.PLAIN)
             self.command("AUTH " + AUTH_METHODS.PLAIN + " " + encode_plain(login.user(), login.password()), response, [235, 503]);
+   
+         else if(method == AUTH_METHODS.XOAUTH2)
+            self.command("AUTH " + AUTH_METHODS.XOAUTH2 + " " + encode_xoauth2(login.user(), login.password()), response, [235, 503]);
    
          else if(!method)
             caller(callback, SMTPError('no form of authorization supported', SMTPError.AUTHNOTSUPPORTED, null, data));
