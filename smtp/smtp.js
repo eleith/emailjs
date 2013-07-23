@@ -458,7 +458,7 @@ SMTP.prototype =
    
          encode_plain = function()
          {
-            return (new Buffer("\\0" + login.user() + "\\0" + login.password())).toString("base64");
+            return (new Buffer("\0" + login.user() + "\0" + login.password())).toString("base64");
          };
    
          // List of authentication methods we support: from preferred to
