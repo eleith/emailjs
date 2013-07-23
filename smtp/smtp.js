@@ -138,6 +138,7 @@ SMTP.prototype =
       {
          if(err)
          {
+            self.close(true);
             caller(callback, err);
          }
          else if(msg.code == '220')
