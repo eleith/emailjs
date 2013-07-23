@@ -458,11 +458,12 @@ SMTP.prototype =
          encode_plain = function()
          {
             return (new Buffer("\\0" + login.user() + "\\0" + login.password())).toString("base64");
-         };
+         },
    
          encode_xoauth2 = function()
          {
-            // console.log("user=" + login.user() + "\1auth=Bearer " + login.password()+"\1\1");
+            // console.log("user=" + login.user() + "\1auth=Bearer " + login.password()+"\1\1"); 
+            // see: https://developers.google.com/gmail/xoauth2_protocol
             return (new Buffer("user=" + login.user() + "\1auth=Bearer " + login.password()+"\1\1")).toString("base64");
          };
 
