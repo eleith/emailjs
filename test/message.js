@@ -22,10 +22,10 @@ describe("messages", function()
          });
       });
 
-      server.send(message, function(err) 
+       server.send(message, function(err, message) 
       {
          if(err)
-            throw err;
+            throw err;		 
       });
    };
 
@@ -128,15 +128,14 @@ describe("messages", function()
       {
          subject:    "this is a test TEXT+HTML+DATA message from emailjs",
          from:       "obama@gmail.com",
-         to:         "mitt@gmail.com",
-         text:       "hello friend if you are seeing this, you can not view html emails. it is attached inline.",
+         to:         "mitt@gmail.com",         
          attachment: {data:html, alternative:true}
       };
 
       send(message, function(mail)
       {
          expect(mail.html).to.equal(html);
-         expect(mail.text).to.equal(message.text + "\n");
+         expect(mail.text).to.not.equal(message.text + "\n");
          expect(mail.headers.subject).to.equal(message.subject);
          expect(mail.headers.from).to.equal(message.from);
          expect(mail.headers.to).to.equal(message.to);
@@ -152,14 +151,13 @@ describe("messages", function()
          subject: "this is a test TEXT+HTML+FILE message from emailjs",
          from:    "thomas@gmail.com",
          to:      "nikolas@gmail.com",
-         text:    "hello friend if you are seeing this, you can not view html emails. it is attached inline.",
          attachment: {path:path.join(__dirname, "attachments/smtp.html"), alternative:true}
       };
 
       send(headers, function(mail)
       {
          expect(mail.html).to.equal(html);
-         expect(mail.text).to.equal(headers.text + "\n");
+         expect(mail.text).to.not.equal(headers.text + "\n");
          expect(mail.headers.subject).to.equal(headers.subject);
          expect(mail.headers.from).to.equal(headers.from);
          expect(mail.headers.to).to.equal(headers.to);
@@ -176,7 +174,6 @@ describe("messages", function()
          subject: "this is a test TEXT+HTML+IMAGE message from emailjs",
          from:    "ninja@gmail.com",
          to:      "pirate@gmail.com",
-         text:    "hello friend if you are seeing this, you can not view html emails. it is attached inline.",
          attachment:
          {
             path:          path.join(__dirname, "attachments/smtp2.html"), 
@@ -197,13 +194,36 @@ describe("messages", function()
       {
          expect(mail.attachments[0].content.toString("base64")).to.equal(image.toString("base64"));
          expect(mail.html).to.equal(html);
-         expect(mail.text).to.equal(headers.text + "\n");
+         expect(mail.text).to.not.equal(headers.text + "\n");
          expect(mail.headers.subject).to.equal(headers.subject);
          expect(mail.headers.from).to.equal(headers.from);
          expect(mail.headers.to).to.equal(headers.to);
          done();
       });
    });
+
+	it("html data and attachment", function(done) {
+		var html    = fs.readFileSync(path.join(__dirname, "attachments/smtp.html"), "utf-8");
+		var headers =
+			{
+				subject: "this is a test TEXT+HTML+FILE message from emailjs",
+				from:    "thomas@gmail.com",
+				to:      "nikolas@gmail.com",
+				attachment: [
+					{path:path.join(__dirname, "attachments/smtp.html"), alternative:true},
+					{path:path.join(__dirname, "attachments/smtp.gif")}
+				]
+			};
+
+		send(headers, function(mail) {
+			expect(mail.html).to.equal(html);
+			expect(mail.text).to.not.equal(headers.text + "\n");
+			expect(mail.headers.subject).to.equal(headers.subject);
+			expect(mail.headers.from).to.equal(headers.from);
+			expect(mail.headers.to).to.equal(headers.to);
+			done();
+		});
+	});
 
    it("attachment", function(done)
    {
