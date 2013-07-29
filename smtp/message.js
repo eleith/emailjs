@@ -41,7 +41,7 @@ var Message = function(headers)
    var now = new Date();
    this.header       = {
       "message-id":"<" + now.getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">",
-      "date":moment().format("ddd, DD MMM YYYY HH:mm:ss ZZ")
+      "date":moment().format("ddd, DD MMM YYYY HH:mm:ss ") + moment().format("Z").replace(/:/, '')
    };
    this.content      = "text/plain; charset=utf-8";
 
