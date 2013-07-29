@@ -28,6 +28,12 @@ var generate_boundary = function()
    return text;
 };
 
+var fix_header_name_case = function(header_name) {
+    return header_name.toLowerCase().replace(/^(.)|-(.)/g, function(match) {
+        return match.toUpperCase();
+    });
+};
+
 var Message = function(headers)
 {
    this.attachments  = [];
@@ -273,7 +279,7 @@ var MessageStream = function(message)
 
       for(header in headers)
       {
-         data = data.concat([header, ': ', headers[header], CRLF]);
+         data = data.concat([fix_header_name_case(header), ': ', headers[header], CRLF]);
       }
 
       output(data.concat([CRLF]).join(''));
@@ -475,7 +481,7 @@ var MessageStream = function(message)
       {
          // do not output BCC in the headers...
          if(!(/bcc/i.test(header)))
-            data = data.concat([header, ": ", self.message.header[header], CRLF]);
+            data = data.concat([fix_header_name_case(header), ": ", self.message.header[header], CRLF]);
       }
 
       output(data.join(''));
