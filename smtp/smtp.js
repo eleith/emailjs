@@ -472,7 +472,7 @@ SMTP.prototype =
          // less preferred methods.
          if(!method)
          {
-            var preferred = [AUTH_METHODS.XOAUTH2, AUTH_METHODS.CRAM_MD5, AUTH_METHODS.LOGIN, AUTH_METHODS.PLAIN];
+            var preferred = [AUTH_METHODS.CRAM_MD5, AUTH_METHODS.LOGIN, AUTH_METHODS.PLAIN, AUTH_METHODS.XOAUTH2];
    
             for(var i = 0; i < preferred.length; i++)
             {
