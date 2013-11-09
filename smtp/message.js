@@ -337,7 +337,7 @@ var MessageStream = function(message)
             self.emit('error', err);
       };
 
-      fs.open(attachment.path, 'r+', opened);
+      fs.open(attachment.path, 'r', opened);
    };
 
    var output_stream = function(attachment, callback)
