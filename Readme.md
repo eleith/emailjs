@@ -1,4 +1,4 @@
-# emailjs (v0.3.5) [![Build Status](https://secure.travis-ci.org/eleith/emailjs.png)](http://travis-ci.org/eleith/emailjs)
+# emailjs (v0.3.6) [![Build Status](https://secure.travis-ci.org/eleith/emailjs.png)](http://travis-ci.org/eleith/emailjs)
 
 send emails, html and attachments (files, streams and strings) from node.js to any smtp server
 
