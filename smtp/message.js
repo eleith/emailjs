@@ -58,14 +58,11 @@ var Message = function(headers)
       }
       else if(header == "attachment" && typeof (headers[header]) == "object")
       {
-         if((headers[header]).constructor == Array)
+      if( Object.prototype.toString.call(headers[header]) == '[object Array]' )
          {
-            var that = this;
-
-            headers[header].forEach(function(attachment)
-            {
-               that.attach(attachment);
-            });
+            for (var i in headers[header]) {
+               this.attach(headers[header][i]);
+            }
          }
          else
          {
@@ -81,12 +78,12 @@ var Message = function(headers)
    }
 };
 
-Message.prototype = 
+Message.prototype =
 {
    attach: function(options)
    {
-      /* 
-         legacy support, will remove eventually... 
+      /*
+         legacy support, will remove eventually...
          arguments -> (path, type, name, headers)
       */
       if (arguments.length > 1)
@@ -106,7 +103,7 @@ Message.prototype =
       return this;
    },
 
-   /* 
+   /*
       legacy support, will remove eventually...
       should use Message.attach() instead
    */
@@ -216,10 +213,10 @@ var MessageStream = function(message)
       {
          next.apply(null, args);
       }
-   
+
       next.apply(null, args);
    };
-   
+
    var output_mixed = function()
    {
       var boundary   = generate_boundary();
@@ -264,10 +261,10 @@ var MessageStream = function(message)
    {
       var data = [],
           header,
-          headers = 
+          headers =
           {
             'content-type': attachment.type + (attachment.charset ? "; charset=" + attachment.charset : ""),
-            'content-transfer-encoding': 'base64', 
+            'content-transfer-encoding': 'base64',
             'content-disposition': attachment.inline ? 'inline' : 'attachment; filename="' + attachment.name + '"'
           };
 
@@ -337,7 +334,7 @@ var MessageStream = function(message)
             self.emit('error', err);
       };
 
-      fs.open(attachment.path, 'r', opened);
+      fs.open(attachment.path, 'r+', opened);
    };
 
    var output_stream = function(attachment, callback)
@@ -383,7 +380,7 @@ var MessageStream = function(message)
          self.on('resume', attachment.stream.resume);
          self.on('error', attachment.stream.resume);
       }
-      else 
+      else
          self.emit('error', {message:"stream not readable"});
    };
 
@@ -596,7 +593,7 @@ MessageStream.prototype.destroySoon = function()
 
 exports.Message = Message;
 exports.BUFFERSIZE = BUFFERSIZE;
-exports.create = function(headers) 
+exports.create = function(headers)
 {
    return new Message(headers);
 };
