@@ -12,13 +12,13 @@ describe("messages", function()
 
    var send = function(message, verify)
    {
-      smtp.on("startData", function(envelope)
+      smtp.once("startData", function(envelope)
       {
          envelope.parser = new (require("mailparser").MailParser)({defaultCharset:"utf-8"});
+
          envelope.parser.on("end", function(mail)
          {
             verify(mail);
-            smtp.removeListener("startData", arguments.callee);
          });
       });
 
@@ -79,6 +79,26 @@ describe("messages", function()
       });
    });
 
+   it("simple unicode text message", function(done)
+   {
+      var message =
+      {
+         subject: "this ✓ is a test ✓ TEXT message from emailjs",
+         from:    "zelda✓ <zelda@gmail.com>",
+         to:      "gannon✓ <gannon@gmail.com>",
+         text:    "hello ✓ friend, i hope this message finds you well."
+      };
+
+      send(email.message.create(message), function(mail)
+      {
+         expect(mail.text).to.equal(message.text + "\n\n");
+         expect(mail.headers.subject).to.equal(message.subject);
+         expect(mail.headers.from).to.equal(message.from);
+         expect(mail.headers.to).to.equal(message.to);
+         done();
+      });
+   });
+
    it("very large text message", function(done)
    {
       // thanks to jart+loberstech for this one!
@@ -87,7 +107,7 @@ describe("messages", function()
          subject: "this is a test TEXT message from emailjs",
          from:    "ninjas@gmail.com",
          to:      "pirates@gmail.com",
-         text:    fs.readFileSync(path.join(__dirname, "attachments/smtp.txt"))
+         text:    fs.readFileSync(path.join(__dirname, "attachments/smtp.txt"), "utf-8")
       };
 
       send(email.message.create(message), function(mail)

@@ -22,7 +22,8 @@
     "mocha": "= 1.7.4",
     "chai": "= 1.1.0",
     "simplesmtp": "= 0.3.24",
-    "mailparser": "0.2.27",
+    "mailparser": "0.4.1",
+    "mimelib": "0.2.14",
     "iconv": "2.0.7"
    },
    "engine": ["node >= 0.6"],
