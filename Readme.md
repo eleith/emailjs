@@ -1,4 +1,4 @@
-# emailjs (v0.3.7) [![Build Status](https://secure.travis-ci.org/eleith/emailjs.png)](http://travis-ci.org/eleith/emailjs)
+# emailjs (v0.3.8) [![Build Status](https://secure.travis-ci.org/eleith/emailjs.png)](http://travis-ci.org/eleith/emailjs)
 
 send emails, html and attachments (files, streams and strings) from node.js to any smtp server
 
@@ -12,6 +12,7 @@ send emails, html and attachments (files, streams and strings) from node.js to a
  - emails are queued and the queue is sent asynchronously
  - supports sending html emails and emails with multiple attachments (MIME)
  - attachments can be added as strings, streams or file paths
+ - supports utf-8 headers and body
 
 ## REQUIRES
  - access to an SMTP Server (ex: gmail)
