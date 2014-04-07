@@ -94,7 +94,7 @@ Address.prototype =
 		{
 			// Bad email address, no domain
 			if(plist.length)
-				returnlist = [{label:this.commentlist.join(SPACE), address:plist[0]}]; 
+				returnlist = {label:this.commentlist.join(SPACE), address:plist[0]}; 
 		}
 
 		else if('.@'.indexOf(this.field[this.pos]) != -1)
