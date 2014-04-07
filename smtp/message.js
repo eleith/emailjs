@@ -32,12 +32,14 @@ var generate_boundary = function()
 function person2address(l) 
 {
    // an array of emails or name+emails
-   if(l instanceof Array)
+   if (Array.isArray(l)) {
       l = l.join(', ');
+   }
 
    // a string of comma separated emails or comma separated name+<emails>
-   if(typeof l == 'string')
+   if(typeof l == 'string') {
       return l.replace(/([^<]+[^\s])(\s*)(<[^>]+>)/g, function(full, name, space, email) { return mimelib.encodeMimeWord(name, 'Q', 'utf-8') + space + email; });
+   }
 
    return null;
 }
@@ -72,17 +74,13 @@ var Message = function(headers)
       }
       else if(header == "attachment" && typeof (headers[header]) == "object")
       {
-         if((headers[header]).constructor == Array)
-         {
+         if(Array.isArray(headers[header])) {
             var that = this;
 
-            headers[header].forEach(function(attachment)
-            {
-               that.attach(attachment);
-            });
-         }
-         else
-         {
+            for (var i = 0, l = headers[header].length; i < l; i++) {
+              this.attach(headers[header][i]);
+            }
+         } else {
             this.attach(headers[header]);
          }
       }
