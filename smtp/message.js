@@ -3,6 +3,8 @@ var util       = require('util');
 var fs         = require('fs');
 var os         = require('os');
 var path       = require('path');
+var moment     = require('moment');
+var mimelib    = require('mimelib');
 var CRLF       = "\r\n";
 var MIMECHUNK  = 76; // MIME standard wants 76 char chunks when sending out.
 var BASE64CHUNK= 24; // BASE64 bits needed before padding is used
@@ -27,37 +29,6 @@ var generate_boundary = function()
    return text;
 };
 
-var quotedPrintable = function(s, enc) 
-{
-  enc = enc || 'utf8';
-  var b = new Buffer(s, enc), t = new Buffer(s.length*3); //maximum length of target is trippled
-  var i, ti, ii;
-  for (i=0,ti=0,ii=b.length;i<ii;++i, ++ti) {
-    if (b[i] === 61) {
-      // =, escape to =3D
-      t.write("=3D", ti, "ascii");
-      ti += 2;
-    }
-    else if (b[i] < 128) {
-      t[ti] = b[i];
-    }
-    else {
-      t.write("=" + Number(b[i]).toString(16), ti, "ascii");
-      ti += 2;
-    }
-  }
-  return t.toString('ascii', 0, ti);
-};
-
-var maybeQuoted = function(s) 
-{
-  var q = quotedPrintable(s);
-  if (q !== s) {
-    return '=?utf-8?q?' + q + '?=';
-  }
-  return s;
-};
-
 function person2address(l) 
 {
    // an array of emails or name+emails
@@ -66,16 +37,26 @@ function person2address(l)
 
    // a string of comma separated emails or comma separated name+<emails>
    if(typeof l == 'string')
-      return l.replace(/([^<]+[^\s])(\s*)(<[^>]+>)/g, function(full, name, space, email) { return maybeQuoted(name) + space + email; });
+      return l.replace(/([^<]+[^\s])(\s*)(<[^>]+>)/g, function(full, name, space, email) { return mimelib.encodeMimeWord(name, 'Q', 'utf-8') + space + email; });
 
    return null;
 }
+
+var fix_header_name_case = function(header_name) {
+    return header_name.toLowerCase().replace(/^(.)|-(.)/g, function(match) {
+        return match.toUpperCase();
+    });
+};
 
 var Message = function(headers)
 {
    this.attachments  = [];
    this.alternative  = null;
-   this.header       = {"message-id":"<" + (new Date()).getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">"};
+   var now = new Date();
+   this.header       = {
+      "message-id":"<" + now.getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">",
+      "date":moment().format("ddd, DD MMM YYYY HH:mm:ss ") + moment().format("Z").replace(/:/, '')
+   };
    this.content      = "text/plain; charset=utf-8";
 
    for(var header in headers)
@@ -107,7 +88,7 @@ var Message = function(headers)
       }
       else if(header == 'subject')
       {
-         this.header.subject = maybeQuoted(headers.subject);
+         this.header.subject = mimelib.encodeMimeWord(headers.subject, 'Q', 'utf-8');
       }
       else if(/cc|bcc|to|from/i.test(header))
       {
@@ -172,7 +153,7 @@ Message.prototype =
       {
          callback(false, "message does not have a valid sender");
       }
-      if(!self.header.to)
+      if(!(self.header.to || self.header.cc || self.header.bcc))
       {
          callback(false, "message does not have a valid recipient");
       }
@@ -320,7 +301,7 @@ var MessageStream = function(message)
 
       for(header in headers)
       {
-         data = data.concat([header, ': ', headers[header], CRLF]);
+         data = data.concat([fix_header_name_case(header), ': ', headers[header], CRLF]);
       }
 
       output(data.concat([CRLF]).join(''));
@@ -378,7 +359,7 @@ var MessageStream = function(message)
             self.emit('error', err);
       };
 
-      fs.open(attachment.path, 'r+', opened);
+      fs.open(attachment.path, 'r', opened);
    };
 
    var output_stream = function(attachment, callback)
@@ -430,30 +411,24 @@ var MessageStream = function(message)
 
    var output_base64 = function(data, callback)
    {
-      var loops   = Math.floor(data.length / MIMECHUNK);
-      var leftover= Math.abs(data.length - loops*MIMECHUNK);
+      var loops   = Math.ceil(data.length / MIMECHUNK);
+      var loop    = 0;
 
-      var loop = function(index)
+      while(loop < loops)
       {
-         if(index < loops)
-            output(data.substring(MIMECHUNK * index, MIMECHUNK * (index + 1)) + CRLF, loop, [index + 1]);
+        output(data.substring(MIMECHUNK * loop, MIMECHUNK * (loop + 1)) + CRLF);
+        loop++;
+      }
 
-         else if(leftover)
-            output(data.substring(index*MIMECHUNK) + CRLF, callback);
-
-         else if(callback)
-            callback();
-      };
-
-      loop(0);
+      if(callback)
+        callback();
    };
 
    var output_text = function(message)
    {
       var data = [];
 
-      //data = data.concat(["Content-Type:", message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF]);
-      data = data.concat(["Content-Type:", message.content, CRLF, "Content-Transfer-Encoding: quoted-printable", CRLF]);
+      data = data.concat(["Content-Type:", message.content, CRLF, "Content-Transfer-Encoding: 7bit", CRLF]);
       data = data.concat(["Content-Disposition: inline", CRLF, CRLF]);
       data = data.concat([message.text || "", CRLF, CRLF]);
 
@@ -528,7 +503,7 @@ var MessageStream = function(message)
       {
          // do not output BCC in the headers...
          if(!(/bcc/i.test(header)))
-            data = data.concat([header, ": ", self.message.header[header], CRLF]);
+            data = data.concat([fix_header_name_case(header), ": ", self.message.header[header], CRLF]);
       }
 
       output(data.join(''));
@@ -548,9 +523,23 @@ var MessageStream = function(message)
          if(callback)
             callback.apply(null, args);
       }
+      // we can't buffer the data, so ship it out!
       else if(bytes > self.buffer.length)
       {
-         close({message:"internal buffer got too large to handle!"});
+         if(self.bufferIndex)
+         {
+            self.emit('data', self.buffer.toString("utf-8", 0, self.bufferIndex));
+            self.bufferIndex = 0;
+         }
+
+         var loops   = Math.ceil(data.length / self.buffer.length);
+         var loop    = 0;
+
+         while(loop < loops)
+         {
+           self.emit('data', data.substring(self.buffer.length*loop, self.buffer.length*(loop + 1)));
+           loop++;
+         }
       }
       else // we need to clean out the buffer, it is getting full
       {

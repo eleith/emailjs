@@ -1,5 +1,4 @@
-# emailjs (v0.3.0) [![Build Status](https://secure.travis-ci.org/eleith/emailjs.png)](http://travis-ci.org/eleith/emailjs)
-
+# emailjs (v0.3.7) [![Build Status](https://secure.travis-ci.org/eleith/emailjs.png)](http://travis-ci.org/eleith/emailjs)
 
 send emails, html and attachments (files, streams and strings) from node.js to any smtp server
 
@@ -13,7 +12,6 @@ send emails, html and attachments (files, streams and strings) from node.js to a
  - emails are queued and the queue is sent asynchronously
  - supports sending html emails and emails with multiple attachments (MIME)
  - attachments can be added as strings, streams or file paths
- - works with nodejs 3.8 and above
 
 ## REQUIRES
  - access to an SMTP Server (ex: gmail)
@@ -27,7 +25,6 @@ var server 	= email.server.connect({
    password:"password", 
    host:    "smtp.gmail.com", 
    ssl:     true
-   
 });
 
 // send the message and get a callback with an error or details of the message that was sent
@@ -73,6 +70,35 @@ server.send(message, function(err, message) { console.log(err || message); });
 // or you can create a new server connection with 'email.server.connect' 
 // to asynchronously send individual emails instead of a queue
 ```
+
+## EXAMPLE USAGE - sending through hotmail/outlook
+
+```javascript
+var email 	= require("./path/to/emailjs/email");
+var server 	= email.server.connect({
+   user:	"username", 
+   password:"password", 
+   host:	"smtp-mail.outlook.com", 
+   tls: {ciphers: "SSLv3"}
+});
+
+var message	= {
+   text:	"i hope this works", 
+   from:	"you <username@outlook.com>", 
+   to:		"someone <someone@gmail.com>, another <another@gmail.com>",
+   cc:		"else <else@gmail.com>",
+   subject:	"testing emailjs",
+   attachment: 
+   [
+      {data:"<html>i <i>hope</i> this works!</html>", alternative:true},
+      {path:"path/to/file.zip", type:"application/zip", name:"renamed.zip"}
+   ]
+};
+
+// send the message and get a callback with an error or details of the message that was sent
+server.send(message, function(err, message) { console.log(err || message); });
+```
+
 # API 
 
 ## email.server.connect(options)
@@ -84,8 +110,8 @@ server.send(message, function(err, message) { console.log(err || message); });
 		password // password for logging into smtp
 		host		// smtp host
 		port		// smtp port (if null a standard port number will be used)
-		ssl		// boolean or object {key, ca, cert} (if exists, ssl connection will be made)
-		tls		// boolean (if true, starttls will be initiated)
+		ssl		// boolean or object {key, ca, cert} (if true or object, ssl connection will be made)
+		tls		// boolean or object (if true or object, starttls will be initiated)
 		timeout	// max number of milliseconds to wait for smtp responses (defaults to 5000)
 		domain	// domain to greet smtp with (defaults to os.hostname)
 	}

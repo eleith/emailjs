@@ -1,25 +1,30 @@
 {
    "name": "emailjs",
    "description": "send text/html emails and attachments (files, streams and strings) from node.js to any smtp server",
-   "version": "0.3.0",
+   "version": "0.3.7",
    "author": "eleith",
-   "contributors":["izuzak", "Hiverness", "mscdex"],
+   "contributors":["izuzak", "Hiverness", "mscdex", "jimmybergman"],
    "repository":
    {
        "type": "git",
        "url": "http://github.com/eleith/emailjs.git"
    },
-   "devDependencies":
+   "dependencies":
    {
-    "mocha": ">= 1.2.2",
-    "chai": ">= 1.1.0",
-    "simplesmtp": ">= 0.1.18",
-    "mailparser": "0.2.27",
-    "iconv": "1.1.3"
+    "moment" : "= 1.7.0"
    },
    "optionalDependencies":
    {
-      "bufferjs": "*"
+      "bufferjs": "=1.1.0"
+   },
+   "devDependencies":
+   {
+    "mocha": "= 1.7.4",
+    "chai": "= 1.1.0",
+    "simplesmtp": "= 0.3.24",
+    "mailparser": "0.4.1",
+    "mimelib": "0.2.14",
+    "iconv": "2.0.7"
    },
    "engine": ["node >= 0.6"],
    "main": "email",
