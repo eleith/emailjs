@@ -31,6 +31,7 @@ describe("authorize ssl", function()
 
    before(function(done)
    {
+      process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // prevent CERT_HAS_EXPIRED errors
       smtp = simplesmtp.createServer({secureConnection:true, requireAuthentication:true});
 
       smtp.listen(port, function()
