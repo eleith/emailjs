@@ -7,7 +7,7 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 	npm install emailjs
 
 ## FEATURES
- - works with SSL and TLS smtp servers (ex: gmail)
+ - works with SSL and TLS smtp servers 
  - supports smtp authentication (PLAIN, LOGIN, CRAMMD5)
  - emails are queued and the queue is sent asynchronously
  - supports sending html emails and emails with multiple attachments (MIME)
@@ -15,7 +15,8 @@ send emails, html and attachments (files, streams and strings) from node.js to a
  - supports utf-8 headers and body
 
 ## REQUIRES
- - access to an SMTP Server (ex: gmail)
+ - auth access to an SMTP Server
+ - if your service (ex: gmail) uses two-step authentication, use an applicaiton specific password
 
 ## EXAMPLE USAGE - text only emails
 
@@ -24,16 +25,16 @@ var email 	= require("./path/to/emailjs/email");
 var server 	= email.server.connect({
    user:    "username", 
    password:"password", 
-   host:    "smtp.gmail.com", 
+   host:    "smtp.your-email.com", 
    ssl:     true
 });
 
 // send the message and get a callback with an error or details of the message that was sent
 server.send({
    text:    "i hope this works", 
-   from:    "you <username@gmail.com>", 
-   to:      "someone <someone@gmail.com>, another <another@gmail.com>",
-   cc:      "else <else@gmail.com>",
+   from:    "you <username@your-email.com>", 
+   to:      "someone <someone@your-email.com>, another <another@your-email.com>",
+   cc:      "else <else@your-email.com>",
    subject: "testing emailjs"
 }, function(err, message) { console.log(err || message); });
 ```
@@ -45,15 +46,15 @@ var email 	= require("./path/to/emailjs/email");
 var server 	= email.server.connect({
    user:	"username", 
    password:"password", 
-   host:	"smtp.gmail.com", 
+   host:	"smtp.your-email.com", 
    ssl:		true
 });
 
 var message	= {
    text:	"i hope this works", 
-   from:	"you <username@gmail.com>", 
-   to:		"someone <someone@gmail.com>, another <another@gmail.com>",
-   cc:		"else <else@gmail.com>",
+   from:	"you <username@your-email.com>", 
+   to:		"someone <someone@your-email.com>, another <another@your-email.com>",
+   cc:		"else <else@your-email.com>",
    subject:	"testing emailjs",
    attachment: 
    [
@@ -86,8 +87,8 @@ var server 	= email.server.connect({
 var message	= {
    text:	"i hope this works", 
    from:	"you <username@outlook.com>", 
-   to:		"someone <someone@gmail.com>, another <another@gmail.com>",
-   cc:		"else <else@gmail.com>",
+   to:		"someone <someone@your-email.com>, another <another@your-email.com>",
+   cc:		"else <else@your-email.com>",
    subject:	"testing emailjs",
    attachment: 
    [
