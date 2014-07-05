@@ -270,6 +270,30 @@ describe("messages", function()
       });
    });
 
+   it("attachment sent with unicode filename", function(done)
+   {
+      var pdf     = fs.readFileSync(path.join(__dirname, "attachments/smtp.pdf"));
+      var headers = 
+      {
+         subject: "this is a test TEXT+ATTACHMENT message from emailjs",
+         from:    "washing@gmail.com",
+         to:      "lincoln@gmail.com",
+         text:    "hello friend, i hope this message and pdf finds you well.",
+         attachment:{path:path.join(__dirname, "attachments/smtp.pdf"), type:"application/pdf", name:"smtp-✓-info.pdf"}
+      };
+
+      send(headers, function(mail)
+      {
+         expect(mail.attachments[0].content.toString("base64")).to.equal(pdf.toString("base64"));
+         expect(mail.attachments[0].fileName).to.equal("smtp-✓-info.pdf");
+         expect(mail.text).to.equal(headers.text + "\n");
+         expect(mail.headers.subject).to.equal(headers.subject);
+         expect(mail.headers.from).to.equal(headers.from);
+         expect(mail.headers.to).to.equal(headers.to);
+         done();
+      });
+   });
+
    it("attachments", function(done)
    {
       var pdf     = fs.readFileSync(path.join(__dirname, "attachments/smtp.pdf"));
