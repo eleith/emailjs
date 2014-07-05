@@ -288,7 +288,7 @@ var MessageStream = function(message)
           {
             'content-type': attachment.type + (attachment.charset ? "; charset=" + attachment.charset : ""),
             'content-transfer-encoding': 'base64', 
-            'content-disposition': attachment.inline ? 'inline' : 'attachment; filename="' + attachment.name + '"'
+            'content-disposition': attachment.inline ? 'inline' : 'attachment; filename="' + mimelib.encodeMimeWord(attachment.name, 'Q', 'utf-8') + '"'
           };
 
       for(header in (attachment.headers || {}))
