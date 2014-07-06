@@ -439,6 +439,7 @@ SMTP.prototype = {
         // handle bad responses from command differently
         var failed = function(err, data) {
           self.loggedin = false;
+          self.close(); // if auth is bad, close the connection, it won't get better by itself
           caller(callback, SMTPError('authorization.failed', SMTPError.AUTHFAILED, err, data));
         };
 

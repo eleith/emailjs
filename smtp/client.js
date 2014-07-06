@@ -50,8 +50,13 @@ Client.prototype =
                   self.ready = true;
                   self._poll();
                }
-               else
+               else {
                   stack.callback(err, stack.message);
+
+                  // clear out the queue so all callbacks can be called with the same error message
+                  self.queue.shift();
+                  self._poll();
+               }
             };
 
             if(!self.smtp.authorized())
@@ -60,8 +65,13 @@ Client.prototype =
             else
                self.smtp.ehlo_or_helo_if_needed(begin);
          }
-         else
+         else {
             stack.callback(err, stack.message);
+
+            // clear out the queue so all callbacks can be called with the same error message
+            self.queue.shift();
+            self._poll();
+         }
       };
 
       self.ready = false;
@@ -86,9 +96,9 @@ Client.prototype =
             {
                var stack = 
                {
-                  message:      msg,
+                  message:    msg,
                   to:         address.parse(msg.header.to),
-                  from:         address.parse(msg.header.from)[0].address,
+                  from:       address.parse(msg.header.from)[0].address,
                   callback:   callback || function() {}
                };
 
