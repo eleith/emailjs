@@ -155,6 +155,7 @@ SMTP.prototype = {
       self.close(true);
     });
     self.sock.once('response', response);
+    self.sock.once('error', response); // the socket could reset or throw, so let's handle it and let the user know
   },
 
   send: function(str, callback) {
