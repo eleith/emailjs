@@ -59,6 +59,7 @@ describe("authorize plain", function()
       smtp.end(done);
    });
 
+
    it("login", function(done)
    {
       server = email.server.connect({port:port, user:"piglet", password:"haycorns", ssl:true});
@@ -86,4 +87,5 @@ describe("authorize plain", function()
          done();
       });
    });
+
 });

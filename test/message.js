@@ -10,7 +10,7 @@ describe("messages", function()
    var server     = null;
    var smtp       = null;
 
-   var send = function(message, verify)
+   var send = function(message, verify, done)
    {
       smtp.once("startData", function(envelope)
       {
@@ -22,10 +22,12 @@ describe("messages", function()
          });
       });
 
-       server.send(message, function(err, message) 
+      server.send(message, function(err, message) 
       {
          if(err)
-            throw err;		 
+            throw err;
+         else
+            done();
       });
    };
 
@@ -75,8 +77,7 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(message.subject);
          expect(mail.headers.from).to.equal(message.from);
          expect(mail.headers.to).to.equal(message.to);
-         done();
-      });
+      }, done);
    });
 
    it("simple unicode text message", function(done)
@@ -95,8 +96,7 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(message.subject);
          expect(mail.headers.from).to.equal(message.from);
          expect(mail.headers.to).to.equal(message.to);
-         done();
-      });
+      }, done);
    });
 
    it("very large text message", function(done)
@@ -116,8 +116,7 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(message.subject);
          expect(mail.headers.from).to.equal(message.from);
          expect(mail.headers.to).to.equal(message.to);
-         done();
-      });
+      }, done);
    });
 
    it("very large text data", function(done) 
@@ -139,8 +138,7 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(message.subject);
          expect(mail.headers.from).to.equal(message.from);
          expect(mail.headers.to).to.equal(message.to);
-         done();
-      });
+      }, done);
    });
 
    it("html data", function(done) 
@@ -161,8 +159,7 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(message.subject);
          expect(mail.headers.from).to.equal(message.from);
          expect(mail.headers.to).to.equal(message.to);
-         done();
-      });
+      }, done);
    });
 
    it("html file", function(done)
@@ -183,8 +180,7 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(headers.subject);
          expect(mail.headers.from).to.equal(headers.from);
          expect(mail.headers.to).to.equal(headers.to);
-         done();
-      });
+      }, done);
    });
 
    it("html with image embed", function(done)
@@ -220,11 +216,10 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(headers.subject);
          expect(mail.headers.from).to.equal(headers.from);
          expect(mail.headers.to).to.equal(headers.to);
-         done();
-      });
+      }, done);
    });
 
-	it("html data and attachment", function(done) {
+  it("html data and attachment", function(done) {
 		var html    = fs.readFileSync(path.join(__dirname, "attachments/smtp.html"), "utf-8");
 		var headers =
 			{
@@ -243,8 +238,7 @@ describe("messages", function()
 			expect(mail.headers.subject).to.equal(headers.subject);
 			expect(mail.headers.from).to.equal(headers.from);
 			expect(mail.headers.to).to.equal(headers.to);
-			done();
-		});
+		}, done);
 	});
 
    it("attachment", function(done)
@@ -266,8 +260,7 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(headers.subject);
          expect(mail.headers.from).to.equal(headers.from);
          expect(mail.headers.to).to.equal(headers.to);
-         done();
-      });
+      }, done);
    });
 
    it("attachment sent with unicode filename", function(done)
@@ -290,8 +283,7 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(headers.subject);
          expect(mail.headers.from).to.equal(headers.from);
          expect(mail.headers.to).to.equal(headers.to);
-         done();
-      });
+      }, done);
    });
 
    it("attachments", function(done)
@@ -319,8 +311,7 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(headers.subject);
          expect(mail.headers.from).to.equal(headers.from);
          expect(mail.headers.to).to.equal(headers.to);
-         done();
-      });
+      }, done);
    });
 
    it("streams", function(done)
@@ -353,7 +344,6 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(headers.subject);
          expect(mail.headers.from).to.equal(headers.from);
          expect(mail.headers.to).to.equal(headers.to);
-         done();
-      });
+      }, done);
    });
 });
