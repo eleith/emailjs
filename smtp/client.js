@@ -108,6 +108,9 @@ Client.prototype =
                if(msg.header.bcc)
                   stack.to = stack.to.concat(address.parse(msg.header.bcc));
 
+               if(msg.header['return-path'] && address.parse(msg.header['return-path']).length)
+                 stack.returnPath = address.parse(msg.header['return-path'])[0].address;
+
                self.queue.push(stack);
                self._poll();
             }
@@ -160,8 +163,9 @@ Client.prototype =
    _sendmail: function(stack)
    {
       var self = this;
+      var from = stack.returnPath || stack.from;
       self.sending = true;
-      self.smtp.mail(self._sendsmtp(stack, self._sendrcpt), '<' + stack.from + '>');
+      self.smtp.mail(self._sendsmtp(stack, self._sendrcpt), '<' + from + '>');
    },
 
    _sendrcpt: function(stack)

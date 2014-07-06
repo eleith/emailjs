@@ -105,7 +105,12 @@ SMTP.prototype = {
     self.port = port || self.port;
     self.ssl = options.ssl || self.ssl;
 
-    if (self._state != SMTPState.NOTCONNECTED) self.quit();
+    if (self._state != SMTPState.NOTCONNECTED) {
+      self.quit(function() {
+        self.connect(callback, port, host, options);
+      });
+      return;
+    }
 
     var connected = function(err) {
       if (!err) {
@@ -136,8 +141,9 @@ SMTP.prototype = {
         caller(callback, null, msg.data);
       } else {
         log("response (data): " + msg.data);
-        self.quit();
-        caller(callback, SMTPError("bad response on connection", SMTPError.BADRESPONSE, err, msg.data));
+        self.quit(function() {
+          caller(callback, SMTPError("bad response on connection", SMTPError.BADRESPONSE, err, msg.data));
+        });
       }
     };
 
