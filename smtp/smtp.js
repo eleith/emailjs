@@ -366,9 +366,9 @@ SMTP.prototype = {
         caller(callback, err, data);
       };
 
-      var attempt = function(err) {
+      var attempt = function(err, data) {
         if (err) self.helo(response, domain);
-        else caller(callback, err);
+        else caller(callback, err, data);
       };
 
       self.ehlo(attempt, domain);

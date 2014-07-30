@@ -28,14 +28,18 @@ var SMTPResponse = function(stream, timeout, onerror)
      stream.emit('response', SMTPError('timedout while connecting to smtp server', SMTPError.TIMEDOUT, err));
   },
 
-	watch = function(data) 
+	watch = function() 
 	{
-		var decoded = data.toString();
-		var emit		= false;
-		var code		= 0;
+    var data = stream.read();
 
-		buffer += decoded;
-		notify();
+    if (data !== null) {
+		  var decoded = data.toString();
+		  var emit		= false;
+		  var code		= 0;
+
+		  buffer += decoded;
+		  notify();
+    }
 	},
 
 	close = function(err)
@@ -50,7 +54,7 @@ var SMTPResponse = function(stream, timeout, onerror)
 
   this.stop = function(err) {
     stream.removeAllListeners('response');
-    stream.removeListener('data', watch);
+    stream.removeListener('readable', watch);
     stream.removeListener('end', end);
     stream.removeListener('close', close);
     stream.removeListener('error', error);
@@ -59,7 +63,7 @@ var SMTPResponse = function(stream, timeout, onerror)
       onerror(err);
   };
 
-	stream.on('data', watch);
+	stream.on('readable', watch);
 	stream.on('end', end);
 	stream.on('close', close);
 	stream.on('error', error);
