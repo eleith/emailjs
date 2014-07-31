@@ -26,7 +26,7 @@
     "mailparser": "0.4.1",
     "iconv": "2.0.7"
    },
-   "engine": ["node >= 0.6"],
+   "engine": ["node >= 0.10"],
    "main": "email",
    "scripts":
    {
