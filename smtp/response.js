@@ -2,55 +2,54 @@ var SMTPError = require('./error');
 
 var SMTPResponse = function(stream, timeout, onerror) 
 {
-	var buffer = '',
-	
-	notify = function()
-	{
-		if(buffer.length)
-		{
-         // parse buffer for response codes
-			var line = buffer.replace("\r", '');
-			var match = line ? line.match(/(\d+)\s?(.*)/) : null;
+  var buffer = '',
 
-			stream.emit('response', null, match ? {code:match[1], message:match[2], data:line} : {code:-1, data:line});
-			buffer = '';
-		}
-	},
+  notify = function()
+  {
+    if(buffer.length)
+    {
+      // parse buffer for response codes
+      var line = buffer.replace("\r", '');
+      var match = line ? line.match(/(\d+)\s?(.*)/) : null;
 
-	error = function(err)
-	{
-    console.log("uh oh", err);
-		stream.emit('response', SMTPError('connection encountered an error', SMTPError.ERROR, err));
-	},
+      stream.emit('response', null, match ? {code:match[1], message:match[2], data:line} : {code:-1, data:line});
+      buffer = '';
+    }
+  },
+
+  error = function(err)
+  {
+    stream.emit('response', SMTPError('connection encountered an error', SMTPError.ERROR, err));
+  },
 
   timedout = function(err)
   {
-     stream.emit('response', SMTPError('timedout while connecting to smtp server', SMTPError.TIMEDOUT, err));
+    stream.emit('response', SMTPError('timedout while connecting to smtp server', SMTPError.TIMEDOUT, err));
   },
 
-	watch = function() 
-	{
+  watch = function() 
+  {
     var data = stream.read();
 
     if (data !== null) {
-		  var decoded = data.toString();
-		  var emit		= false;
-		  var code		= 0;
+      var decoded = data.toString();
+      var emit		= false;
+      var code		= 0;
 
-		  buffer += decoded;
-		  notify();
+      buffer += decoded;
+      notify();
     }
-	},
+  },
 
-	close = function(err)
-	{
-		stream.emit('response', SMTPError('connection has closed', SMTPError.CONNECTIONCLOSED, err));
-	},
+  close = function(err)
+  {
+    stream.emit('response', SMTPError('connection has closed', SMTPError.CONNECTIONCLOSED, err));
+  },
 
-	end = function(err)
-	{
-		stream.emit('response', SMTPError('connection has ended', SMTPError.CONNECTIONENDED, err));
-	};
+  end = function(err)
+  {
+    stream.emit('response', SMTPError('connection has ended', SMTPError.CONNECTIONENDED, err));
+  };
 
   this.stop = function(err) {
     stream.removeAllListeners('response');
@@ -63,14 +62,14 @@ var SMTPResponse = function(stream, timeout, onerror)
       onerror(err);
   };
 
-	stream.on('readable', watch);
-	stream.on('end', end);
-	stream.on('close', close);
-	stream.on('error', error);
+  stream.on('readable', watch);
+  stream.on('end', end);
+  stream.on('close', close);
+  stream.on('error', error);
   stream.setTimeout(timeout, timedout);
 };
 
 exports.monitor = function(stream, timeout, onerror) 
 {
-	return new SMTPResponse(stream, timeout, onerror);
+  return new SMTPResponse(stream, timeout, onerror);
 };
