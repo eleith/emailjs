@@ -5,6 +5,7 @@ var os         = require('os');
 var path       = require('path');
 var moment     = require('moment');
 var mimelib    = require('mimelib');
+var address    = require('./address'); 
 var CRLF       = "\r\n";
 var MIMECHUNK  = 76; // MIME standard wants 76 char chunks when sending out.
 var BASE64CHUNK= 24; // BASE64 bits needed before padding is used
@@ -38,7 +39,10 @@ function person2address(l)
 
    // a string of comma separated emails or comma separated name+<emails>
    if(typeof l == 'string') {
-      return l.replace(/([^<]+[^\s])(\s*)(<[^>]+>)/g, function(full, name, space, email) { return mimelib.encodeMimeWord(name, 'Q', 'utf-8') + space + email; });
+      var addresses = address.parse(l);
+      return addresses.map(function(addr) {
+        return addr.label !== '' ? mimelib.encodeMimeWord(addr.label, 'Q', 'utf-8') + ' ' + '<' + addr.address + '>' : addr.address;
+      }).join(', ');
    }
 
    return null;
