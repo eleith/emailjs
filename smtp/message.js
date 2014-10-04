@@ -290,7 +290,9 @@ var MessageStream = function(message)
           header,
           headers = 
           {
-            'content-type': attachment.type + (attachment.charset ? "; charset=" + attachment.charset : ""),
+            'content-type': attachment.type + 
+              (attachment.charset ? "; charset=" + attachment.charset : "") + 
+              (attachment.method ? "; method=" + attachment.method : ""),
             'content-transfer-encoding': 'base64', 
             'content-disposition': attachment.inline ? 'inline' : 'attachment; filename="' + mimelib.encodeMimeWord(attachment.name, 'Q', 'utf-8') + '"'
           };

@@ -162,6 +162,8 @@ server.send(message, function(err, message) { console.log(err || message); });
         // optionally these fields are also accepted
         type	      // string of the file mime type
         name        // name to give the file as perceived by the recipient
+        charset     // charset to encode attatchment in
+        method      // method to send attachment as (used by calendar invites)
         alternative // if true, will be attached inline as an alternative (also defaults type='text/html')
         inline      // if true, will be attached inline
         encoded     // set this to true if the data is already base64 encoded, (avoid this if possible)
