@@ -421,13 +421,13 @@ SMTP.prototype = {
           },
 
           encode_plain = function() {
-            return (new Buffer("\0" + login.user() + "\0" + login.password())).toString("base64");
+            return (new Buffer("\u0000" + login.user() + "\u0000" + login.password())).toString("base64");
           },
 
           encode_xoauth2 = function() {
             // console.log("user=" + login.user() + "\1auth=Bearer " + login.password()+"\1\1"); 
             // see: https://developers.google.com/gmail/xoauth2_protocol
-            return (new Buffer("user=" + login.user() + "\1auth=Bearer " + login.password() + "\1\1")).toString("base64");
+            return (new Buffer("user=" + login.user() + "\u0001auth=Bearer " + login.password() + "\u0001\u0001")).toString("base64");
           };
 
         // List of authentication methods we support: from preferred to
