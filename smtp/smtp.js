@@ -7,7 +7,7 @@ var os = require('os');
 var tls = require('tls');
 var util = require('util');
 var events = require('events');
-var starttls = require('./tls');
+var starttls = require('starttls');
 
 var SMTPResponse = require('./response');
 var SMTPError = require('./error');
@@ -248,7 +248,18 @@ SMTP.prototype = {
             caller(callback, msg.data);
           };
 
-          secured_socket = starttls.secure(self.sock, self.tls, secured);
+          //secured_socket = starttls.secure(self.sock, self.tls, secured);
+          secured_socket = starttls({
+            socket: self.sock,
+            host: self.host,
+            port: self.port,
+            pair: tls.createSecurePair(crypto.createCredentials(self.tls), false)
+          }, secured).cleartext;
+
+          secured_socket.on('error', function(err) {
+            self.close(true);
+            caller(callback, err);
+          });
         }
       };
 
