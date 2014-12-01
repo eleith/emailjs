@@ -35,11 +35,11 @@ Client.prototype =
          self.timer = setTimeout(function() { self.smtp.quit(); }, 1000);
    },
 
-	 _isMessageInQueue: function(messageId) {
-		 return this.queue.some(function(item) {
-			 return item.message.header['message-id'] === messageId;
-		 });
-	 },
+   _isMessageInQueue: function(messageId) {
+     return this.queue.some(function(item) {
+       return item.message.header['message-id'] === messageId;
+     });
+   },
 
    _connect: function(stack)
    {
@@ -72,9 +72,9 @@ Client.prototype =
                self.smtp.ehlo_or_helo_if_needed(begin);
          }
          else {
-					 if (self._isMessageInQueue(stack.message.header['message-id'])) {
-						 stack.callback(err, stack.message);
-					 }
+           if (self._isMessageInQueue(stack.message.header['message-id'])) {
+             stack.callback(err, stack.message);
+           }
 
             // clear out the queue so all callbacks can be called with the same error message
             self.queue.shift();
