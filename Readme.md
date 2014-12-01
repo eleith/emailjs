@@ -16,7 +16,7 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 
 ## REQUIRES
  - auth access to an SMTP Server
- - if your service (ex: gmail) uses two-step authentication, use an applicaiton specific password
+ - if your service (ex: gmail) uses two-step authentication, use an application specific password
 
 ## EXAMPLE USAGE - text only emails
 
