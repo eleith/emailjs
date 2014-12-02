@@ -131,6 +131,9 @@ SMTP.prototype = {
 
     var response = function(err, msg) {
       if (err) {
+        if (self._state === SMTPState.NOTCONNECTED && !self.sock) {
+          return;
+        }
         self.close(true);
         caller(callback, err);
       } else if (msg.code == '220') {
