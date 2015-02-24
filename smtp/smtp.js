@@ -129,25 +129,26 @@ SMTP.prototype = {
       }
     };
 
-    var response = function(err, msg) {
+    var cbs = 0, response = function(err, msg) {
       if (err) {
         if (self._state === SMTPState.NOTCONNECTED && !self.sock) {
           return;
         }
         self.close(true);
-        caller(callback, err);
+        !cbs ? caller(callback, err) : null;
       } else if (msg.code == '220') {
         log(msg.data);
 
         // might happen first, so no need to wait on connected()
         self._state = SMTPState.CONNECTED;
-        caller(callback, null, msg.data);
+        !cbs ? caller(callback, null, msg.data) : null;
       } else {
         log("response (data): " + msg.data);
         self.quit(function() {
-          caller(callback, SMTPError("bad response on connection", SMTPError.BADRESPONSE, err, msg.data));
+          !cbs ? caller(callback, SMTPError("bad response on connection", SMTPError.BADRESPONSE, err, msg.data)) : null;
         });
       }
+      cbs++;
     };
 
     self._state = SMTPState.CONNECTING;
