@@ -2,6 +2,8 @@
 
 send emails, html and attachments (files, streams and strings) from node.js to any smtp server
 
+Now ColScript will be contributing to Emailjs!
+
 ## INSTALLING
 
 	npm install emailjs
