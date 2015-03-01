@@ -3,6 +3,7 @@ var util       = require('util');
 var fs         = require('fs');
 var os         = require('os');
 var path       = require('path');
+var jade       = require('jade');
 var moment     = require('moment');
 var mimelib    = require('mimelib');
 var address    = require('./address'); 
@@ -59,6 +60,7 @@ var Message = function(headers)
    this.attachments  = [];
    this.alternative  = null;
    var now = new Date();
+   var htmlText;
    this.header       = {
       "message-id":"<" + now.getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">",
       "date":moment().format("ddd, DD MMM YYYY HH:mm:ss ") + moment().format("Z").replace(/:/, '')
@@ -75,6 +77,13 @@ var Message = function(headers)
       else if(header == 'text')
       {
          this.text = headers[header];
+      }
+      else if(header == 'template')
+      {
+         htmlText = fs.readFileSync(headers[header], 'utf8');
+         htmlText = jade.render(htmlText);
+         this.content = 'text/html; charset=utf8';
+         this.text = htmlText;
       }
       else if(header == "attachment" && typeof (headers[header]) == "object")
       {
