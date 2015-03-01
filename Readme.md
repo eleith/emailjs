@@ -38,7 +38,28 @@ server.send({
    subject: "testing emailjs"
 }, function(err, message) { console.log(err || message); });
 ```
+## EXAMPLE USAGE - Jade templates (NEW!)
+```javascript
+  var email = require('emailjs');
+  var server = email.server.connect({
+    user: "username",
+    password: "password",
+    host: "smtp.your-email.com",
+    port: 25, // Or your custom SMTP Port
+    ssl:   true
+  });
 
+server.send({
+    text: "Example email",
+    from: "Example <test@test.com>",
+    to: "example@example.com",
+    subject: "Sending a jade template through email ;D",
+    template: "./templates/hello.jade"
+  }, function (err, message){
+    console.log(err || message);
+  });
+
+```
 ## EXAMPLE USAGE - html emails and attachments
 
 ```javascript
