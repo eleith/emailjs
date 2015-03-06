@@ -130,11 +130,6 @@ SMTP.prototype = {
     };
 
     var response = function(err, msg) {
-      if(self.sock) {
-        self.sock.removeAllListeners('error');
-        self.sock.removeAllListeners('response');
-      }
-
       if (err) {
         if (self._state === SMTPState.NOTCONNECTED && !self.sock) {
           return;
