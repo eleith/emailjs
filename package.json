@@ -1,36 +1,39 @@
 {
-   "name": "emailjs",
-   "description": "send text/html emails and attachments (files, streams and strings) from node.js to any smtp server",
-   "version": "0.3.14",
-   "author": "eleith",
-   "contributors":["izuzak", "Hiverness", "mscdex", "jimmybergman"],
-   "repository":
-   {
-       "type": "git",
-       "url": "http://github.com/eleith/emailjs.git"
-   },
-   "dependencies":
-   {
-    "moment" : "= 1.7.0",
+  "name": "emailjs",
+  "description": "send text/html emails and attachments (files, streams and strings) from node.js to any smtp server",
+  "version": "0.3.15",
+  "author": "eleith",
+  "contributors": [
+    "izuzak",
+    "Hiverness",
+    "mscdex",
+    "jimmybergman"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "http://github.com/eleith/emailjs.git"
+  },
+  "dependencies": {
+    "addressparser": "^0.3.2",
     "mimelib": "0.2.14",
+    "moment": "= 1.7.0",
     "starttls": "0.2.1"
-   },
-   "optionalDependencies":
-   {
-      "bufferjs": "=1.1.0"
-   },
-   "devDependencies":
-   {
+  },
+  "optionalDependencies": {
+    "bufferjs": "=1.1.0"
+  },
+  "devDependencies": {
     "mocha": "= 1.7.4",
     "chai": "= 1.1.0",
     "simplesmtp": "0.3.32",
     "mailparser": "0.4.1",
     "iconv": "2.1.6"
-   },
-   "engine": ["node >= 0.10"],
-   "main": "email",
-   "scripts":
-   {
-      "test": "mocha -R spec -t 5000"
-   }
+  },
+  "engine": [
+    "node >= 0.10"
+  ],
+  "main": "email",
+  "scripts": {
+    "test": "mocha -R spec -t 5000"
+  }
 }

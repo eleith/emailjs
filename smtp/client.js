@@ -1,7 +1,7 @@
 var smtp       = require('./smtp');
 var smtpError    = require('./error');
 var message      = require('./message');
-var address      = require('./address');
+var addressparser= require('addressparser');
 
 var Client = function(server)
 {
@@ -97,19 +97,19 @@ Client.prototype =
                var stack = 
                {
                   message:    msg,
-                  to:         address.parse(msg.header.to),
-                  from:       address.parse(msg.header.from)[0].address,
+                  to:         addressparser(msg.header.to),
+                  from:       addressparser(msg.header.from)[0].address,
                   callback:   callback || function() {}
                };
 
                if(msg.header.cc)
-                  stack.to = stack.to.concat(address.parse(msg.header.cc));
+                  stack.to = stack.to.concat(addressparser(msg.header.cc));
 
                if(msg.header.bcc)
-                  stack.to = stack.to.concat(address.parse(msg.header.bcc));
+                  stack.to = stack.to.concat(addressparser(msg.header.bcc));
 
-               if(msg.header['return-path'] && address.parse(msg.header['return-path']).length)
-                 stack.returnPath = address.parse(msg.header['return-path'])[0].address;
+               if(msg.header['return-path'] && addressparser(msg.header['return-path']).length)
+                 stack.returnPath = addressparser(msg.header['return-path'])[0].address;
 
                self.queue.push(stack);
                self._poll();
