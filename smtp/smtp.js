@@ -256,7 +256,9 @@ SMTP.prototype = {
             socket: self.sock,
             host: self.host,
             port: self.port,
-            pair: tls.createSecurePair(crypto.createCredentials(self.tls), false)
+            pair: tls.createSecurePair(
+              tls.createSecureContext ? tls.createSecureContext(self.tls) : crypto.createCredentials(self.tls), 
+              false)
           }, secured).cleartext;
 
           secured_socket.on('error', function(err) {

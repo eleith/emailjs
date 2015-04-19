@@ -1,7 +1,7 @@
 {
    "name": "emailjs",
    "description": "send text/html emails and attachments (files, streams and strings) from node.js to any smtp server",
-   "version": "0.3.13",
+   "version": "0.3.14",
    "author": "eleith",
    "contributors":["izuzak", "Hiverness", "mscdex", "jimmybergman"],
    "repository":
@@ -25,7 +25,7 @@
     "chai": "= 1.1.0",
     "simplesmtp": "0.3.32",
     "mailparser": "0.4.1",
-    "iconv": "2.0.7"
+    "iconv": "2.1.6"
    },
    "engine": ["node >= 0.10"],
    "main": "email",
