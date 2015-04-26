@@ -116,6 +116,7 @@ server.send(message, function(err, message) { console.log(err || message); });
 		tls		// boolean or object (if true or object, starttls will be initiated)
 		timeout	// max number of milliseconds to wait for smtp responses (defaults to 5000)
 		domain	// domain to greet smtp with (defaults to os.hostname)
+    authentication // array of preferred authentication methods (ex: email.authentication.PLAIN, email.authentication.XOAUTH2)
 	}
 	
 ## email.server.send(message, callback)

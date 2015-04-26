@@ -73,6 +73,7 @@ var SMTP = function(options) {
   this.ssl = options.ssl || false;
   this.tls = options.tls || false;
   this.monitor = null;
+  this.authentication = options.authentication || [AUTH_METHODS.CRAM_MD5, AUTH_METHODS.LOGIN, AUTH_METHODS.PLAIN, AUTH_METHODS.XOAUTH2];
 
   // keep these strings hidden when quicky debugging/logging
   this.user = function() {
@@ -449,7 +450,7 @@ SMTP.prototype = {
         // List of authentication methods we support: from preferred to
         // less preferred methods.
         if (!method) {
-          var preferred = [AUTH_METHODS.CRAM_MD5, AUTH_METHODS.LOGIN, AUTH_METHODS.PLAIN, AUTH_METHODS.XOAUTH2];
+          var preferred = self.authentication;
 
           for (var i = 0; i < preferred.length; i++) {
             if ((self.features.auth || "").indexOf(preferred[i]) != -1) {
@@ -551,3 +552,4 @@ for (var each in events.EventEmitter.prototype) {
 
 exports.SMTP = SMTP;
 exports.state = SMTPState;
+exports.authentication = AUTH_METHODS;
