@@ -35,5 +35,6 @@
   "main": "email",
   "scripts": {
     "test": "mocha -R spec -t 5000"
-  }
+  },
+  "license" : "MIT"
 }
