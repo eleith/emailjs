@@ -82,7 +82,7 @@ var Message = function(headers)
       {
          this.header.subject = mimelib.encodeMimeWord(headers.subject, 'Q', 'utf-8');
       }
-      else if(/cc|bcc|to|from/i.test(header))
+      else if(/^(cc|bcc|to|from)/i.test(header))
       {
          this.header[header.toLowerCase()] = person2address(headers[header]);
       }
