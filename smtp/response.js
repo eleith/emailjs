@@ -11,7 +11,7 @@ var SMTPResponse = function(stream, timeout, onerror)
       // parse buffer for response codes
       var line = buffer.replace("\r", '');
         
-      if(!line.match(/(\d{3})\s/))
+      if(!line.trim().split(/\n/).pop().match(/^(\d{3})\s/))
           return;
         
       var match = line ? line.match(/(\d+)\s?(.*)/) : null;
