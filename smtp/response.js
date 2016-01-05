@@ -10,6 +10,10 @@ var SMTPResponse = function(stream, timeout, onerror)
     {
       // parse buffer for response codes
       var line = buffer.replace("\r", '');
+        
+      if(!line.match(/(\d{3})\s/))
+          return;
+        
       var match = line ? line.match(/(\d+)\s?(.*)/) : null;
 
       stream.emit('response', null, match ? {code:match[1], message:match[2], data:line} : {code:-1, data:line});
