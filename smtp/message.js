@@ -5,7 +5,7 @@ var os         = require('os');
 var path       = require('path');
 var moment     = require('moment');
 var mimelib    = require('mimelib');
-var addressparser = require('addressparser'); 
+var addressparser = require('addressparser');
 var CRLF       = "\r\n";
 var MIMECHUNK  = 76; // MIME standard wants 76 char chunks when sending out.
 var BASE64CHUNK= 24; // BASE64 bits needed before padding is used
@@ -30,7 +30,7 @@ var generate_boundary = function()
    return text;
 };
 
-function person2address(l) 
+function person2address(l)
 {
   var addresses = addressparser(l);
   return addresses.map(function(addr) {
@@ -51,7 +51,7 @@ var Message = function(headers)
    var now = new Date();
    this.header       = {
       "message-id":"<" + now.getTime() + "." + (counter++) + "." + process.pid + "@" + os.hostname() +">",
-      "date":moment().format("ddd, DD MMM YYYY HH:mm:ss ") + moment().format("Z").replace(/:/, '')
+      "date":moment().locale('en').format("ddd, DD MMM YYYY HH:mm:ss ZZ")
    };
    this.content      = "text/plain; charset=utf-8";
 
@@ -95,12 +95,12 @@ var Message = function(headers)
    }
 };
 
-Message.prototype = 
+Message.prototype =
 {
    attach: function(options)
    {
-      /* 
-         legacy support, will remove eventually... 
+      /*
+         legacy support, will remove eventually...
          arguments -> (path, type, name, headers)
       */
       if (arguments.length > 1)
@@ -120,7 +120,7 @@ Message.prototype =
       return this;
    },
 
-   /* 
+   /*
       legacy support, will remove eventually...
       should use Message.attach() instead
    */
@@ -230,10 +230,10 @@ var MessageStream = function(message)
       {
          next.apply(null, args);
       }
-   
+
       next.apply(null, args);
    };
-   
+
    var output_mixed = function()
    {
       var boundary   = generate_boundary();
@@ -278,12 +278,12 @@ var MessageStream = function(message)
    {
       var data = [],
           header,
-          headers = 
+          headers =
           {
-            'content-type': attachment.type + 
-              (attachment.charset ? "; charset=" + attachment.charset : "") + 
+            'content-type': attachment.type +
+              (attachment.charset ? "; charset=" + attachment.charset : "") +
               (attachment.method ? "; method=" + attachment.method : ""),
-            'content-transfer-encoding': 'base64', 
+            'content-transfer-encoding': 'base64',
             'content-disposition': attachment.inline ? 'inline' : 'attachment; filename="' + mimelib.encodeMimeWord(attachment.name, 'Q', 'utf-8') + '"'
           };
 
@@ -399,7 +399,7 @@ var MessageStream = function(message)
          self.on('resume', attachment.stream.resume);
          self.on('error', attachment.stream.resume);
       }
-      else 
+      else
          self.emit('error', {message:"stream not readable"});
    };
 
@@ -612,7 +612,7 @@ MessageStream.prototype.destroySoon = function()
 
 exports.Message = Message;
 exports.BUFFERSIZE = BUFFERSIZE;
-exports.create = function(headers) 
+exports.create = function(headers)
 {
    return new Message(headers);
 };
