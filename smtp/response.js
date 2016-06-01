@@ -28,6 +28,7 @@ var SMTPResponse = function(stream, timeout, onerror)
 
   timedout = function(err)
   {
+    stream.end();
     stream.emit('response', SMTPError('timedout while connecting to smtp server', SMTPError.TIMEDOUT, err));
   },
 
