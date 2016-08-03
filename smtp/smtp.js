@@ -198,9 +198,15 @@ SMTP.prototype = {
       if (err) {
         caller(callback, err);
       } else {
-        if (codes.indexOf(Number(msg.code)) != -1) caller(callback, err, msg.data, msg.message);
-
-        else caller(callback, SMTPError("bad response on command '" + cmd.split(' ')[0] + "'", SMTPError.BADRESPONSE, null, msg.data));
+        if (codes.indexOf(Number(msg.code)) != -1) {
+          caller(callback, err, msg.data, msg.message);
+        } else {
+          var errorMessage = "bad response on command '" + cmd.split(' ')[0] + "'";
+          if (msg.message) {
+            errorMessage += ': ' + msg.message;
+          }
+          caller(callback, SMTPError(errorMessage, SMTPError.BADRESPONSE, null, msg.data));
+        }
       }
     };
 
