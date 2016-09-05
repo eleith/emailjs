@@ -101,6 +101,36 @@ var message	= {
 server.send(message, function(err, message) { console.log(err || message); });
 ```
 
+## EXAMPLE USAGE - attaching and embedding an image
+
+```javascript
+var email 	= require("./path/to/emailjs/email");
+var server 	= email.server.connect({
+   user:	"username", 
+   password:"password", 
+   host:	"smtp-mail.outlook.com", 
+   tls: {ciphers: "SSLv3"}
+});
+
+var message	= {
+   text:	"i hope this works", 
+   from:	"you <username@outlook.com>", 
+   to:		"someone <someone@your-email.com>, another <another@your-email.com>",
+   cc:		"else <else@your-email.com>",
+   subject:	"testing emailjs",
+   attachment: 
+   [
+      {data: "<html>i <i>hope</i> this works! here is an image: <img src='cid:my-image' width='100' height ='50'> </html>"},
+      {path:"path/to/file.zip", type:"application/zip", name:"renamed.zip"},
+      {path:"path/to/image.jpg", type:"image/jpg", headers:{"Content-ID":"<my-image>"}}
+   ]
+};
+
+// send the message and get a callback with an error or details of the message that was sent
+server.send(message, function(err, message) { console.log(err || message); });
+```
+
+
 # API 
 
 ## email.server.connect(options)
