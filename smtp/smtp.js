@@ -7,7 +7,6 @@ var os = require('os');
 var tls = require('tls');
 var util = require('util');
 var events = require('events');
-var starttls = require('starttls');
 
 var SMTPResponse = require('./response');
 var SMTPError = require('./error');
@@ -278,6 +277,7 @@ SMTP.prototype = {
             };
 
             //secured_socket = starttls.secure(self.sock, self.tls, secured);
+            var starttls = require('starttls');
             secured_socket = starttls({
               socket: self.sock,
               host: self.host,
