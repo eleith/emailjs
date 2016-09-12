@@ -7,6 +7,7 @@ var os = require('os');
 var tls = require('tls');
 var util = require('util');
 var events = require('events');
+var starttls = require('starttls');
 
 var SMTPResponse = require('./response');
 var SMTPError = require('./error');
@@ -241,22 +242,56 @@ SMTP.prototype = {
           err.message += " while establishing a starttls session";
           caller(callback, err);
         } else {
-          var secured_socket = new tls.TLSSocket(self.sock, {
-            secureContext: tls.createSecureContext ? tls.createSecureContext(self.tls) : crypto.createCredentials(self.tls)
-          });
+          // support new API
+          if (tls.TLSSocket) {
+            var secured_socket = new tls.TLSSocket(self.sock, {
+              secureContext: tls.createSecureContext ? tls.createSecureContext(self.tls) : crypto.createCredentials(self.tls)
+            });
 
-          secured_socket.on('error', function(err) {
-            self.close(true);
-            caller(callback, err);
-          });
+            secured_socket.on('error', function(err) {
+              self.close(true);
+              caller(callback, err);
+            });
 
-          self._secure = true;
-          self.sock = secured_socket;
+            self._secure = true;
+            self.sock = secured_socket;
 
-          SMTPResponse.monitor(self.sock, self.timeout, function() {
-            self.close(true);
-          });
-          caller(callback, msg.data);
+            SMTPResponse.monitor(self.sock, self.timeout, function() {
+              self.close(true);
+            });
+            caller(callback, msg.data);
+          } else {
+            var secured_socket = null;
+            var secured = function() {
+              self._secure = true;
+              self.sock = secured_socket;
+
+              var error = function(err) {
+                self.close(true);
+                caller(callback, err);
+              };
+
+              SMTPResponse.monitor(self.sock, self.timeout, function() {
+                self.close(true);
+              });
+              caller(callback, msg.data);
+            };
+
+            //secured_socket = starttls.secure(self.sock, self.tls, secured);
+            secured_socket = starttls({
+              socket: self.sock,
+              host: self.host,
+              port: self.port,
+              pair: tls.createSecurePair(
+                tls.createSecureContext ? tls.createSecureContext(self.tls) : crypto.createCredentials(self.tls), 
+                false)
+            }, secured).cleartext;
+
+            secured_socket.on('error', function(err) {
+              self.close(true);
+              caller(callback, err);
+            });
+          }
         }
       };
 
