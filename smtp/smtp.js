@@ -244,7 +244,8 @@ SMTP.prototype = {
           // support new API
           if (tls.TLSSocket) {
             var secured_socket = new tls.TLSSocket(self.sock, {
-              secureContext: tls.createSecureContext ? tls.createSecureContext(self.tls) : crypto.createCredentials(self.tls)
+              secureContext: tls.createSecureContext ? tls.createSecureContext(self.tls) : crypto.createCredentials(self.tls),
+              isServer: false // older versions of node (0.12), do not default to false properly...
             });
 
             secured_socket.on('error', function(err) {
