@@ -1,6 +1,5 @@
-module.exports = function(message, code, error, smtp)
-{
-  var err = new Error(message);
+module.exports = function(message, code, error, smtp) {
+  var err = new Error((error && error.message) ? message + ' (' + error.message + ')' : message);
   err.code = code;
   if(error)
     err.previous = error;
