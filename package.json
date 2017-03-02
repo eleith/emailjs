@@ -27,7 +27,7 @@
     "chai": "= 1.1.0",
     "simplesmtp": "0.3.32",
     "mailparser": "0.4.1",
-    "iconv": "2.1.6"
+    "iconv": "2.2.1"
   },
   "engine": [
     "node >= 0.10"
