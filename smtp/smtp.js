@@ -478,9 +478,16 @@ SMTP.prototype = {
         // less preferred methods.
         if (!method) {
           var preferred = self.authentication;
+          var auth = "";
+
+          if (self.features && self.features.auth) {
+            if (typeof(self.features.auth) === 'string') {
+              auth = self.features.auth;
+            }
+          }
 
           for (var i = 0; i < preferred.length; i++) {
-            if (((self.features && self.features.auth) || "").indexOf(preferred[i]) != -1) {
+            if (auth.indexOf(preferred[i]) != -1) {
               method = preferred[i];
               break;
             }
