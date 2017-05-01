@@ -68,7 +68,8 @@ describe("messages", function()
          subject: "this is a test TEXT message from emailjs",
          from:    "zelda@gmail.com",
          to:      "gannon@gmail.com",
-         text:    "hello friend, i hope this message finds you well."
+         text:    "hello friend, i hope this message finds you well.",
+         "message-id": "this is a special id"
       };
 
       send(email.message.create(message), function(mail)
@@ -77,6 +78,7 @@ describe("messages", function()
          expect(mail.headers.subject).to.equal(message.subject);
          expect(mail.headers.from).to.equal(message.from);
          expect(mail.headers.to).to.equal(message.to);
+         expect(mail.headers['message-id']).to.equal(message['message-id']);
       }, done);
    });
 
