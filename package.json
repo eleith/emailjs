@@ -16,15 +16,15 @@
   "dependencies": {
     "addressparser": "^0.3.2",
     "mimelib": "0.2.14",
-    "moment": "= 2.11.2",
+    "moment": "=2.11.2",
     "starttls": "1.0.1"
   },
   "optionalDependencies": {
     "bufferjs": "=1.1.0"
   },
   "devDependencies": {
-    "mocha": "= 1.7.4",
-    "chai": "= 1.1.0",
+    "mocha": "=1.7.4",
+    "chai": "=1.1.0",
     "simplesmtp": "0.3.32",
     "mailparser": "0.4.1",
     "iconv": "2.2.1"
