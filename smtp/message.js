@@ -287,6 +287,9 @@ var MessageStream = function(message)
             'content-disposition': attachment.inline ? 'inline' : 'attachment; filename="' + mimelib.encodeMimeWord(attachment.name, 'Q', 'utf-8') + '"'
           };
 
+          if (attachment.name)
+            headers['content-id'] = '<' + attachment.name + '>';
+
       for(header in (attachment.headers || {}))
       {
          // allow sender to override default headers
