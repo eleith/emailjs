@@ -492,6 +492,10 @@ SMTP.prototype = {
               break;
             }
           }
+
+          if (!method){
+            method = AUTH_METHODS.PLAIN; //default the method to plain when non is found
+          }
         }
 
         // handle bad responses from command differently
