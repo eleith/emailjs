@@ -85,7 +85,7 @@ Client.prototype =
       if(!(msg instanceof message.Message) 
           && msg.from 
           && (msg.to || msg.cc || msg.bcc)
-          && ((msg.text && msg.text || '' != null) || this._containsInlinedHtml(msg.attachment)))
+          && ((msg.text || '' != null) || this._containsInlinedHtml(msg.attachment)))
          msg = message.create(msg);
 
       if(msg instanceof message.Message)
