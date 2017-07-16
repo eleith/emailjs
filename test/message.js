@@ -82,6 +82,32 @@ describe("messages", function()
       }, done);
    });
 
+   it('null text', function(done) {
+      send({
+         subject: "this is a test TEXT message from emailjs",
+         from:    "zelda@gmail.com",
+         to:      "gannon@gmail.com",
+         text:    null,
+         "message-id": "this is a special id"
+      }, function(mail)
+      {
+         expect(mail.text).to.equal("\n\n");
+      }, done);
+   });
+
+   it('empty text', function(done) {
+      send({
+         subject: "this is a test TEXT message from emailjs",
+         from:    "zelda@gmail.com",
+         to:      "gannon@gmail.com",
+         text:    "",
+         "message-id": "this is a special id"
+      }, function(mail)
+      {
+         expect(mail.text).to.equal("\n\n");
+      }, done);
+   });
+
    it("simple unicode text message", function(done)
    {
       var message =
