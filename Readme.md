@@ -8,7 +8,7 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 
 ## FEATURES
  - works with SSL and TLS smtp servers 
- - supports smtp authentication (PLAIN, LOGIN, CRAMMD5)
+ - supports smtp authentication ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
  - emails are queued and the queue is sent asynchronously
  - supports sending html emails and emails with multiple attachments (MIME)
  - attachments can be added as strings, streams or file paths
@@ -146,7 +146,7 @@ server.send(message, function(err, message) { console.log(err || message); });
 		tls		// boolean or object (if true or object, starttls will be initiated)
 		timeout	// max number of milliseconds to wait for smtp responses (defaults to 5000)
 		domain	// domain to greet smtp with (defaults to os.hostname)
-    authentication // array of preferred authentication methods (ex: email.authentication.PLAIN, email.authentication.XOAUTH2)
+    authentication // array of preferred authentication methods ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
 	}
 	
 ## email.server.send(message, callback)
@@ -175,6 +175,10 @@ server.send(message, function(err, message) { console.log(err || message); });
 		subject	// string subject of the email
       attachment // one attachment or array of attachments
 	}
+
+## email.SMTP.authentication
+
+associative array of currently supported SMTP authentication mechanisms
 
 ## attachment
 
