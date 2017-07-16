@@ -64,7 +64,7 @@ var Message = function(headers)
       }
       else if(header == 'text')
       {
-         this.text = headers[header];
+         this.text = headers[header] || '';
       }
       else if(header == "attachment" && typeof (headers[header]) == "object")
       {
