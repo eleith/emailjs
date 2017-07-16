@@ -283,7 +283,7 @@ var MessageStream = function(message)
             'content-type': attachment.type +
               (attachment.charset ? "; charset=" + attachment.charset : "") +
               (attachment.method ? "; method=" + attachment.method : ""),
-            'content-transfer-encoding': 'base64',
+            'content-transfer-encoding': (attachment.type == 'message/rfc822') ? '7bit' : 'base64',
             'content-disposition': attachment.inline ? 'inline' : 'attachment; filename="' + mimelib.encodeMimeWord(attachment.name, 'Q', 'utf-8') + '"'
           };
 
@@ -317,35 +317,40 @@ var MessageStream = function(message)
    {
       var chunk      = MIME64CHUNK*16;
       var buffer     = new Buffer(chunk);
-      var closed     = function(fd) { fs.close(fd); };
+      var closed     = function(fd) {
+						      if (!isNaN(fd))
+							      fs.close(fd); };
       var opened     = function(err, fd)
       {
          if(!err)
          {
             var read = function(err, bytes)
             {
+			   var mycallback = function() {
+				 if(bytes == chunk) // we read a full chunk, there might be more
+				 {
+					fs.read(fd, buffer, 0, chunk, null, read);
+				 }
+				 else // that was the last chunk, we are done reading the file
+				 {
+					self.removeListener("error", closed);
+					fs.close(fd, next);
+				 }
+			   };
                if(!err && self.readable)
                {
-                  // guaranteed to be encoded without padding unless it is our last read
-                  output_base64(buffer.toString("base64", 0, bytes), function()
-                  {
-                     if(bytes == chunk) // we read a full chunk, there might be more
-                     {
-                        fs.read(fd, buffer, 0, chunk, null, read);
-                     }
-                     else // that was the last chunk, we are done reading the file
-                     {
-                        self.removeListener("error", closed);
-                        fs.close(fd, next);
-                     }
-                  });
+                     // guaranteed to be encoded without padding unless it is our last read
+                  if (attachment.type == 'message/rfc822') {
+                     output(buffer.toString("ascii", 0, bytes), mycallback);
+                  } else {
+                     output_base64(buffer.toString("base64", 0, bytes), mycallback);
+                  }
                }
                else
                {
                   self.emit('error', err || {message:"message stream was interrupted somehow!"});
                }
             };
-
             fs.read(fd, buffer, 0, chunk, null, read);
             self.once("error", closed);
          }
