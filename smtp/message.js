@@ -317,7 +317,7 @@ var MessageStream = function(message)
    {
       var chunk      = MIME64CHUNK*16;
       var buffer     = new Buffer(chunk);
-      var closed     = function(fd) { fs.close(fd); };
+      var closed     = function(fd) { if(fs.close) { fs.close(fd); } };
       var opened     = function(err, fd)
       {
          if(!err)
@@ -326,8 +326,18 @@ var MessageStream = function(message)
             {
                if(!err && self.readable)
                {
+                  var encoding = attachment && attachment.headers ? attachment.headers['content-transfer-encoding'] || 'base64' : 'base64';
+
+                  if (encoding === 'ascii' || encoding === '7bit')  {
+                    encoding = 'ascii';
+                  } else if(encoding === 'binary' || encoding === '8bit')  {
+                    encoding = 'binary';
+                  } else {
+                    encoding = 'base64';
+                  }
+
                   // guaranteed to be encoded without padding unless it is our last read
-                  output_base64(buffer.toString("base64", 0, bytes), function()
+                  output_base64(buffer.toString(encoding, 0, bytes), function()
                   {
                      if(bytes == chunk) // we read a full chunk, there might be more
                      {
