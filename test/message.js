@@ -105,7 +105,7 @@ describe("messages", function() {
    });
 
    it("very large text message", function(done) {
-      this.timeout(11000);
+      this.timeout(20000);
       // thanks to jart+loberstech for this one!
       var message = {
          subject: "this is a test TEXT message from emailjs",
