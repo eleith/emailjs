@@ -16,7 +16,7 @@
   "dependencies": {
     "addressparser": "^0.3.2",
     "mimelib": "0.2.14",
-    "moment": "2.15.2",
+    "moment": "2.20.1",
     "starttls": "1.0.1"
   },
   "optionalDependencies": {
