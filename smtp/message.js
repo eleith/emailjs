@@ -4,7 +4,7 @@ var fs         = require('fs');
 var os         = require('os');
 var path       = require('path');
 var moment     = require('moment');
-var mimelib    = require('mimelib');
+var mimeWordEncode  = require('emailjs-mime-codec').mimeWordEncode;
 var addressparser = require('addressparser');
 var CRLF       = "\r\n";
 var MIMECHUNK  = 76; // MIME standard wants 76 char chunks when sending out.
@@ -34,7 +34,7 @@ function person2address(l)
 {
   var addresses = addressparser(l);
   return addresses.map(function(addr) {
-    return addr.name ? mimelib.encodeMimeWord(addr.name, 'Q', 'utf-8').replace(/,/g, '=2C') + ' ' + '<' + addr.address + '>' : addr.address;
+    return addr.name ? mimeWordEncode(addr.name).replace(/,/g, '=2C') + ' ' + '<' + addr.address + '>' : addr.address;
   }).join(', ');
 }
 
@@ -80,7 +80,7 @@ var Message = function(headers)
       }
       else if(header == 'subject')
       {
-         this.header.subject = mimelib.encodeMimeWord(headers.subject, 'Q', 'utf-8');
+         this.header.subject = mimeWordEncode(headers.subject);
       }
       else if(/^(cc|bcc|to|from)/i.test(header))
       {
@@ -284,7 +284,7 @@ var MessageStream = function(message)
               (attachment.charset ? "; charset=" + attachment.charset : "") +
               (attachment.method ? "; method=" + attachment.method : ""),
             'content-transfer-encoding': 'base64',
-            'content-disposition': attachment.inline ? 'inline' : 'attachment; filename="' + mimelib.encodeMimeWord(attachment.name, 'Q', 'utf-8') + '"'
+            'content-disposition': attachment.inline ? 'inline' : 'attachment; filename="' + mimeWordEncode(attachment.name) + '"'
           };
 
       for(header in (attachment.headers || {}))
