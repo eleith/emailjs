@@ -317,7 +317,7 @@ var MessageStream = function(message)
    {
       var chunk      = MIME64CHUNK*16;
       var buffer     = new Buffer(chunk);
-      var closed     = function(fd) { if(fs.close) { fs.close(fd); } };
+      var closed     = function(fd) { if(fs.closeSync) { fs.closeSync(fd); } };
       var opened     = function(err, fd)
       {
          if(!err)
