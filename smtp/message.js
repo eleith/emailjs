@@ -86,6 +86,27 @@ var Message = function(headers)
       {
          this.header[header.toLowerCase()] = person2address(headers[header]);
       }
+      else if(header == 'references')
+      {
+         var references = '';
+         for(var i = 0; i < headers[header].length; i++)
+         {
+            if(references)
+            {
+               references += " <" + headers[header][i] + '>';
+            }
+            else
+            {
+               references += '<' + headers[header][i] + '>';
+           }
+         }
+
+         this.header.references = references;
+      }
+      else if(header == 'inReplyTo')
+      {
+         this.header["in-reply-to"] = '<' + headers[header] + '>';
+      }
       else
       {
          // allow any headers the user wants to set??
