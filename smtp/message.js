@@ -505,8 +505,8 @@ var MessageStream = function(message)
 
       for(var header in self.message.header)
       {
-         // do not output BCC in the headers (regex) nor custom Object.prototype functions...
-         if(!(/bcc/i.test(header)) && self.message.header.hasOwnProperty (header))
+         // do not output BCC in the headers (regex) nor custom Object.prototype functions... and saveto header should exist internally only
+         if(!(/bcc/i.test(header)) && self.message.header.hasOwnProperty (header) && !(/saveto/i.test(header)))
             data = data.concat([fix_header_name_case(header), ": ", self.message.header[header], CRLF]);
       }
 

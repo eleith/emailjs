@@ -2,6 +2,7 @@ var smtp       = require('./smtp');
 var smtpError    = require('./error');
 var message      = require('./message');
 var addressparser= require('addressparser');
+var fs           = require("fs");
 
 var Client = function(server)
 {
@@ -82,7 +83,7 @@ Client.prototype =
    {
       var self = this;
 
-      if(!(msg instanceof message.Message) 
+      if(!(msg instanceof message.Message)
           && msg.from 
           && (msg.to || msg.cc || msg.bcc)
           && (msg.text !== undefined || this._containsInlinedHtml(msg.attachment)))
@@ -94,7 +95,7 @@ Client.prototype =
          {
             if(valid)
             {
-               var stack = 
+               var stack =
                {
                   message:    msg,
                   to:         addressparser(msg.header.to),
@@ -110,6 +111,9 @@ Client.prototype =
 
                if(msg.header['return-path'] && addressparser(msg.header['return-path']).length)
                  stack.returnPath = addressparser(msg.header['return-path'])[0].address;
+
+               if(msg.header.saveto)
+                 stack.saveto = msg.header.saveto;
 
                self.queue.push(stack);
                self._poll();
@@ -182,14 +186,29 @@ Client.prototype =
 
    _sendmessage: function(stack)
    {
-      var self = this, stream = stack.message.stream();
+      var self = this, stream = stack.message.stream(), wstream = null;
 
-      stream.on('data', function(data) { self.smtp.message(data); });
-      stream.on('end', function() { self.smtp.data_end(self._sendsmtp(stack, function() { self._senddone(null, stack) })); });
+      if(stack.saveto)
+        wstream = fs.createWriteStream(stack.saveto);
+
+      stream.on('data', function(data) {
+         self.smtp.message(data);
+
+         if(wstream) wstream.write(data);
+      });
+      stream.on('end', function() {
+         self.smtp.data_end(self._sendsmtp(stack, function() { self._senddone(null, stack) }));
+
+         if(wstream) wstream.end();
+       });
 
       // there is no way to cancel a message while in the DATA portion, so we have to close the socket to prevent
       // a bad email from going out
-      stream.on('error', function(err) { self.smtp.close(); self._senddone(err, stack); });
+      stream.on('error', function(err) {
+         self.smtp.close(); self._senddone(err, stack);
+
+         if(wstream) fs.unlinkSync(stack.saveto);
+      });
    },
 
    _senddone: function(err, stack)
