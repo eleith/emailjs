@@ -2,12 +2,14 @@ var smtp       = require('./smtp');
 var smtpError    = require('./error');
 var message      = require('./message');
 var addressparser= require('addressparser');
-var fs           = require("fs");
+var events       = require('events');
 
 var Client = function(server)
 {
    this.smtp         = new smtp.SMTP(server);
    //this.smtp.debug(1);
+
+   events.EventEmitter.call(this);
 
    this.queue        = [];
    this.timer        = null;
@@ -112,9 +114,6 @@ Client.prototype =
                if(msg.header['return-path'] && addressparser(msg.header['return-path']).length)
                  stack.returnPath = addressparser(msg.header['return-path'])[0].address;
 
-               if(msg.header.saveto)
-                 stack.saveto = msg.header.saveto;
-
                self.queue.push(stack);
                self._poll();
             }
@@ -188,18 +187,15 @@ Client.prototype =
    {
       var self = this, stream = stack.message.stream(), wstream = null;
 
-      if(stack.saveto)
-        wstream = fs.createWriteStream(stack.saveto);
-
       stream.on('data', function(data) {
          self.smtp.message(data);
 
-         if(wstream) wstream.write(data);
+         self.emit('data', data);
       });
       stream.on('end', function() {
          self.smtp.data_end(self._sendsmtp(stack, function() { self._senddone(null, stack) }));
 
-         if(wstream) wstream.end();
+         self.emit('end');
        });
 
       // there is no way to cancel a message while in the DATA portion, so we have to close the socket to prevent
@@ -207,7 +203,7 @@ Client.prototype =
       stream.on('error', function(err) {
          self.smtp.close(); self._senddone(err, stack);
 
-         if(wstream) fs.unlinkSync(stack.saveto);
+         self.emit('error', err);
       });
    },
 
@@ -226,3 +222,7 @@ exports.connect = function(server)
 {
    return new Client(server);
 };
+
+for (var each in events.EventEmitter.prototype) {
+  Client.prototype[each] = events.EventEmitter.prototype[each];
+}
