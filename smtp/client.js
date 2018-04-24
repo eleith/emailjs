@@ -2,11 +2,14 @@ var smtp       = require('./smtp');
 var smtpError    = require('./error');
 var message      = require('./message');
 var addressparser= require('addressparser');
+var events       = require('events');
 
 var Client = function(server)
 {
    this.smtp         = new smtp.SMTP(server);
    //this.smtp.debug(1);
+
+   events.EventEmitter.call(this);
 
    this.queue        = [];
    this.timer        = null;
@@ -82,7 +85,7 @@ Client.prototype =
    {
       var self = this;
 
-      if(!(msg instanceof message.Message) 
+      if(!(msg instanceof message.Message)
           && msg.from 
           && (msg.to || msg.cc || msg.bcc)
           && (msg.text !== undefined || this._containsInlinedHtml(msg.attachment)))
@@ -94,7 +97,7 @@ Client.prototype =
          {
             if(valid)
             {
-               var stack = 
+               var stack =
                {
                   message:    msg,
                   to:         addressparser(msg.header.to),
@@ -182,14 +185,26 @@ Client.prototype =
 
    _sendmessage: function(stack)
    {
-      var self = this, stream = stack.message.stream();
+      var self = this, stream = stack.message.stream(), wstream = null;
 
-      stream.on('data', function(data) { self.smtp.message(data); });
-      stream.on('end', function() { self.smtp.data_end(self._sendsmtp(stack, function() { self._senddone(null, stack) })); });
+      stream.on('data', function(data) {
+         self.smtp.message(data);
+
+         self.emit('data', data);
+      });
+      stream.on('end', function() {
+         self.smtp.data_end(self._sendsmtp(stack, function() { self._senddone(null, stack) }));
+
+         self.emit('end');
+       });
 
       // there is no way to cancel a message while in the DATA portion, so we have to close the socket to prevent
       // a bad email from going out
-      stream.on('error', function(err) { self.smtp.close(); self._senddone(err, stack); });
+      stream.on('error', function(err) {
+         self.smtp.close(); self._senddone(err, stack);
+
+         self.emit('error', err);
+      });
    },
 
    _senddone: function(err, stack)
@@ -207,3 +222,7 @@ exports.connect = function(server)
 {
    return new Client(server);
 };
+
+for (var each in events.EventEmitter.prototype) {
+  Client.prototype[each] = events.EventEmitter.prototype[each];
+}
