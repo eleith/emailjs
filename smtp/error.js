@@ -1,14 +1,19 @@
 module.exports = function(message, code, error, smtp) {
-  var err = new Error((error && error.message) ? message + ' (' + error.message + ')' : message);
-  err.code = code;
-  if(error)
-    err.previous = error;
+  const err = new Error(
+    error && error.message ? `${message} (${error.message})` : message
+  );
+
+	err.code = code;
   err.smtp = smtp;
+
+	if (error) {
+		err.previous = error;
+	}
 
   return err;
 };
 
-module.exports.COULDNOTCONNECT =	1;
+module.exports.COULDNOTCONNECT = 1;
 module.exports.BADRESPONSE = 2;
 module.exports.AUTHFAILED = 3;
 module.exports.TIMEDOUT = 4;

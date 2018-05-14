@@ -23,11 +23,10 @@
     "bufferjs": "1.1.0"
   },
   "devDependencies": {
-    "mocha": "5.0.0",
     "chai": "1.1.0",
-    "smtp-server": "^3.4.1",
     "mailparser": "2.2.0",
-    "iconv": "2.2.1"
+    "mocha": "5.0.0",
+    "smtp-server": "^3.4.1"
   },
   "engine": [
     "node >= 6"
