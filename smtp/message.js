@@ -59,7 +59,7 @@ class Message {
 		};
 
 		this.content = 'text/plain; charset=utf-8';
-		for (let header in headers) {
+		for (const header in headers) {
 			// allow user to override default content-type to override charset or send a single non-text message
 			if (/^content-type$/i.test(header)) {
 				this.content = headers[header];
@@ -224,12 +224,12 @@ class MessageStream extends Stream {
 					: `attachment; filename="${mimeWordEncode(attachment.name)}"`,
 			};
 
-			for (let header in attachment.headers || {}) {
+			for (const header in attachment.headers || {}) {
 				// allow sender to override default headers
 				headers[header.toLowerCase()] = attachment.headers[header];
 			}
 
-			for (let header in headers) {
+			for (const header in headers) {
 				data = data.concat([
 					fix_header_name_case(header),
 					': ',
@@ -429,7 +429,7 @@ class MessageStream extends Stream {
 		const output_header = () => {
 			let data = [];
 
-			for (let header in this.message.header) {
+			for (const header in this.message.header) {
 				// do not output BCC in the headers (regex) nor custom Object.prototype functions...
 				if (
 					!/bcc/i.test(header) &&
