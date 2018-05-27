@@ -142,7 +142,7 @@ describe('messages', function() {
     send(
       email.message.create(message),
       function(mail) {
-        expect(mail.text).to.equal(message.text + '\n\n\n');
+        expect(mail.text).to.equal(message.text.replace(/\r/g, '') + '\n\n\n');
         expect(mail.subject).to.equal(message.subject);
         expect(mail.from.text).to.equal(message.from);
         expect(mail.to.text).to.equal(message.to);
@@ -169,7 +169,7 @@ describe('messages', function() {
     send(
       message,
       function(mail) {
-        expect(mail.html).to.equal(text);
+        expect(mail.html).to.equal(text.replace(/\r/g, ''));
         expect(mail.text).to.equal(message.text + '\n');
         expect(mail.subject).to.equal(message.subject);
         expect(mail.from.text).to.equal(message.from);
@@ -194,7 +194,7 @@ describe('messages', function() {
     send(
       message,
       function(mail) {
-        expect(mail.html).to.equal(html);
+        expect(mail.html).to.equal(html.replace(/\r/g, ''));
         expect(mail.text).to.equal('\n');
         expect(mail.subject).to.equal(message.subject);
         expect(mail.from.text).to.equal(message.from);
@@ -222,7 +222,7 @@ describe('messages', function() {
     send(
       headers,
       function(mail) {
-        expect(mail.html).to.equal(html);
+        expect(mail.html).to.equal(html.replace(/\r/g, ''));
         expect(mail.text).to.equal('\n');
         expect(mail.subject).to.equal(headers.subject);
         expect(mail.from.text).to.equal(headers.from);
@@ -262,7 +262,7 @@ describe('messages', function() {
         expect(mail.attachments[0].content.toString('base64')).to.equal(
           image.toString('base64')
         );
-        expect(mail.html).to.equal(html);
+        expect(mail.html).to.equal(html.replace(/\r/g, ''));
         expect(mail.text).to.equal('\n');
         expect(mail.subject).to.equal(headers.subject);
         expect(mail.from.text).to.equal(headers.from);
@@ -293,7 +293,7 @@ describe('messages', function() {
     send(
       headers,
       function(mail) {
-        expect(mail.html).to.equal(html);
+        expect(mail.html).to.equal(html.replace(/\r/g, ''));
         expect(mail.text).to.equal('\n');
         expect(mail.subject).to.equal(headers.subject);
         expect(mail.from.text).to.equal(headers.from);
