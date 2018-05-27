@@ -1,16 +1,16 @@
 module.exports = function(message, code, error, smtp) {
-  const err = new Error(
-    error && error.message ? `${message} (${error.message})` : message
-  );
+	const err = new Error(
+		error && error.message ? `${message} (${error.message})` : message
+	);
 
 	err.code = code;
-  err.smtp = smtp;
+	err.smtp = smtp;
 
 	if (error) {
 		err.previous = error;
 	}
 
-  return err;
+	return err;
 };
 
 module.exports.COULDNOTCONNECT = 1;
