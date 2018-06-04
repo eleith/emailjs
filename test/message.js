@@ -21,7 +21,9 @@ describe('messages', function() {
 		};
 
 		server.send(message, function(err) {
-			if (err) throw err;
+			if (err) {
+				throw err;
+			}
 		});
 	};
 

@@ -140,11 +140,13 @@ class Message {
 			this.attachments.forEach(attachment => {
 				if (attachment.path) {
 					// migrating path->fs for existsSync)
-					if (!(fs.existsSync || path.existsSync)(attachment.path))
+					if (!(fs.existsSync || path.existsSync)(attachment.path)) {
 						failed.push(`${attachment.path} does not exist`);
+					}
 				} else if (attachment.stream) {
-					if (!attachment.stream.readable)
+					if (!attachment.stream.readable) {
 						failed.push('attachment stream is not readable');
+					}
 				} else if (!attachment.data) {
 					failed.push('attachment has no data associated with it');
 				}
@@ -363,7 +365,9 @@ class MessageStream extends Stream {
 				output(data.substring(MIMECHUNK * loop, MIMECHUNK * (loop + 1)) + CRLF);
 				loop++;
 			}
-			if (callback) callback();
+			if (callback) {
+				callback();
+			}
 		};
 
 		const output_text = message => {
@@ -455,7 +459,9 @@ class MessageStream extends Stream {
 			if (bytes + this.bufferIndex < this.buffer.length) {
 				this.buffer.write(data, this.bufferIndex);
 				this.bufferIndex += bytes;
-				if (callback) callback.apply(null, args);
+				if (callback) {
+					callback.apply(null, args);
+				}
 			}
 			// we can't buffer the data, so ship it out!
 			else if (bytes > this.buffer.length) {

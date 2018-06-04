@@ -120,7 +120,14 @@ class SMTP extends EventEmitter {
 		this.ssl = options.ssl || this.ssl;
 
 		if (this._state != SMTPState.NOTCONNECTED) {
-			this.quit(() => this.connect(callback, port, host, options));
+			this.quit(() =>
+				this.connect(
+					callback,
+					port,
+					host,
+					options
+				)
+			);
 			return;
 		}
 
@@ -178,10 +185,19 @@ class SMTP extends EventEmitter {
 		log(`connecting: ${this.host}:${this.port}`);
 
 		if (this.ssl) {
-			this.sock = tls.connect(this.port, this.host, this.ssl, connected);
+			this.sock = tls.connect(
+				this.port,
+				this.host,
+				this.ssl,
+				connected
+			);
 		} else {
 			this.sock = new net.Socket();
-			this.sock.connect(this.port, this.host, connected);
+			this.sock.connect(
+				this.port,
+				this.host,
+				connected
+			);
 		}
 
 		this.monitor = SMTPResponse.monitor(this.sock, this.timeout, () =>

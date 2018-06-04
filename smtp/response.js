@@ -76,7 +76,9 @@ class SMTPResponse {
 			stream.removeListener('close', close);
 			stream.removeListener('error', error);
 
-			if (err && typeof onerror === 'function') onerror(err);
+			if (err && typeof onerror === 'function') {
+				onerror(err);
+			}
 		};
 
 		stream.on('data', watch);

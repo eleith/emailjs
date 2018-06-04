@@ -18,7 +18,9 @@ describe('authorize ssl', function() {
 		};
 
 		server.send(message, function(err) {
-			if (err) throw err;
+			if (err) {
+				throw err;
+			}
 		});
 	};
 

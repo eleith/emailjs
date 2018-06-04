@@ -27,9 +27,11 @@ class Client {
 				this._sendmail(this.queue.shift());
 			}
 		}
-		// wait around 1 seconds in case something does come in, otherwise close out SMTP connection if still open
-		else if (this.smtp.state() == smtp.state.CONNECTED)
+		// wait around 1 seconds in case something does come in,
+		// otherwise close out SMTP connection if still open
+		else if (this.smtp.state() == smtp.state.CONNECTED) {
 			this.timer = setTimeout(() => this.smtp.quit(), 1000);
+		}
 	}
 
 	_connect(stack) {
@@ -48,8 +50,11 @@ class Client {
 					}
 				};
 
-				if (!this.smtp.authorized()) this.smtp.login(begin);
-				else this.smtp.ehlo_or_helo_if_needed(begin);
+				if (!this.smtp.authorized()) {
+					this.smtp.login(begin);
+				} else {
+					this.smtp.ehlo_or_helo_if_needed(begin);
+				}
 			} else {
 				stack.callback(err, stack.message);
 
@@ -69,8 +74,9 @@ class Client {
 			msg.from &&
 			(msg.to || msg.cc || msg.bcc) &&
 			(msg.text !== undefined || this._containsInlinedHtml(msg.attachment))
-		)
+		) {
 			msg = message.create(msg);
+		}
 
 		if (msg instanceof message.Message) {
 			msg.valid((valid, why) => {
@@ -82,19 +88,22 @@ class Client {
 						callback: (callback || function() {}).bind(this),
 					};
 
-					if (msg.header.cc)
+					if (msg.header.cc) {
 						stack.to = stack.to.concat(addressparser(msg.header.cc));
+					}
 
-					if (msg.header.bcc)
+					if (msg.header.bcc) {
 						stack.to = stack.to.concat(addressparser(msg.header.bcc));
+					}
 
 					if (
 						msg.header['return-path'] &&
 						addressparser(msg.header['return-path']).length
-					)
+					) {
 						stack.returnPath = addressparser(
 							msg.header['return-path']
 						)[0].address;
+					}
 
 					this.queue.push(stack);
 					this._poll();
