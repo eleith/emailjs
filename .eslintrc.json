@@ -12,6 +12,10 @@
 		"plugin:prettier/recommended"
 	],
 	"rules": {
+		"curly": [
+			"error",
+			"all"
+		],
 		"linebreak-style": [
 			"error",
 			"unix"
