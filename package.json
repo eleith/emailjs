@@ -19,9 +19,6 @@
     "moment": "2.20.1",
     "starttls": "1.0.1"
   },
-  "optionalDependencies": {
-    "bufferjs": "1.1.0"
-  },
   "devDependencies": {
     "chai": "1.1.0",
     "eslint": "^4.19.1",

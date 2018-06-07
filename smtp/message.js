@@ -12,11 +12,6 @@ const BUFFERSIZE = MIMECHUNK * 24 * 7; // size of the message stream buffer
 
 let counter = 0;
 
-// support for nodejs without Buffer.concat native function
-if (!Buffer.concat) {
-	require('bufferjs/concat');
-}
-
 function generate_boundary() {
 	let text = '';
 	const possible =
