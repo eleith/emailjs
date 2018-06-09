@@ -1,209 +1,195 @@
-var smtp       = require('./smtp');
-var smtpError    = require('./error');
-var message      = require('./message');
-var addressparser= require('addressparser');
+const smtp = require('./smtp');
+const message = require('./message');
+const addressparser = require('addressparser');
 
-var Client = function(server)
-{
-   this.smtp         = new smtp.SMTP(server);
-   //this.smtp.debug(1);
+class Client {
+	constructor(server) {
+		this.smtp = new smtp.SMTP(server);
+		//this.smtp.debug(1);
 
-   this.queue        = [];
-   this.timer        = null;
-   this.sending      = false;
-   this.ready        = false;
-};
+		this.queue = [];
+		this.timer = null;
+		this.sending = false;
+		this.ready = false;
+	}
 
-Client.prototype = 
-{
-   _poll: function()
-   {
-      var self = this;
+	_poll() {
+		clearTimeout(this.timer);
 
-      clearTimeout(self.timer);
+		if (this.queue.length) {
+			if (this.smtp.state() == smtp.state.NOTCONNECTED) {
+				this._connect(this.queue[0]);
+			} else if (
+				this.smtp.state() == smtp.state.CONNECTED &&
+				!this.sending &&
+				this.ready
+			) {
+				this._sendmail(this.queue.shift());
+			}
+		}
+		// wait around 1 seconds in case something does come in,
+		// otherwise close out SMTP connection if still open
+		else if (this.smtp.state() == smtp.state.CONNECTED) {
+			this.timer = setTimeout(() => this.smtp.quit(), 1000);
+		}
+	}
 
-      if(self.queue.length)
-      {
-         if(self.smtp.state() == smtp.state.NOTCONNECTED)
-            self._connect(self.queue[0]);
+	_connect(stack) {
+		const connect = err => {
+			if (!err) {
+				const begin = err => {
+					if (!err) {
+						this.ready = true;
+						this._poll();
+					} else {
+						stack.callback(err, stack.message);
 
-         else if(self.smtp.state() == smtp.state.CONNECTED && !self.sending && self.ready)
-            self._sendmail(self.queue.shift());
-      }
-      // wait around 1 seconds in case something does come in, otherwise close out SMTP connection if still open
-      else if(self.smtp.state() == smtp.state.CONNECTED)
-         self.timer = setTimeout(function() { self.smtp.quit(); }, 1000);
-   },
+						// clear out the queue so all callbacks can be called with the same error message
+						this.queue.shift();
+						this._poll();
+					}
+				};
 
-   _connect: function(stack)
-   {
-      var self = this,
+				if (!this.smtp.authorized()) {
+					this.smtp.login(begin);
+				} else {
+					this.smtp.ehlo_or_helo_if_needed(begin);
+				}
+			} else {
+				stack.callback(err, stack.message);
 
-      connect = function(err)
-      {
-         if(!err)
-         {
-            var begin = function(err)
-            {
-               if(!err)
-               {
-                  self.ready = true;
-                  self._poll();
-               }
-               else {
-                  stack.callback(err, stack.message);
+				// clear out the queue so all callbacks can be called with the same error message
+				this.queue.shift();
+				this._poll();
+			}
+		};
 
-                  // clear out the queue so all callbacks can be called with the same error message
-                  self.queue.shift();
-                  self._poll();
-               }
-            };
+		this.ready = false;
+		this.smtp.connect(connect);
+	}
 
-            if(!self.smtp.authorized())
-               self.smtp.login(begin);
+	send(msg, callback) {
+		if (
+			!(msg instanceof message.Message) &&
+			msg.from &&
+			(msg.to || msg.cc || msg.bcc) &&
+			(msg.text !== undefined || this._containsInlinedHtml(msg.attachment))
+		) {
+			msg = message.create(msg);
+		}
 
-            else
-               self.smtp.ehlo_or_helo_if_needed(begin);
-         }
-         else {
-            stack.callback(err, stack.message);
+		if (msg instanceof message.Message) {
+			msg.valid((valid, why) => {
+				if (valid) {
+					const stack = {
+						message: msg,
+						to: addressparser(msg.header.to),
+						from: addressparser(msg.header.from)[0].address,
+						callback: (callback || function() {}).bind(this),
+					};
 
-            // clear out the queue so all callbacks can be called with the same error message
-            self.queue.shift();
-            self._poll();
-         }
-      };
+					if (msg.header.cc) {
+						stack.to = stack.to.concat(addressparser(msg.header.cc));
+					}
 
-      self.ready = false;
-      self.smtp.connect(connect);
-   },
+					if (msg.header.bcc) {
+						stack.to = stack.to.concat(addressparser(msg.header.bcc));
+					}
 
-   send: function(msg, callback)
-   {
-      var self = this;
+					if (
+						msg.header['return-path'] &&
+						addressparser(msg.header['return-path']).length
+					) {
+						stack.returnPath = addressparser(
+							msg.header['return-path']
+						)[0].address;
+					}
 
-      if(!(msg instanceof message.Message) 
-          && msg.from 
-          && (msg.to || msg.cc || msg.bcc)
-          && (msg.text !== undefined || this._containsInlinedHtml(msg.attachment)))
-         msg = message.create(msg);
+					this.queue.push(stack);
+					this._poll();
+				} else {
+					callback(new Error(why), msg);
+				}
+			});
+		} else {
+			callback(new Error('message is not a valid Message instance'), msg);
+		}
+	}
 
-      if(msg instanceof message.Message)
-      {
-         msg.valid(function(valid, why)
-         {
-            if(valid)
-            {
-               var stack = 
-               {
-                  message:    msg,
-                  to:         addressparser(msg.header.to),
-                  from:       addressparser(msg.header.from)[0].address,
-                  callback:   callback || function() {}
-               };
+	_containsInlinedHtml(attachment) {
+		if (Array.isArray(attachment)) {
+			return attachment.some(() => {
+				return att => {
+					return this._isAttachmentInlinedHtml(att);
+				};
+			});
+		} else {
+			return this._isAttachmentInlinedHtml(attachment);
+		}
+	}
 
-               if(msg.header.cc)
-                  stack.to = stack.to.concat(addressparser(msg.header.cc));
+	_isAttachmentInlinedHtml(attachment) {
+		return (
+			attachment &&
+			(attachment.data || attachment.path) &&
+			attachment.alternative === true
+		);
+	}
 
-               if(msg.header.bcc)
-                  stack.to = stack.to.concat(addressparser(msg.header.bcc));
+	_sendsmtp(stack, next) {
+		return err => {
+			if (!err && next) {
+				next.apply(this, [stack]);
+			} else {
+				// if we snag on SMTP commands, call done, passing the error
+				// but first reset SMTP state so queue can continue polling
+				this.smtp.rset(() => this._senddone(err, stack));
+			}
+		};
+	}
 
-               if(msg.header['return-path'] && addressparser(msg.header['return-path']).length)
-                 stack.returnPath = addressparser(msg.header['return-path'])[0].address;
+	_sendmail(stack) {
+		const from = stack.returnPath || stack.from;
+		this.sending = true;
+		this.smtp.mail(this._sendsmtp(stack, this._sendrcpt), '<' + from + '>');
+	}
 
-               self.queue.push(stack);
-               self._poll();
-            }
-            else
-               callback(new Error(why), msg);
-         });
-      }
-      else
-         callback(new Error("message is not a valid Message instance"), msg);
-   },
+	_sendrcpt(stack) {
+		const to = stack.to.shift().address;
+		this.smtp.rcpt(
+			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
+			'<' + to + '>'
+		);
+	}
 
-   _containsInlinedHtml: function(attachment) {
-	   if (Array.isArray(attachment)) {
-		   return attachment.some((function(ctx) {
-			   return function(att) {
-				   return ctx._isAttachmentInlinedHtml(att);
-			   };
-		   })(this));
-	   } else {
-		   return this._isAttachmentInlinedHtml(attachment);
-	   }   
-	},
+	_senddata(stack) {
+		this.smtp.data(this._sendsmtp(stack, this._sendmessage));
+	}
 
-   _isAttachmentInlinedHtml: function(attachment) {
-	   return attachment && 
-		  (attachment.data || attachment.path) && 
-		   attachment.alternative === true;
-   },
+	_sendmessage(stack) {
+		const stream = stack.message.stream();
 
-   _sendsmtp: function(stack, next)
-   {
-      var self   = this;
-      var check= function(err)
-      {
-         if(!err && next)
-         {
-            next.apply(self, [stack]);
-         }
-         else
-         {
-            // if we snag on SMTP commands, call done, passing the error
-            // but first reset SMTP state so queue can continue polling
-            self.smtp.rset(function() { self._senddone(err, stack); });
-         }
-      };
+		stream.on('data', data => this.smtp.message(data));
+		stream.on('end', () => {
+			this.smtp.data_end(
+				this._sendsmtp(stack, () => this._senddone(null, stack))
+			);
+		});
 
-      return check;
-   },
+		// there is no way to cancel a message while in the DATA portion,
+		// so we have to close the socket to prevent a bad email from going out
+		stream.on('error', err => {
+			this.smtp.close();
+			this._senddone(err, stack);
+		});
+	}
 
-   _sendmail: function(stack)
-   {
-      var self = this;
-      var from = stack.returnPath || stack.from;
-      self.sending = true;
-      self.smtp.mail(self._sendsmtp(stack, self._sendrcpt), '<' + from + '>');
-   },
-
-   _sendrcpt: function(stack)
-   {
-      var self = this, to = stack.to.shift().address;
-      self.smtp.rcpt(self._sendsmtp(stack, stack.to.length ? self._sendrcpt : self._senddata), '<'+ to +'>');
-   },
-
-   _senddata: function(stack)
-   {
-      var self = this;
-      self.smtp.data(self._sendsmtp(stack, self._sendmessage));
-   },
-
-   _sendmessage: function(stack)
-   {
-      var self = this, stream = stack.message.stream();
-
-      stream.on('data', function(data) { self.smtp.message(data); });
-      stream.on('end', function() { self.smtp.data_end(self._sendsmtp(stack, function() { self._senddone(null, stack) })); });
-
-      // there is no way to cancel a message while in the DATA portion, so we have to close the socket to prevent
-      // a bad email from going out
-      stream.on('error', function(err) { self.smtp.close(); self._senddone(err, stack); });
-   },
-
-   _senddone: function(err, stack)
-   {
-      var self = this;
-      self.sending = false;
-      stack.callback(err, stack.message);
-      self._poll();
-   }
-};
+	_senddone(err, stack) {
+		this.sending = false;
+		stack.callback(err, stack.message);
+		this._poll();
+	}
+}
 
 exports.Client = Client;
-
-exports.connect = function(server)
-{
-   return new Client(server);
-};
+exports.connect = server => new Client(server);
