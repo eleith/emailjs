@@ -17,7 +17,6 @@
   "dependencies": {
     "addressparser": "^0.3.2",
     "emailjs-mime-codec": "^2.0.5",
-    "moment": "2.20.1",
     "starttls": "1.0.1"
   },
   "devDependencies": {
