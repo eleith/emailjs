@@ -16,19 +16,19 @@
   },
   "dependencies": {
     "addressparser": "^0.3.2",
-    "emailjs-mime-codec": "^2.0.5",
-    "starttls": "1.0.1"
+    "emailjs-mime-codec": "^2.0.7",
+    "starttls": "^1.0.1"
   },
   "devDependencies": {
-    "chai": "1.1.0",
+    "chai": "^4.1.2",
     "eslint": "^4.19.1",
     "eslint-config-prettier": "^2.9.0",
     "eslint-plugin-mocha": "^5.0.0",
     "eslint-plugin-prettier": "^2.6.0",
-    "mailparser": "2.2.0",
-    "mocha": "5.0.0",
-    "prettier": "^1.12.1",
-    "smtp-server": "^3.4.1"
+    "mailparser": "^2.2.0",
+    "mocha": "^5.2.0",
+    "prettier": "^1.13.5",
+    "smtp-server": "^3.4.6"
   },
   "engine": [
     "node >= 6"
