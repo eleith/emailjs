@@ -55,12 +55,41 @@ describe('messages', function() {
 	});
 
 	it('rfc2822 date', function(done) {
-		var d = dt => email.message.getRFC2822Date(new Date(dt));
-		expect(d(0)).to.equal('Wed, 31 Dec 1969 16:00:00 -0800');
-		expect(d(329629726785)).to.equal('Wed, 11 Jun 1980 20:48:46 -0700');
-		expect(d(729629726785)).to.equal('Sat, 13 Feb 1993 10:55:26 -0800');
-		expect(d(1129629726785)).to.equal('Tue, 18 Oct 2005 03:02:06 -0700');
-		expect(d(1529629726785)).to.equal('Thu, 21 Jun 2018 18:08:46 -0700');
+		var d_utc = dt => email.message.getRFC2822DateUTC(new Date(dt));
+		var d = (dt, utc = false) =>
+			email.message.getRFC2822Date(new Date(dt), utc);
+
+		expect(d_utc(0)).to.equal('Thu, 01 Jan 1970 00:00:00 +0000');
+		expect(d_utc(0)).to.equal(d(0, true));
+
+		expect(d_utc(329629726785)).to.equal('Thu, 12 Jun 1980 03:48:46 +0000');
+		expect(d_utc(329629726785)).to.equal(d(329629726785, true));
+
+		expect(d_utc(729629726785)).to.equal('Sat, 13 Feb 1993 18:55:26 +0000');
+		expect(d_utc(729629726785)).to.equal(d(729629726785, true));
+
+		expect(d_utc(1129629726785)).to.equal('Tue, 18 Oct 2005 10:02:06 +0000');
+		expect(d_utc(1129629726785)).to.equal(d(1129629726785, true));
+
+		expect(d_utc(1529629726785)).to.equal('Fri, 22 Jun 2018 01:08:46 +0000');
+		expect(d_utc(1529629726785)).to.equal(d(1529629726785, true));
+
+		// travis always returns 0 as the timezone offset,
+		// so we hardcode offsets against -0800/-0700 timestamps
+		// (entirely because that corresponds with the timezone i'm currently in)
+		var d_short = (dt, use0800 = true) => {
+			return d_utc(dt + (use0800 ? -28800000 : -25200000))
+				.split(' ')
+				.slice(0, 5)
+				.join(' ');
+		};
+
+		expect(d_short(0)).to.equal('Wed, 31 Dec 1969 16:00:00');
+		expect(d_short(329629726785, false)).to.equal('Wed, 11 Jun 1980 20:48:46');
+		expect(d_short(729629726785)).to.equal('Sat, 13 Feb 1993 10:55:26');
+		expect(d_short(1129629726785, false)).to.equal('Tue, 18 Oct 2005 03:02:06');
+		expect(d_short(1529629726785, false)).to.equal('Thu, 21 Jun 2018 18:08:46');
+
 		done();
 	});
 
