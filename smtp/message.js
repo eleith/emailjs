@@ -2,7 +2,6 @@ const { Stream } = require('stream');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const moment = require('moment');
 const mimeWordEncode = require('emailjs-mime-codec').mimeWordEncode;
 const addressparser = require('addressparser');
 const CRLF = '\r\n';
@@ -11,6 +10,19 @@ const MIME64CHUNK = MIMECHUNK * 6; // meets both base64 and mime divisibility
 const BUFFERSIZE = MIMECHUNK * 24 * 7; // size of the message stream buffer
 
 let counter = 0;
+
+function getRFC2822Date(d = new Date()) {
+  const date = d.toString().replace('GMT', '').replace(/\s\(.*\)$/, '')
+  const dates = date.split(' ');
+
+  dates[0] = dates[0] + ',';
+
+  const day = dates[1];
+  dates[1] = dates[2];
+  dates[2] = day;
+
+  return dates.join(' ');
+}
 
 function generate_boundary() {
 	let text = '';
@@ -48,9 +60,7 @@ class Message {
 			'message-id': `<${new Date().getTime()}.${counter++}.${
 				process.pid
 			}@${os.hostname()}>`,
-			date: moment()
-				.locale('en')
-				.format('ddd, DD MMM YYYY HH:mm:ss ZZ'),
+			date: getRFC2822Date(),
 		};
 
 		this.content = 'text/plain; charset=utf-8';
@@ -542,3 +552,4 @@ class MessageStream extends Stream {
 exports.Message = Message;
 exports.BUFFERSIZE = BUFFERSIZE;
 exports.create = headers => new Message(headers);
+exports.getRFC2822Date = getRFC2822Date;

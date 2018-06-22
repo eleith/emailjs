@@ -54,6 +54,16 @@ describe('messages', function() {
 		smtp.close(done);
 	});
 
+	it('rfc2822 date', function(done) {
+		var d = dt => email.message.getRFC2822Date(new Date(dt));
+		expect(d(0)).to.equal('Wed, 31 Dec 1969 16:00:00 -0800');
+		expect(d(329629726785)).to.equal('Wed, 11 Jun 1980 20:48:46 -0700');
+		expect(d(729629726785)).to.equal('Sat, 13 Feb 1993 10:55:26 -0800');
+		expect(d(1129629726785)).to.equal('Tue, 18 Oct 2005 03:02:06 -0700');
+		expect(d(1529629726785)).to.equal('Thu, 21 Jun 2018 18:08:46 -0700');
+		done();
+	});
+
 	it('simple text message', function(done) {
 		var message = {
 			subject: 'this is a test TEXT message from emailjs',
