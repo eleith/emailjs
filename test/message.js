@@ -77,8 +77,10 @@ describe('messages', function() {
 		// travis always returns 0 as the timezone offset,
 		// so we hardcode offsets against -0800/-0700 timestamps
 		// (entirely because that corresponds with the timezone i'm currently in)
-		var d_short = (dt, use0800 = true) => {
-			return d_utc(dt + (use0800 ? -28800000 : -25200000))
+		// pretty brittle; going to look at moment.js' tests and see if there's something i can pull
+		var useOffset = new Date().getTimezoneOffset() === 0;
+		const d_short = (dt, use0800 = true) => {
+			return d(dt + (useOffset ? (use0800 ? -28800000 : -25200000) : 0))
 				.split(' ')
 				.slice(0, 5)
 				.join(' ');
