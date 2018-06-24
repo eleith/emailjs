@@ -2,9 +2,10 @@ const { Stream } = require('stream');
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
-const moment = require('moment');
 const mimeWordEncode = require('emailjs-mime-codec').mimeWordEncode;
 const addressparser = require('addressparser');
+const { getRFC2822Date } = require('./date');
+
 const CRLF = '\r\n';
 const MIMECHUNK = 76; // MIME standard wants 76 char chunks when sending out.
 const MIME64CHUNK = MIMECHUNK * 6; // meets both base64 and mime divisibility
@@ -48,9 +49,7 @@ class Message {
 			'message-id': `<${new Date().getTime()}.${counter++}.${
 				process.pid
 			}@${os.hostname()}>`,
-			date: moment()
-				.locale('en')
-				.format('ddd, DD MMM YYYY HH:mm:ss ZZ'),
+			date: getRFC2822Date(),
 		};
 
 		this.content = 'text/plain; charset=utf-8';
