@@ -4,39 +4,14 @@ const os = require('os');
 const path = require('path');
 const mimeWordEncode = require('emailjs-mime-codec').mimeWordEncode;
 const addressparser = require('addressparser');
+const { getRFC2822Date } = require('./date');
+
 const CRLF = '\r\n';
 const MIMECHUNK = 76; // MIME standard wants 76 char chunks when sending out.
 const MIME64CHUNK = MIMECHUNK * 6; // meets both base64 and mime divisibility
 const BUFFERSIZE = MIMECHUNK * 24 * 7; // size of the message stream buffer
 
 let counter = 0;
-
-function getRFC2822Date(date = new Date(), useUtc = false) {
-	if (useUtc) {
-		return getRFC2822DateUTC(date);
-	}
-
-	const dates = date
-		.toString()
-		.replace('GMT', '')
-		.replace(/\s\(.*\)$/, '')
-		.split(' ');
-
-	dates[0] = dates[0] + ',';
-
-	const day = dates[1];
-	dates[1] = dates[2];
-	dates[2] = day;
-
-	return dates.join(' ');
-}
-
-function getRFC2822DateUTC(date = new Date()) {
-	const dates = date.toUTCString().split(' ');
-	dates.pop(); // remove timezone
-	dates.push('+0000');
-	return dates.join(' ');
-}
 
 function generate_boundary() {
 	let text = '';
@@ -566,5 +541,3 @@ class MessageStream extends Stream {
 exports.Message = Message;
 exports.BUFFERSIZE = BUFFERSIZE;
 exports.create = headers => new Message(headers);
-exports.getRFC2822Date = getRFC2822Date;
-exports.getRFC2822DateUTC = getRFC2822DateUTC;
