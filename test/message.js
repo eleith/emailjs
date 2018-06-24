@@ -74,23 +74,14 @@ describe('messages', function() {
 		expect(d_utc(1529629726785)).to.equal('Fri, 22 Jun 2018 01:08:46 +0000');
 		expect(d_utc(1529629726785)).to.equal(d(1529629726785, true));
 
-		// travis always returns 0 as the timezone offset,
-		// so we hardcode offsets against -0800/-0700 timestamps
-		// (entirely because that corresponds with the timezone i'm currently in)
-		// pretty brittle; going to look at moment.js' tests and see if there's something i can pull
-		var useOffset = new Date().getTimezoneOffset() === 0;
-		const d_short = (dt, use0800 = true) => {
-			return d(dt + (useOffset ? (use0800 ? -28800000 : -25200000) : 0))
-				.split(' ')
-				.slice(0, 5)
-				.join(' ');
-		};
-
-		expect(d_short(0)).to.equal('Wed, 31 Dec 1969 16:00:00');
-		expect(d_short(329629726785, false)).to.equal('Wed, 11 Jun 1980 20:48:46');
-		expect(d_short(729629726785)).to.equal('Sat, 13 Feb 1993 10:55:26');
-		expect(d_short(1129629726785, false)).to.equal('Tue, 18 Oct 2005 03:02:06');
-		expect(d_short(1529629726785, false)).to.equal('Thu, 21 Jun 2018 18:08:46');
+		// RFC 2822 regex: For details see https://tools.ietf.org/html/rfc2822#section-3.3
+		// thanks to moment.js for the listing: https://github.com/moment/moment/blob/a831fc7e2694281ce31e4f090bbcf90a690f0277/src/lib/create/from-string.js#L101
+		var rfc2822re = /^(?:(Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s)?(\d{1,2})\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{2,4})\s(\d\d):(\d\d)(?::(\d\d))?\s(?:(UT|GMT|[ECMP][SD]T)|([Zz])|([+-]\d{4}))$/;
+		expect(d(0)).to.match(rfc2822re);
+		expect(d(329629726785)).to.match(rfc2822re);
+		expect(d(729629726785)).to.match(rfc2822re);
+		expect(d(1129629726785)).to.match(rfc2822re);
+		expect(d(1529629726785)).to.match(rfc2822re);
 
 		done();
 	});
