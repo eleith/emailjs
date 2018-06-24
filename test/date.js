@@ -1,9 +1,11 @@
 describe('rfc2822 dates', function() {
 	const { expect } = require('chai');
-	const { date } = require('../email');
+	const {
+		date: { getRFC2822Date, getRFC2822DateUTC },
+	} = require('../email');
 
-	var d_utc = dt => date.getRFC2822DateUTC(new Date(dt));
-	var d = (dt, utc = false) => date.getRFC2822Date(new Date(dt), utc);
+	var d_utc = dt => getRFC2822DateUTC(new Date(dt));
+	var d = (dt, utc = false) => getRFC2822Date(new Date(dt), utc);
 
 	it('should match standard regex', function(done) {
 		// RFC 2822 regex: For details see https://tools.ietf.org/html/rfc2822#section-3.3
