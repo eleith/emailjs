@@ -257,11 +257,7 @@ class MessageStream extends Stream {
 		const output_file = (attachment, next) => {
 			const chunk = MIME64CHUNK * 16;
 			const buffer = Buffer.alloc(chunk);
-			const closed = fd => {
-				if (fs.closeSync) {
-					fs.closeSync(fd);
-				}
-			};
+			const closed = fd => fs.closeSync(fd);
 
 			const opened = (err, fd) => {
 				if (!err) {
