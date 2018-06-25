@@ -1,8 +1,8 @@
-const { Stream } = require('stream');
 const fs = require('fs');
-const os = require('os');
-const mimeWordEncode = require('emailjs-mime-codec').mimeWordEncode;
+const { hostname } = require('os');
+const { Stream } = require('stream');
 const addressparser = require('addressparser');
+const { mimeWordEncode } = require('emailjs-mime-codec');
 const { getRFC2822Date } = require('./date');
 
 const CRLF = '\r\n';
@@ -47,7 +47,7 @@ class Message {
 		this.header = {
 			'message-id': `<${new Date().getTime()}.${counter++}.${
 				process.pid
-			}@${os.hostname()}>`,
+			}@${hostname()}>`,
 			date: getRFC2822Date(),
 		};
 

@@ -1,10 +1,10 @@
-const smtp = require('./smtp');
-const message = require('./message');
+const { SMTP, state } = require('./smtp');
+const { Message, create } = require('./message');
 const addressparser = require('addressparser');
 
 class Client {
 	constructor(server) {
-		this.smtp = new smtp.SMTP(server);
+		this.smtp = new SMTP(server);
 		//this.smtp.debug(1);
 
 		this.queue = [];
@@ -17,10 +17,10 @@ class Client {
 		clearTimeout(this.timer);
 
 		if (this.queue.length) {
-			if (this.smtp.state() == smtp.state.NOTCONNECTED) {
+			if (this.smtp.state() == state.NOTCONNECTED) {
 				this._connect(this.queue[0]);
 			} else if (
-				this.smtp.state() == smtp.state.CONNECTED &&
+				this.smtp.state() == state.CONNECTED &&
 				!this.sending &&
 				this.ready
 			) {
@@ -29,7 +29,7 @@ class Client {
 		}
 		// wait around 1 seconds in case something does come in,
 		// otherwise close out SMTP connection if still open
-		else if (this.smtp.state() == smtp.state.CONNECTED) {
+		else if (this.smtp.state() == state.CONNECTED) {
 			this.timer = setTimeout(() => this.smtp.quit(), 1000);
 		}
 	}
@@ -70,15 +70,15 @@ class Client {
 
 	send(msg, callback) {
 		if (
-			!(msg instanceof message.Message) &&
+			!(msg instanceof Message) &&
 			msg.from &&
 			(msg.to || msg.cc || msg.bcc) &&
 			(msg.text !== undefined || this._containsInlinedHtml(msg.attachment))
 		) {
-			msg = message.create(msg);
+			msg = create(msg);
 		}
 
-		if (msg instanceof message.Message) {
+		if (msg instanceof Message) {
 			msg.valid((valid, why) => {
 				if (valid) {
 					const stack = {
