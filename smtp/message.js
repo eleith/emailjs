@@ -1,7 +1,6 @@
 const { Stream } = require('stream');
 const fs = require('fs');
 const os = require('os');
-const path = require('path');
 const mimeWordEncode = require('emailjs-mime-codec').mimeWordEncode;
 const addressparser = require('addressparser');
 const { getRFC2822Date } = require('./date');
@@ -133,8 +132,7 @@ class Message {
 
 			this.attachments.forEach(attachment => {
 				if (attachment.path) {
-					// migrating path->fs for existsSync)
-					if (!(fs.existsSync || path.existsSync)(attachment.path)) {
+					if (fs.existsSync(attachment.path) == false) {
 						failed.push(`${attachment.path} does not exist`);
 					}
 				} else if (attachment.stream) {
