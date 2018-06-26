@@ -16,8 +16,7 @@
   },
   "dependencies": {
     "addressparser": "^0.3.2",
-    "emailjs-mime-codec": "^2.0.7",
-    "starttls": "^1.0.1"
+    "emailjs-mime-codec": "^2.0.7"
   },
   "devDependencies": {
     "chai": "^4.1.2",

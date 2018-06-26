@@ -4,12 +4,7 @@
 const { Socket } = require('net');
 const { createHmac } = require('crypto');
 const { hostname } = require('os');
-const {
-	connect,
-	createSecureContext,
-	createSecurePair,
-	TLSSocket,
-} = require('tls');
+const { connect, createSecureContext, TLSSocket } = require('tls');
 const { EventEmitter } = require('events');
 
 const SMTPResponse = require('./response');
@@ -375,58 +370,19 @@ class SMTP extends EventEmitter {
 				err.message += ' while establishing a starttls session';
 				caller(callback, err);
 			} else {
-				// support new API
-				if (TLSSocket) {
-					const secured_socket = new TLSSocket(this.sock, {
-						secureContext: createSecureContext
-							? createSecureContext(this.tls)
-							: require('crypto').createCredentials(this.tls),
-						isServer: false, // older versions of node (0.12), do not default to false properly...
-					});
+				const secureContext = createSecureContext(this.tls);
+				const secureSocket = new TLSSocket(this.sock, { secureContext });
 
-					secured_socket.on('error', err => {
-						this.close(true);
-						caller(callback, err);
-					});
+				secureSocket.on('error', err => {
+					this.close(true);
+					caller(callback, err);
+				});
 
-					this._secure = true;
-					this.sock = secured_socket;
+				this._secure = true;
+				this.sock = secureSocket;
 
-					SMTPResponse.monitor(this.sock, this.timeout, () => this.close(true));
-					caller(callback, msg.data);
-				} else {
-					let secured_socket = null;
-					const secured = () => {
-						this._secure = true;
-						this.sock = secured_socket;
-
-						SMTPResponse.monitor(this.sock, this.timeout, () =>
-							this.close(true)
-						);
-						caller(callback, msg.data);
-					};
-
-					const starttls = require('starttls');
-					secured_socket = starttls(
-						{
-							socket: this.sock,
-							host: this.host,
-							port: this.port,
-							pair: createSecurePair(
-								createSecureContext
-									? createSecureContext(this.tls)
-									: require('crypto').createCredentials(this.tls),
-								false
-							),
-						},
-						secured
-					).cleartext;
-
-					secured_socket.on('error', err => {
-						this.close(true);
-						caller(callback, err);
-					});
-				}
+				SMTPResponse.monitor(this.sock, this.timeout, () => this.close(true));
+				caller(callback, msg.data);
 			}
 		};
 
