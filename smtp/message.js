@@ -97,12 +97,13 @@ class Message {
 				header === 'attachment' &&
 				typeof headers[header] === 'object'
 			) {
-				if (Array.isArray(headers[header])) {
-					for (let i = 0, l = headers[header].length; i < l; i++) {
-						this.attach(headers[header][i]);
+				const h = headers[header];
+				if (Array.isArray(h)) {
+					for (let i = 0, l = h.length; i < l; i++) {
+						this.attach(h[i]);
 					}
 				} else {
-					this.attach(headers[header]);
+					this.attach(h);
 				}
 			} else if (header === 'subject') {
 				this.header.subject = mimeWordEncode(headers.subject);
@@ -125,8 +126,12 @@ class Message {
 			legacy support, will remove eventually...
 			arguments -> (path, type, name, headers)
 		*/
-		if (arguments.length > 1) {
-			options = { path: options, type: arguments[1], name: arguments[2] };
+		if (typeof options === 'string' && arguments.length > 1) {
+			options = {
+				path: options,
+				type: arguments[1],
+				name: arguments[2],
+			};
 		}
 
 		// sender can specify an attachment as an alternative
@@ -237,7 +242,7 @@ class Message {
  * @property {string} [charset]
  * @property {string} [method]
  * @property {string} [path]
- * @property {streams.Duplex} [stream]
+ * @property {Duplex} [stream]
  * @property {boolean} [inline]
  * @property {MessageAttachment} [alternative]
  * @property {MessageAttachment[]} [related]
@@ -287,7 +292,7 @@ class MessageStream extends Stream {
 				`Content-Type: multipart/mixed; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`
 			);
 
-			if (!this.message.alternative) {
+			if (this.message.alternative == null) {
 				output_text(this.message);
 				output_message(boundary, this.message.attachments, 0, close);
 			} else {
@@ -457,32 +462,31 @@ class MessageStream extends Stream {
 		 */
 		const output_stream = (attachment, callback) => {
 			if (attachment.stream.readable) {
-				let previous = null;
+				let previous = Buffer.alloc(0);
 
 				attachment.stream.resume();
 
 				attachment.stream.on('end', () => {
-					output_base64(
-						(previous || Buffer.from(0)).toString('base64'),
-						callback
-					);
+					output_base64(previous.toString('base64'), callback);
 					this.removeListener('pause', attachment.stream.pause);
 					this.removeListener('resume', attachment.stream.resume);
 					this.removeListener('error', attachment.stream.resume);
 				});
 
-				attachment.stream.on('data', buffer => {
+				attachment.stream.on('data', buff => {
 					// do we have bytes from a previous stream data event?
-					if (previous) {
+					let buffer = Buffer.isBuffer(buff) ? buff : Buffer.from(buff);
+
+					if (previous.byteLength > 0) {
 						const buffer2 = Buffer.concat([previous, buffer]);
-						previous = null; // free up the buffer
+						previous = Buffer.alloc(0); // free up the buffer
 						buffer = null; // free up the buffer
 						buffer = buffer2;
 					}
 
 					const padded = buffer.length % MIME64CHUNK;
 					// encode as much of the buffer to base64 without empty bytes
-					if (padded) {
+					if (padded > 0) {
 						previous = Buffer.alloc(padded);
 						// copy dangling bytes into previous buffer
 						buffer.copy(previous, 0, buffer.length - padded);
