@@ -1,9 +1,18 @@
 const SMTPError = require('./error');
 
 class SMTPResponse {
+	/**
+	 * @constructor
+	 * @param {Socket | TLSSocket} stream the open socket to stream a response from
+	 * @param {number} timeout the time to wait (in milliseconds) before closing the socket
+	 * @param {Function} onerror the function to call on error
+	 */
 	constructor(stream, timeout, onerror) {
 		let buffer = '';
 
+		/**
+		 * @returns {void}
+		 */
 		const notify = () => {
 			if (buffer.length) {
 				// parse buffer for response codes
@@ -29,6 +38,10 @@ class SMTPResponse {
 			}
 		};
 
+		/**
+		 * @param {Error} err the error object
+		 * @returns {void}
+		 */
 		const error = err => {
 			stream.emit(
 				'response',
@@ -36,6 +49,10 @@ class SMTPResponse {
 			);
 		};
 
+		/**
+		 * @param {Error} err the error object
+		 * @returns {void}
+		 */
 		const timedout = err => {
 			stream.end();
 			stream.emit(
@@ -48,6 +65,10 @@ class SMTPResponse {
 			);
 		};
 
+		/**
+		 * @param {string | Buffer} data the data
+		 * @returns {void}
+		 */
 		const watch = data => {
 			if (data !== null) {
 				buffer += data.toString();
@@ -55,6 +76,10 @@ class SMTPResponse {
 			}
 		};
 
+		/**
+		 * @param {Error} err the error object
+		 * @returns {void}
+		 */
 		const close = err => {
 			stream.emit(
 				'response',
@@ -62,6 +87,10 @@ class SMTPResponse {
 			);
 		};
 
+		/**
+		 * @param {Error} err the error object
+		 * @returns {void}
+		 */
 		const end = err => {
 			stream.emit(
 				'response',
@@ -69,6 +98,10 @@ class SMTPResponse {
 			);
 		};
 
+		/**
+		 * @param {Error} [err] the error object
+		 * @returns {void}
+		 */
 		this.stop = err => {
 			stream.removeAllListeners('response');
 			stream.removeListener('data', watch);
@@ -76,7 +109,7 @@ class SMTPResponse {
 			stream.removeListener('close', close);
 			stream.removeListener('error', error);
 
-			if (err && typeof onerror === 'function') {
+			if (err != null && typeof onerror === 'function') {
 				onerror(err);
 			}
 		};
@@ -88,6 +121,11 @@ class SMTPResponse {
 		stream.setTimeout(timeout, timedout);
 	}
 }
-
+/**
+ * @param {Socket | TLSSocket} stream the open socket to stream a response from
+ * @param {number} timeout the time to wait (in milliseconds) before closing the socket
+ * @param {Function} onerror the function to call on error
+ * @returns {SMTPResponse} the smtp response
+ */
 exports.monitor = (stream, timeout, onerror) =>
 	new SMTPResponse(stream, timeout, onerror);
