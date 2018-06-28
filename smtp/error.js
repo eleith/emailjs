@@ -1,6 +1,37 @@
+class SMTPError extends Error {
+	/**
+	 * @param {string} message the error message
+	 */
+	constructor(message) {
+		super(message);
+
+		/**
+		 * @type {number}
+		 */
+		this.code = null;
+
+		/**
+		 * @type {*}
+		 */
+		this.smtp = null;
+
+		/**
+		 * @type {Error}
+		 */
+		this.previous = null;
+	}
+}
+
+/**
+ * @param {string} message the error message
+ * @param {number} code the error code
+ * @param {Error} [error] an error object
+ * @param {*} [smtp] smtp
+ * @returns {SMTPError} an smtp error object
+ */
 module.exports = function(message, code, error, smtp) {
-	const err = new Error(
-		error && error.message ? `${message} (${error.message})` : message
+	const err = new SMTPError(
+		error != null && error.message ? `${message} (${error.message})` : message
 	);
 
 	err.code = code;
