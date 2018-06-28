@@ -53,8 +53,19 @@ const SMTPState = {
 
 class SMTP extends EventEmitter {
 	/**
+	 * @typedef {Object} SMTPOptions
+	 * @property {number} [timeout]
+	 * @property {string} [user]
+	 * @property {string} [password]
+	 * @property {string} [domain]
+	 * @property {string} [host]
+	 * @property {number} [port]
+	 * @property {boolean} [ssl]
+	 * @property {boolean} [tls]
+	 * @property {string[]} [authentication]
+	 *
 	 * @constructor
-	 * @param {{ timeout: (number | undefined), user: (string | undefined), password: (string | undefined), domain: (string | undefined), host: (string | undefined), port: (number | undefined), ssl: (boolean | undefined), tls: (boolean | undefined), authentication: (string[]) }} [options] instance options
+	 * @param {SMTPOptions} [options] instance options
 	 */
 	constructor(options = {}) {
 		super();
@@ -101,18 +112,18 @@ class SMTP extends EventEmitter {
 		this._secure = false;
 
 		/**
-		 * @type {Socket}
+		 * @type {Socket|TLSSocket}
 		 */
 		this.sock = null;
 
 		/**
-		 * @type {{} [string]: string | boolean }
+		 * @type {{ [i: string]: string | boolean }}
 		 */
 		this.features = null;
 		this.monitor = null;
 
 		/**
-		 * @type {string}[] }
+		 * @type {string[]}
 		 */
 		this.authentication = authentication;
 
@@ -179,10 +190,13 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
+	 * @typedef {Object} ConnectOptions
+	 * @property {boolean} [ssl]
+	 *
 	 * @param {Function} callback function to call after response
 	 * @param {number} [port] the port to use for the connection
 	 * @param {string} [host] the hostname to use for the connection
-	 * @param {{ ssl: boolean }} [options={}] the options
+	 * @param {ConnectOptions} [options={}] the options
 	 * @returns {void}
 	 */
 	connect(callback, port = this.port, host = this.host, options = {}) {
@@ -207,10 +221,20 @@ class SMTP extends EventEmitter {
 
 				if (this.ssl && !this.tls) {
 					// if key/ca/cert was passed in, check if connection is authorized
-					if (typeof this.ssl !== 'boolean' && !this.sock.authorized) {
+					if (
+						typeof this.ssl !== 'boolean' &&
+						this.sock instanceof TLSSocket &&
+						!this.sock.authorized
+					) {
 						this.close(true);
-						const msg = 'could not establish an ssl connection';
-						caller(callback, SMTPError(msg, SMTPError.CONNECTIONAUTH, err));
+						caller(
+							callback,
+							SMTPError(
+								'could not establish an ssl connection',
+								SMTPError.CONNECTIONAUTH,
+								err
+							)
+						);
 					} else {
 						this._secure = true;
 					}
@@ -240,13 +264,15 @@ class SMTP extends EventEmitter {
 			} else {
 				log(`response (data): ${msg.data}`);
 				this.quit(() => {
-					const err = SMTPError(
-						'bad response on connection',
-						SMTPError.BADRESPONSE,
-						err,
-						msg.data
+					caller(
+						callback,
+						SMTPError(
+							'bad response on connection',
+							SMTPError.BADRESPONSE,
+							err,
+							msg.data
+						)
 					);
-					caller(callback, err);
 				});
 			}
 		};
@@ -258,7 +284,7 @@ class SMTP extends EventEmitter {
 			this.sock = connect(
 				this.port,
 				this.host,
-				this.ssl,
+				{},
 				connected
 			);
 		} else {
@@ -311,7 +337,7 @@ class SMTP extends EventEmitter {
 	 * @returns {void}
 	 */
 	command(cmd, callback, codes = [250]) {
-		codes = Array.isArray(codes)
+		const codesArray = Array.isArray(codes)
 			? codes
 			: typeof codes === 'number'
 				? [codes]
@@ -321,7 +347,7 @@ class SMTP extends EventEmitter {
 			if (err) {
 				caller(callback, err);
 			} else {
-				if (codes.indexOf(Number(msg.code)) !== -1) {
+				if (codesArray.indexOf(Number(msg.code)) !== -1) {
 					caller(callback, err, msg.data, msg.message);
 				} else {
 					const suffix = msg.message ? `: ${msg.message}` : '';
@@ -370,7 +396,7 @@ class SMTP extends EventEmitter {
 				err.message += ' while establishing a starttls session';
 				caller(callback, err);
 			} else {
-				const secureContext = createSecureContext(this.tls);
+				const secureContext = createSecureContext({});
 				const secureSocket = new TLSSocket(this.sock, { secureContext });
 
 				secureSocket.on('error', err => {
@@ -691,20 +717,14 @@ class SMTP extends EventEmitter {
 					break;
 				case AUTH_METHODS.PLAIN:
 					this.command(
-						`AUTH ${AUTH_METHODS.PLAIN} ${encode_plain(
-							login.user(),
-							login.password()
-						)}`,
+						`AUTH ${AUTH_METHODS.PLAIN} ${encode_plain()}`,
 						response,
 						[235, 503]
 					);
 					break;
 				case AUTH_METHODS.XOAUTH2:
 					this.command(
-						`AUTH ${AUTH_METHODS.XOAUTH2} ${encode_xoauth2(
-							login.user(),
-							login.password()
-						)}`,
+						`AUTH ${AUTH_METHODS.XOAUTH2} ${encode_xoauth2()}`,
 						response,
 						[235, 503]
 					);
