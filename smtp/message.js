@@ -208,7 +208,7 @@ class Message {
 	}
 
 	/**
-	 * @param {Function} callback the function to call with the error and buffer
+	 * @param {function(Error, string): void} callback the function to call with the error and buffer
 	 * @returns {void}
 	 */
 	read(callback) {
@@ -298,7 +298,7 @@ class MessageStream extends Stream {
 		 * @param {string} boundary the boundary text between outputs
 		 * @param {MessageAttachment[]} list the list of potential messages to output
 		 * @param {number} index the index of the list item to output
-		 * @param {Function} callback the function to call if index is greater than upper bound
+		 * @param {function(): void} callback the function to call if index is greater than upper bound
 		 * @returns {void}
 		 */
 		const output_message = (boundary, list, index, callback) => {
@@ -354,14 +354,8 @@ class MessageStream extends Stream {
 		};
 
 		/**
-		 * @callback NextFn
-		 * @param {NodeJS.ErrnoException} err
-		 * @returns {void}
-		 */
-
-		/**
 		 * @param {MessageAttachment} attachment the metadata to use as headers
-		 * @param {NextFn} callback the function to call after output is finished
+		 * @param {function(): void} callback the function to call after output is finished
 		 * @returns {void}
 		 */
 		const output_attachment = (attachment, callback) => {
@@ -376,7 +370,7 @@ class MessageStream extends Stream {
 
 		/**
 		 * @param {MessageAttachment} attachment the metadata to use as headers
-		 * @param {Function} callback the function to call after output is finished
+		 * @param {function(): void} callback the function to call after output is finished
 		 * @returns {void}
 		 */
 		const output_data = (attachment, callback) => {
@@ -390,7 +384,7 @@ class MessageStream extends Stream {
 
 		/**
 		 * @param {MessageAttachment} attachment the metadata to use as headers
-		 * @param {NextFn} next the function to call when the file is closed
+		 * @param {function(NodeJS.ErrnoException): void} next the function to call when the file is closed
 		 * @returns {void}
 		 */
 		const output_file = (attachment, next) => {
@@ -399,7 +393,7 @@ class MessageStream extends Stream {
 			const closed = fd => fs.closeSync(fd);
 
 			/**
-			 * @param {*} err the error to emit
+			 * @param {Error} err the error to emit
 			 * @param {number} fd the file descriptor
 			 * @returns {void}
 			 */
@@ -449,7 +443,7 @@ class MessageStream extends Stream {
 
 		/**
 		 * @param {MessageAttachment} attachment the metadata to use as headers
-		 * @param {Function} callback the function to call after output is finished
+		 * @param {function(): void} callback the function to call after output is finished
 		 * @returns {void}
 		 */
 		const output_stream = (attachment, callback) => {
@@ -496,7 +490,7 @@ class MessageStream extends Stream {
 
 		/**
 		 * @param {string} data the data to output as base64
-		 * @param {Function} [callback] the function to call after output is finished
+		 * @param {function(): void} [callback] the function to call after output is finished
 		 * @returns {void}
 		 */
 		const output_base64 = (data, callback) => {
@@ -533,7 +527,7 @@ class MessageStream extends Stream {
 
 		/**
 		 * @param {Message} message the message to output
-		 * @param {Function} callback the function to call after output is finished
+		 * @param {function(): void} callback the function to call after output is finished
 		 * @returns {void}
 		 */
 		const output_alternative = (message, callback) => {
@@ -561,7 +555,7 @@ class MessageStream extends Stream {
 
 		/**
 		 * @param {MessageAttachment} message the message to output
-		 * @param {Function} callback the function to call after output is finished
+		 * @param {function(): void} callback the function to call after output is finished
 		 * @returns {void}
 		 */
 		const output_related = (message, callback) => {
@@ -618,7 +612,7 @@ class MessageStream extends Stream {
 
 		/**
 		 * @param {string} data the data to output
-		 * @param {Function} [callback] the function
+		 * @param {function(...args): void} [callback] the function
 		 * @param {*[]} [args] array of arguments to pass to the callback
 		 * @returns {void}
 		 */

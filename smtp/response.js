@@ -6,7 +6,7 @@ class SMTPResponse {
 	 * @constructor
 	 * @param {NodeJS.Socket | TLSSocket} stream the open socket to stream a response from
 	 * @param {number} timeout the time to wait (in milliseconds) before closing the socket
-	 * @param {Function} onerror the function to call on error
+	 * @param {function(Error): void} onerror the function to call on error
 	 */
 	constructor(stream, timeout, onerror) {
 		let buffer = '';
@@ -132,7 +132,7 @@ exports.SMTPResponse = SMTPResponse;
 /**
  * @param {NodeJS.Socket | TLSSocket} stream the open socket to stream a response from
  * @param {number} timeout the time to wait (in milliseconds) before closing the socket
- * @param {Function} onerror the function to call on error
+ * @param {function(Error): void} onerror the function to call on error
  * @returns {SMTPResponse} the smtp response
  */
 exports.monitor = (stream, timeout, onerror) =>

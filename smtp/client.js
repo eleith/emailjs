@@ -16,11 +16,12 @@ class Client {
 	 * @property {string[]} [authentication]
 	 *
 	 * @typedef {Object} MessageStack
-	 * @property {Function} [callback]
-	 * @property {Message} message
+	 * @property {function(Error, Message): void} [callback]
+	 * @property {Message} [message]
 	 * @property {string} [returnPath]
 	 * @property {string} [from]
-	 * @property {Array} [to]
+	 * @property {string} [subject]
+	 * @property {string|Array} [to]
 	 * @property {Array} [cc]
 	 * @property {Array} [bcc]
 	 * @property {string} [text]
@@ -122,7 +123,7 @@ class Client {
 
 	/**
 	 * @param {Message|MessageStack} msg msg
-	 * @param {Function} callback callback
+	 * @param {function(Error, MessageStack): void} callback callback
 	 * @returns {void}
 	 */
 	send(msg, callback) {
@@ -145,7 +146,8 @@ class Client {
 			msg instanceof Message ? msg : canMakeMessage(msg) ? create(msg) : null;
 
 		if (message == null) {
-			callback(new Error('message is not a valid Message instance'), msg);
+			// prettier-ignore
+			callback(new Error('message is not a valid Message instance'), /**@type {MessageStack}*/(msg));
 			return;
 		}
 
@@ -178,7 +180,8 @@ class Client {
 				this.queue.push(stack);
 				this._poll();
 			} else {
-				callback(new Error(why), msg);
+				// prettier-ignore
+				callback(new Error(why), /**@type {MessageStack}*/(msg));
 			}
 		});
 	}
@@ -211,8 +214,8 @@ class Client {
 
 	/**
 	 * @param {MessageStack} stack stack
-	 * @param {Function} next next
-	 * @returns {Function} callback
+	 * @param {function(MessageStack): void} next next
+	 * @returns {function(Error): void} callback
 	 */
 	_sendsmtp(stack, next) {
 		/**
@@ -245,7 +248,8 @@ class Client {
 	 * @returns {void}
 	 */
 	_sendrcpt(stack) {
-		const to = stack.to.shift().address;
+		//prettier-ignore
+		const to = /** @type{Array} */(stack.to).shift().address;
 		this.smtp.rcpt(
 			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
 			'<' + to + '>'
