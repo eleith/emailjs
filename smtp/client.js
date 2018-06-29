@@ -146,11 +146,8 @@ class Client {
 
 		message.valid((valid, why) => {
 			if (valid) {
-				/**
-				 * @type {MessageStack}
-				 */
 				const stack = {
-					message: message,
+					message,
 					to: addressparser(message.header.to),
 					from: addressparser(message.header.from)[0].address,
 					callback: (callback || function() {}).bind(this),

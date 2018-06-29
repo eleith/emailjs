@@ -234,7 +234,7 @@ class Message {
  * @property {string} [charset]
  * @property {string} [method]
  * @property {string} [path]
- * @property {Duplex} [stream]
+ * @property {NodeJS.ReadWriteStream} [stream]
  * @property {boolean} [inline]
  * @property {MessageAttachment} [alternative]
  * @property {MessageAttachment[]} [related]
