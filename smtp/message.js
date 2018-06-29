@@ -544,6 +544,9 @@ class MessageStream extends Stream {
 			output_text(message);
 			output(`--${boundary}${CRLF}`);
 
+			/**
+			 * @returns {void}
+			 */
 			const finish = () => {
 				output([CRLF, '--', boundary, '--', CRLF, CRLF].join(''));
 				callback();

@@ -120,6 +120,10 @@ class SMTP extends EventEmitter {
 		 * @type {{ [i: string]: string | boolean }}
 		 */
 		this.features = null;
+
+		/**
+		 * @type {SMTPResponse.SMTPResponse}
+		 */
 		this.monitor = null;
 
 		/**
@@ -215,30 +219,40 @@ class SMTP extends EventEmitter {
 			);
 		}
 
-		const connected = err => {
-			if (!err) {
-				log(`connected: ${this.host}:${this.port}`);
+		/**
+		 * @returns {void}
+		 */
+		const connected = () => {
+			log(`connected: ${this.host}:${this.port}`);
 
-				if (this.ssl && !this.tls) {
-					// if key/ca/cert was passed in, check if connection is authorized
-					if (
-						typeof this.ssl !== 'boolean' &&
-						this.sock instanceof TLSSocket &&
-						!this.sock.authorized
-					) {
-						this.close(true);
-						caller(
-							callback,
-							SMTPError(
-								'could not establish an ssl connection',
-								SMTPError.CONNECTIONAUTH,
-								err
-							)
-						);
-					} else {
-						this._secure = true;
-					}
+			if (this.ssl && !this.tls) {
+				// if key/ca/cert was passed in, check if connection is authorized
+				if (
+					typeof this.ssl !== 'boolean' &&
+					this.sock instanceof TLSSocket &&
+					!this.sock.authorized
+				) {
+					this.close(true);
+					caller(
+						callback,
+						SMTPError(
+							'could not establish an ssl connection',
+							SMTPError.CONNECTIONAUTH
+						)
+					);
+				} else {
+					this._secure = true;
 				}
+			}
+		};
+
+		/**
+		 * @param {Error} err err
+		 * @returns {void}
+		 */
+		const connectedErrBack = err => {
+			if (!err) {
+				connected();
 			} else {
 				this.close(true);
 				caller(
@@ -292,7 +306,7 @@ class SMTP extends EventEmitter {
 			this.sock.connect(
 				this.port,
 				this.host,
-				connected
+				connectedErrBack
 			);
 		}
 
@@ -620,6 +634,10 @@ class SMTP extends EventEmitter {
 
 			let method = null;
 
+			/**
+			 * @param {string} challenge challenge
+			 * @returns {string} base64 cram hash
+			 */
 			const encode_cram_md5 = challenge => {
 				const hmac = createHmac('md5', login.password());
 				hmac.update(Buffer.from(challenge, 'base64').toString('ascii'));
@@ -628,12 +646,18 @@ class SMTP extends EventEmitter {
 				);
 			};
 
+			/**
+			 * @returns {string} base64 login/password
+			 */
 			const encode_plain = () =>
 				Buffer.from(`\u0000${login.user()}\u0000${login.password()}`).toString(
 					'base64'
 				);
 
-			// see: https://developers.google.com/gmail/xoauth2_protocol
+			/**
+			 * see: https://developers.google.com/gmail/xoauth2_protocol
+			 * @returns {string} base64 xoauth2 auth token
+			 */
 			const encode_xoauth2 = () =>
 				Buffer.from(
 					`user=${login.user()}\u0001auth=Bearer ${login.password()}\u0001\u0001`
@@ -659,7 +683,12 @@ class SMTP extends EventEmitter {
 				}
 			}
 
-			// handle bad responses from command differently
+			/**
+			 * handle bad responses from command differently
+			 * @param {Error} err err
+			 * @param {*} data data
+			 * @returns {void}
+			 */
 			const failed = (err, data) => {
 				this.loggedin = false;
 				this.close(); // if auth is bad, close the connection, it won't get better by itself
@@ -669,6 +698,11 @@ class SMTP extends EventEmitter {
 				);
 			};
 
+			/**
+			 * @param {Error} err err
+			 * @param {*} data data
+			 * @returns {void}
+			 */
 			const response = (err, data) => {
 				if (err) {
 					failed(err, data);
@@ -678,6 +712,12 @@ class SMTP extends EventEmitter {
 				}
 			};
 
+			/**
+			 * @param {Error} err err
+			 * @param {*} data data
+			 * @param {string} msg msg
+			 * @returns {void}
+			 */
 			const attempt = (err, data, msg) => {
 				if (err) {
 					failed(err, data);
@@ -694,6 +734,12 @@ class SMTP extends EventEmitter {
 				}
 			};
 
+			/**
+			 * @param {Error} err err
+			 * @param {*} data data
+			 * @param {string} msg msg
+			 * @returns {void}
+			 */
 			const attempt_user = (err, data, msg) => {
 				if (err) {
 					failed(err, data);

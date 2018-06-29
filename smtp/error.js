@@ -44,13 +44,43 @@ module.exports = function(message, code, error, smtp) {
 	return err;
 };
 
+/**
+ * @type {1}
+ */
 module.exports.COULDNOTCONNECT = 1;
+/**
+ * @type {2}
+ */
 module.exports.BADRESPONSE = 2;
+/**
+ * @type {3}
+ */
 module.exports.AUTHFAILED = 3;
+/**
+ * @type {4}
+ */
 module.exports.TIMEDOUT = 4;
+/**
+ * @type {5}
+ */
 module.exports.ERROR = 5;
+/**
+ * @type {6}
+ */
 module.exports.NOCONNECTION = 6;
+/**
+ * @type {7}
+ */
 module.exports.AUTHNOTSUPPORTED = 7;
+/**
+ * @type {8}
+ */
 module.exports.CONNECTIONCLOSED = 8;
+/**
+ * @type {9}
+ */
 module.exports.CONNECTIONENDED = 9;
+/**
+ * @type {10}
+ */
 module.exports.CONNECTIONAUTH = 10;

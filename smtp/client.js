@@ -126,6 +126,10 @@ class Client {
 	 * @returns {void}
 	 */
 	send(msg, callback) {
+		/**
+		 * @param {MessageStack} m message stack
+		 * @returns {boolean} can make message
+		 */
 		const canMakeMessage = m => {
 			return (
 				m.from &&
@@ -133,6 +137,7 @@ class Client {
 				(m.text !== undefined || this._containsInlinedHtml(m.attachment))
 			);
 		};
+
 		/**
 		 * @type {Message}
 		 */
