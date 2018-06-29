@@ -35,8 +35,8 @@ const log = (...args) => {
 };
 
 /**
- * @param {Function} callback the function to call
- * @param {...any} args the arguments to apply to the function
+ * @param {function(...*): void} callback the function to call
+ * @param {...*} args the arguments to apply to the function
  * @returns {void}
  */
 const caller = (callback, ...args) => {
@@ -193,7 +193,7 @@ class SMTP extends EventEmitter {
 	 * @typedef {Object} ConnectOptions
 	 * @property {boolean} [ssl]
 	 *
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @param {number} [port] the port to use for the connection
 	 * @param {string} [host] the hostname to use for the connection
 	 * @param {ConnectOptions} [options={}] the options
@@ -332,7 +332,7 @@ class SMTP extends EventEmitter {
 
 	/**
 	 * @param {string} cmd command to issue
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @param {(number[] | number)} [codes=[250]] array codes
 	 * @returns {void}
 	 */
@@ -371,7 +371,7 @@ class SMTP extends EventEmitter {
 	 * Hostname to send for self command defaults to the FQDN of the local
 	 * host.
 	 *
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} domain the domain to associate with the 'helo' request
 	 * @returns {void}
 	 */
@@ -387,7 +387,7 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
 	starttls(callback) {
@@ -445,7 +445,7 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} domain the domain to associate with the 'ehlo' request
 	 * @returns {void}
 	 */
@@ -476,7 +476,7 @@ class SMTP extends EventEmitter {
 
 	/**
 	 * SMTP 'help' command, returns text from the server
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} domain the domain to associate with the 'help' request
 	 * @returns {void}
 	 */
@@ -485,7 +485,7 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
 	rset(callback) {
@@ -493,7 +493,7 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
 	noop(callback) {
@@ -501,7 +501,7 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} from the sender
 	 * @returns {void}
 	 */
@@ -510,7 +510,7 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} to the receiver
 	 * @returns {void}
 	 */
@@ -519,7 +519,7 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
 	data(callback) {
@@ -527,7 +527,7 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
 	data_end(callback) {
@@ -547,7 +547,7 @@ class SMTP extends EventEmitter {
 	 * SMTP 'verify' command -- checks for address validity.
 	 *
 	 * @param {string} address the address to validate
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
 	verify(address, callback) {
@@ -558,7 +558,7 @@ class SMTP extends EventEmitter {
 	 * SMTP 'expn' command -- expands a mailing list.
 	 *
 	 * @param {string} address the mailing list to expand
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
 	expn(address, callback) {
@@ -571,7 +571,7 @@ class SMTP extends EventEmitter {
 	 * If there has been no previous EHLO or HELO command self session, self
 	 * method tries ESMTP EHLO first.
 	 *
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} [domain] the domain to associate with the command
 	 * @returns {void}
 	 */
@@ -597,7 +597,7 @@ class SMTP extends EventEmitter {
 	 *
 	 * This method will return normally if the authentication was successful.
 	 *
-	 * @param {Function} callback function to call after response
+	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} [user] the username to authenticate with
 	 * @param {string} [password] the password for the authentication
 	 * @param {{ method: string, domain: string }} [options] login options
@@ -768,7 +768,7 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
-	 * @param {Function} [callback] function to call after response
+	 * @param {function(...*): void} [callback] function to call after response
 	 * @returns {void}
 	 */
 	quit(callback) {

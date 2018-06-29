@@ -121,6 +121,7 @@ class SMTPResponse {
 		stream.setTimeout(timeout, timedout);
 	}
 }
+
 /**
  * @param {Socket | TLSSocket} stream the open socket to stream a response from
  * @param {number} timeout the time to wait (in milliseconds) before closing the socket

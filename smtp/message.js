@@ -166,15 +166,7 @@ class Message {
 	}
 
 	/**
-	 * This callback is displayed as part of the Requester class.
-	 * @callback validCallback
-	 * @param {boolean} isValid isValid
-	 * @param {string} [message] message
-	 * @returns {void}
-	 */
-
-	/**
-	 * @param {validCallback} callback the function to call with validation info
+	 * @param {function(boolean, string): void} callback This callback is displayed as part of the Requester class.
 	 * @returns {void}
 	 */
 	valid(callback) {
@@ -185,7 +177,7 @@ class Message {
 		if (!(this.header.to || this.header.cc || this.header.bcc)) {
 			callback(false, 'message does not have a valid recipient');
 		} else if (this.attachments.length === 0) {
-			callback(true);
+			callback(true, undefined);
 		} else {
 			const failed = [];
 

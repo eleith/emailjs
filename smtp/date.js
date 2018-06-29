@@ -23,7 +23,6 @@ function getRFC2822Date(date = new Date(), useUtc = false) {
 	return dates.join(' ');
 }
 /**
- *
  * @param {Date} [date] an optional date to convert to RFC2822 format (UTC)
  * @returns {string} the converted date
  */
