@@ -86,7 +86,6 @@ class SMTP extends EventEmitter {
 			authentication,
 		} = Object.assign(
 			{
-				timeout: TIMEOUT,
 				domain: hostname(),
 				host: 'localhost',
 				ssl: false,
