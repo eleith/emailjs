@@ -684,7 +684,7 @@ class SMTP extends EventEmitter {
 				);
 
 			/**
-			 * see: https://developers.google.com/gmail/xoauth2_protocol
+			 * @see https://developers.google.com/gmail/xoauth2_protocol
 			 * @returns {string} base64 xoauth2 auth token
 			 */
 			const encode_xoauth2 = () =>

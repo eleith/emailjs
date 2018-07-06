@@ -56,6 +56,64 @@ class Client {
 	}
 
 	/**
+	 * @param {Message|MessageStack} msg msg
+	 * @param {function(Error, MessageStack): void} callback callback
+	 * @returns {void}
+	 */
+	send(msg, callback) {
+		/**
+		 * @type {Message}
+		 */
+		const message =
+			msg instanceof Message
+				? msg
+				: this._canMakeMessage(msg)
+					? create(msg)
+					: null;
+
+		if (message == null) {
+			callback(
+				new Error('message is not a valid Message instance'),
+				/** @type {MessageStack} */ (msg)
+			);
+			return;
+		}
+
+		message.valid((valid, why) => {
+			if (valid) {
+				const stack = {
+					message,
+					to: addressparser(message.header.to),
+					from: addressparser(message.header.from)[0].address,
+					callback: (callback || function() {}).bind(this),
+				};
+
+				if (message.header.cc) {
+					stack.to = stack.to.concat(addressparser(message.header.cc));
+				}
+
+				if (message.header.bcc) {
+					stack.to = stack.to.concat(addressparser(message.header.bcc));
+				}
+
+				if (
+					message.header['return-path'] &&
+					addressparser(message.header['return-path']).length
+				) {
+					stack.returnPath = addressparser(
+						message.header['return-path']
+					)[0].address;
+				}
+
+				this.queue.push(stack);
+				this._poll();
+			} else {
+				callback(new Error(why), /** @type {MessageStack} */ (msg));
+			}
+		});
+	}
+
+	/**
 	 * @private
 	 * @returns {void}
 	 */
@@ -121,64 +179,6 @@ class Client {
 
 		this.ready = false;
 		this.smtp.connect(connect);
-	}
-
-	/**
-	 * @param {Message|MessageStack} msg msg
-	 * @param {function(Error, MessageStack): void} callback callback
-	 * @returns {void}
-	 */
-	send(msg, callback) {
-		/**
-		 * @type {Message}
-		 */
-		const message =
-			msg instanceof Message
-				? msg
-				: this._canMakeMessage(msg)
-					? create(msg)
-					: null;
-
-		if (message == null) {
-			callback(
-				new Error('message is not a valid Message instance'),
-				/**@type {MessageStack}*/ (msg)
-			);
-			return;
-		}
-
-		message.valid((valid, why) => {
-			if (valid) {
-				const stack = {
-					message,
-					to: addressparser(message.header.to),
-					from: addressparser(message.header.from)[0].address,
-					callback: (callback || function() {}).bind(this),
-				};
-
-				if (message.header.cc) {
-					stack.to = stack.to.concat(addressparser(message.header.cc));
-				}
-
-				if (message.header.bcc) {
-					stack.to = stack.to.concat(addressparser(message.header.bcc));
-				}
-
-				if (
-					message.header['return-path'] &&
-					addressparser(message.header['return-path']).length
-				) {
-					stack.returnPath = addressparser(
-						message.header['return-path']
-					)[0].address;
-				}
-
-				this.queue.push(stack);
-				this._poll();
-			} else {
-				callback(new Error(why), /**@type {MessageStack}*/ (msg));
-			}
-		});
 	}
 
 	/**
