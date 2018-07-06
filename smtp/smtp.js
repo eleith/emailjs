@@ -77,6 +77,11 @@ const SMTPState = {
 
 class SMTP extends EventEmitter {
 	/**
+	 * @typedef {Object} SMTPSocketOptions
+	 * @property {string} key
+	 * @property {string} ca
+	 * @property {string} cert
+	 *
 	 * @typedef {Object} SMTPOptions
 	 * @property {number} [timeout]
 	 * @property {string} [user]
@@ -84,8 +89,8 @@ class SMTP extends EventEmitter {
 	 * @property {string} [domain]
 	 * @property {string} [host]
 	 * @property {number} [port]
-	 * @property {boolean} [ssl]
-	 * @property {boolean} [tls]
+	 * @property {boolean|SMTPSocketOptions} [ssl]
+	 * @property {boolean|SMTPSocketOptions} [tls]
 	 * @property {string[]} [authentication]
 	 *
 	 * @constructor
@@ -157,14 +162,24 @@ class SMTP extends EventEmitter {
 		this.host = typeof host === 'string' ? host : 'localhost';
 
 		/**
-		 * @type {boolean}
+		 * @type {boolean|SMTPSocketOptions}
 		 */
-		this.ssl = typeof ssl === 'boolean' ? ssl : false;
+		this.ssl =
+			ssl != null &&
+			(typeof ssl === 'boolean' ||
+				(typeof ssl === 'object' && Array.isArray(ssl) === false))
+				? ssl
+				: false;
 
 		/**
-		 * @type {boolean}
+		 * @type {boolean|SMTPSocketOptions}
 		 */
-		this.tls = typeof tls === 'boolean' ? tls : false;
+		this.tls =
+			tls != null &&
+			(typeof tls === 'boolean' ||
+				(typeof tls === 'object' && Array.isArray(tls) === false))
+				? tls
+				: false;
 
 		/**
 		 * @type {number}
@@ -308,7 +323,7 @@ class SMTP extends EventEmitter {
 			this.sock = connect(
 				this.port,
 				this.host,
-				{},
+				typeof this.ssl === 'object' ? this.ssl : {},
 				connected
 			);
 		} else {
@@ -420,7 +435,9 @@ class SMTP extends EventEmitter {
 				err.message += ' while establishing a starttls session';
 				caller(callback, err);
 			} else {
-				const secureContext = createSecureContext({});
+				const secureContext = createSecureContext(
+					typeof this.tls === 'object' ? this.tls : {}
+				);
 				const secureSocket = new TLSSocket(this.sock, { secureContext });
 
 				secureSocket.on('error', err => {
