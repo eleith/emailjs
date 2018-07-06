@@ -128,22 +128,14 @@ class Client {
 	 */
 	send(msg, callback) {
 		/**
-		 * @param {MessageStack} m message stack
-		 * @returns {boolean} can make message
-		 */
-		const canMakeMessage = m => {
-			return (
-				m.from &&
-				(m.to || m.cc || m.bcc) &&
-				(m.text !== undefined || this._containsInlinedHtml(m.attachment))
-			);
-		};
-
-		/**
 		 * @type {Message}
 		 */
 		const message =
-			msg instanceof Message ? msg : canMakeMessage(msg) ? create(msg) : null;
+			msg instanceof Message
+				? msg
+				: this._canMakeMessage(msg)
+					? create(msg)
+					: null;
 
 		if (message == null) {
 			callback(
@@ -185,6 +177,18 @@ class Client {
 				callback(new Error(why), /**@type {MessageStack}*/ (msg));
 			}
 		});
+	}
+
+	/**
+	 * @param {MessageStack} msg message stack
+	 * @returns {boolean} can make message
+	 */
+	_canMakeMessage(msg) {
+		return (
+			msg.from &&
+			(msg.to || msg.cc || msg.bcc) &&
+			(msg.text !== undefined || this._containsInlinedHtml(msg.attachment))
+		);
 	}
 
 	/**
