@@ -470,16 +470,14 @@ class MessageStream extends Stream {
 					let buffer = Buffer.isBuffer(buff) ? buff : Buffer.from(buff);
 
 					if (previous.byteLength > 0) {
-						const buffer2 = Buffer.concat([previous, buffer]);
-						previous = Buffer.alloc(0); // free up the buffer
-						buffer = null; // free up the buffer
-						buffer = buffer2;
+						buffer = Buffer.concat([previous, buffer]);
 					}
 
 					const padded = buffer.length % MIME64CHUNK;
+					previous = Buffer.alloc(padded);
+
 					// encode as much of the buffer to base64 without empty bytes
 					if (padded > 0) {
-						previous = Buffer.alloc(padded);
 						// copy dangling bytes into previous buffer
 						buffer.copy(previous, 0, buffer.length - padded);
 					}
