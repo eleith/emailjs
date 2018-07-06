@@ -12,6 +12,12 @@ const SMTPError = require('./error');
 
 /**
  * @readonly
+ * @type {5000}
+ */
+const TIMEOUT = 5000;
+
+/**
+ * @readonly
  * @type {25}
  */
 const SMTP_PORT = 25;
@@ -44,8 +50,6 @@ const AUTH_METHODS = {
 	LOGIN: /** @type {'LOGIN'} */ ('LOGIN'),
 	XOAUTH2: /** @type {'XOAUTH2'} */ ('XOAUTH2'),
 };
-
-const TIMEOUT = 5000;
 
 /**
  * @type {0 | 1}
