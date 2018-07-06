@@ -46,6 +46,10 @@ const AUTH_METHODS = {
 };
 
 const TIMEOUT = 5000;
+
+/**
+ * @type {0 | 1}
+ */
 let DEBUG = 0;
 
 /**
@@ -53,7 +57,7 @@ let DEBUG = 0;
  * @returns {void}
  */
 const log = (...args) => {
-	if (DEBUG) {
+	if (DEBUG === 1) {
 		args.forEach(d => console.log(d));
 	}
 };
@@ -199,7 +203,7 @@ class SMTP extends EventEmitter {
 	}
 
 	/**
-	 * @param {number} level -
+	 * @param {0 | 1} level -
 	 * @returns {void}
 	 */
 	debug(level) {
