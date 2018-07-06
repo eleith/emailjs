@@ -67,38 +67,18 @@ class SMTP extends EventEmitter {
 	 * @constructor
 	 * @param {SMTPOptions} [options] instance options
 	 */
-	constructor(options = {}) {
+	constructor({
+		timeout,
+		host,
+		user,
+		password,
+		domain,
+		port,
+		ssl,
+		tls,
+		authentication,
+	} = {}) {
 		super();
-
-		if (options.timeout == null) {
-			options.timeout = TIMEOUT;
-		}
-
-		const {
-			timeout,
-			user,
-			password,
-			domain,
-			host,
-			port,
-			ssl,
-			tls,
-			authentication,
-		} = Object.assign(
-			{
-				domain: hostname(),
-				host: 'localhost',
-				ssl: false,
-				tls: false,
-				authentication: [
-					AUTH_METHODS.CRAM_MD5,
-					AUTH_METHODS.LOGIN,
-					AUTH_METHODS.PLAIN,
-					AUTH_METHODS.XOAUTH2,
-				],
-			},
-			options
-		);
 
 		/**
 		 * @type {number}
@@ -128,32 +108,39 @@ class SMTP extends EventEmitter {
 		/**
 		 * @type {string[]}
 		 */
-		this.authentication = authentication;
+		this.authentication = Array.isArray(authentication)
+			? authentication
+			: [
+					AUTH_METHODS.CRAM_MD5,
+					AUTH_METHODS.LOGIN,
+					AUTH_METHODS.PLAIN,
+					AUTH_METHODS.XOAUTH2,
+			  ];
 
 		/**
-		 * @type {number}[] }
+		 * @type {number} }
 		 */
-		this.timeout = timeout;
+		this.timeout = typeof timeout === 'number' ? timeout : TIMEOUT;
 
 		/**
 		 * @type {string} }
 		 */
-		this.domain = domain;
+		this.domain = typeof domain === 'string' ? domain : hostname();
 
 		/**
 		 * @type {string} }
 		 */
-		this.host = host;
+		this.host = typeof host === 'string' ? host : 'localhost';
 
 		/**
 		 * @type {boolean}
 		 */
-		this.ssl = ssl;
+		this.ssl = typeof ssl === 'boolean' ? ssl : false;
 
 		/**
 		 * @type {boolean}
 		 */
-		this.tls = tls;
+		this.tls = typeof tls === 'boolean' ? tls : false;
 
 		/**
 		 * @type {number}
@@ -166,8 +153,8 @@ class SMTP extends EventEmitter {
 		this.loggedin = user && password ? false : true;
 
 		// keep these strings hidden when quicky debugging/logging
-		this.user = /** @returns {string} */ () => options.user;
-		this.password = /** @returns {string} */ () => options.password;
+		this.user = /** @returns {string} */ () => user;
+		this.password = /** @returns {string} */ () => password;
 	}
 
 	/**
