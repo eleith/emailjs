@@ -146,8 +146,10 @@ class Client {
 			msg instanceof Message ? msg : canMakeMessage(msg) ? create(msg) : null;
 
 		if (message == null) {
-			// prettier-ignore
-			callback(new Error('message is not a valid Message instance'), /**@type {MessageStack}*/(msg));
+			callback(
+				new Error('message is not a valid Message instance'),
+				/**@type {MessageStack}*/ (msg)
+			);
 			return;
 		}
 
@@ -180,8 +182,7 @@ class Client {
 				this.queue.push(stack);
 				this._poll();
 			} else {
-				// prettier-ignore
-				callback(new Error(why), /**@type {MessageStack}*/(msg));
+				callback(new Error(why), /**@type {MessageStack}*/ (msg));
 			}
 		});
 	}
@@ -248,11 +249,14 @@ class Client {
 	 * @returns {void}
 	 */
 	_sendrcpt(stack) {
-		//prettier-ignore
-		const to = /** @type{Array} */(stack.to).shift().address;
+		if (stack.to == null || typeof stack.to === 'string') {
+			throw new TypeError('stack.to must be array');
+		}
+
+		const to = stack.to.shift().address;
 		this.smtp.rcpt(
 			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
-			'<' + to + '>'
+			`<${to}>`
 		);
 	}
 
