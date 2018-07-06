@@ -28,4 +28,23 @@ describe('Connect to wrong email server', function() {
 			}
 		);
 	});
+
+	it('should have a default timeout', function(done) {
+		const connectionOptions = {
+			user: "username",
+			password: "password",
+			host: "127.0.0.1",
+			port: 1234,
+		};
+
+		assert.strictEqual(email.server.connect(connectionOptions).smtp.timeout, email.SMTP.DEFAULT_TIMEOUT);
+
+		connectionOptions.timeout = null;
+		assert.strictEqual(email.server.connect(connectionOptions).smtp.timeout, email.SMTP.DEFAULT_TIMEOUT);
+
+		connectionOptions.timeout = undefined;
+		assert.strictEqual(email.server.connect(connectionOptions).smtp.timeout, email.SMTP.DEFAULT_TIMEOUT);
+
+		done();
+	});
 });

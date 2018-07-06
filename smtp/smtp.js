@@ -51,6 +51,10 @@ class SMTP extends EventEmitter {
 	constructor(options = {}) {
 		super();
 
+		if (options.timeout == null) {
+			options.timeout = TIMEOUT;
+		}
+
 		const {
 			timeout,
 			user,
@@ -63,7 +67,6 @@ class SMTP extends EventEmitter {
 			authentication,
 		} = Object.assign(
 			{
-				timeout: TIMEOUT,
 				domain: os.hostname(),
 				host: 'localhost',
 				ssl: false,
@@ -640,3 +643,4 @@ class SMTP extends EventEmitter {
 exports.SMTP = SMTP;
 exports.state = SMTPState;
 exports.authentication = AUTH_METHODS;
+exports.DEFAULT_TIMEOUT = TIMEOUT;
