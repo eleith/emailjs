@@ -318,4 +318,9 @@ class Client {
 }
 
 exports.Client = Client;
+
+/**
+ * @param {SMTPOptions} server smtp options
+ * @returns {Client} the client
+ */
 exports.connect = server => new Client(server);

@@ -1,18 +1,23 @@
-const path = require('path');
 const assert = require('assert');
 
 describe('Connect to wrong email server', function() {
-	const emailModulePath = require.resolve(path.join(__dirname, '..', 'email'));
+	const emailModulePath = require.resolve('../email.js');
+
+	/**
+	 * @type {typeof import('../email.js')}
+	 */
+	let email = null;
 
 	beforeEach(function() {
 		if (require.cache[emailModulePath]) {
 			delete require.cache[emailModulePath];
 		}
+		email = require(emailModulePath);
 	});
 
 	it('Should not call callback multiple times with wrong server configuration', function(done) {
 		this.timeout(5000);
-		const server = require(emailModulePath).server.connect({ host: 'bar.baz' });
+		const server = email.server.connect({ host: 'bar.baz' });
 		server.send(
 			{
 				from: 'foo@bar.baz',
