@@ -9,19 +9,25 @@ const CRLF = '\r\n';
 
 /**
  * MIME standard wants 76 char chunks when sending out.
+ * @type {76}
  */
 const MIMECHUNK = 76;
 
 /**
  * meets both base64 and mime divisibility
+ * @type {456}
  */
-const MIME64CHUNK = MIMECHUNK * 6;
+const MIME64CHUNK = /** @type {456} */ (MIMECHUNK * 6);
 
 /**
  * size of the message stream buffer
+ * @type {12768}
  */
-const BUFFERSIZE = MIMECHUNK * 24 * 7;
+const BUFFERSIZE = /** @type {12768} */ (MIMECHUNK * 24 * 7);
 
+/**
+ * @type {number}
+ */
 let counter = 0;
 
 /**

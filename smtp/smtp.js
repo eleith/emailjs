@@ -10,15 +10,39 @@ const { EventEmitter } = require('events');
 const SMTPResponse = require('./response');
 const SMTPError = require('./error');
 
+/**
+ * @readonly
+ * @type {25}
+ */
 const SMTP_PORT = 25;
+
+/**
+ * @readonly
+ * @type {465}
+ */
 const SMTP_SSL_PORT = 465;
+
+/**
+ * @readonly
+ * @type {587}
+ */
 const SMTP_TLS_PORT = 587;
+
+/**
+ * @readonly
+ * @type {'\r\n'}
+ */
 const CRLF = '\r\n';
+
+/**
+ * @readonly
+ * @enum
+ */
 const AUTH_METHODS = {
-	PLAIN: 'PLAIN',
-	CRAM_MD5: 'CRAM-MD5',
-	LOGIN: 'LOGIN',
-	XOAUTH2: 'XOAUTH2',
+	PLAIN: /** @type {'PLAIN'} */ ('PLAIN'),
+	CRAM_MD5: /** @type {'CRAM-MD5'} */ ('CRAM-MD5'),
+	LOGIN: /** @type {'LOGIN'} */ ('LOGIN'),
+	XOAUTH2: /** @type {'XOAUTH2'} */ ('XOAUTH2'),
 };
 
 const TIMEOUT = 5000;
