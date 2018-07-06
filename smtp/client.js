@@ -56,6 +56,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @returns {void}
 	 */
 	_poll() {
@@ -80,6 +81,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
@@ -180,6 +182,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @param {MessageStack} msg message stack
 	 * @returns {boolean} can make message
 	 */
@@ -192,6 +195,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @param {*} attachment attachment
 	 * @returns {boolean} does contain
 	 */
@@ -206,6 +210,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @param {*} attachment attachment
 	 * @returns {boolean} is inlined
 	 */
@@ -218,6 +223,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @param {MessageStack} stack stack
 	 * @param {function(MessageStack): void} next next
 	 * @returns {function(Error): void} callback
@@ -239,6 +245,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
@@ -249,6 +256,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
@@ -265,6 +273,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
@@ -273,6 +282,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
@@ -295,6 +305,7 @@ class Client {
 	}
 
 	/**
+	 * @private
 	 * @param {Error} err err
 	 * @param {MessageStack} stack stack
 	 * @returns {void}

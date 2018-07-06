@@ -110,11 +110,13 @@ class SMTP extends EventEmitter {
 		super();
 
 		/**
+		 * @private
 		 * @type {number}
 		 */
 		this._state = SMTPState.NOTCONNECTED;
 
 		/**
+		 * @private
 		 * @type {boolean}
 		 */
 		this._secure = false;
