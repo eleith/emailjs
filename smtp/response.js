@@ -1,10 +1,14 @@
 const SMTPError = require('./error');
-const { TLSSocket } = require('tls');
+
+/**
+ * @typedef {import('net').Socket} Socket
+ * @typedef {import('tls').TLSSocket} TLSSocket
+ */
 
 class SMTPResponse {
 	/**
 	 * @constructor
-	 * @param {NodeJS.Socket | TLSSocket} stream the open socket to stream a response from
+	 * @param {Socket | TLSSocket} stream the open socket to stream a response from
 	 * @param {number} timeout the time to wait (in milliseconds) before closing the socket
 	 * @param {function(Error): void} onerror the function to call on error
 	 */
@@ -105,32 +109,28 @@ class SMTPResponse {
 		 */
 		this.stop = err => {
 			stream.removeAllListeners('response');
-			if (stream instanceof TLSSocket) {
-				stream.removeListener('data', watch);
-				stream.removeListener('end', end);
-				stream.removeListener('close', close);
-				stream.removeListener('error', error);
-			}
+			stream.removeListener('data', watch);
+			stream.removeListener('end', end);
+			stream.removeListener('close', close);
+			stream.removeListener('error', error);
 
 			if (err != null && typeof onerror === 'function') {
 				onerror(err);
 			}
 		};
 
-		if (stream instanceof TLSSocket) {
-			stream.on('data', watch);
-			stream.on('end', end);
-			stream.on('close', close);
-			stream.on('error', error);
-			stream.setTimeout(timeout, timedout);
-		}
+		stream.on('data', watch);
+		stream.on('end', end);
+		stream.on('close', close);
+		stream.on('error', error);
+		stream.setTimeout(timeout, timedout);
 	}
 }
 
 exports.SMTPResponse = SMTPResponse;
 
 /**
- * @param {NodeJS.Socket | TLSSocket} stream the open socket to stream a response from
+ * @param {Socket | TLSSocket} stream the open socket to stream a response from
  * @param {number} timeout the time to wait (in milliseconds) before closing the socket
  * @param {function(Error): void} onerror the function to call on error
  * @returns {SMTPResponse} the smtp response
