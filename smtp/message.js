@@ -103,13 +103,13 @@ class Message {
 				header === 'attachment' &&
 				typeof headers[header] === 'object'
 			) {
-				const h = headers[header];
-				if (Array.isArray(h)) {
-					for (let i = 0, l = h.length; i < l; i++) {
-						this.attach(h[i]);
+				const attachment = headers[header];
+				if (Array.isArray(attachment)) {
+					for (let i = 0; i < attachment.length; i++) {
+						this.attach(attachment[i]);
 					}
 				} else {
-					this.attach(h);
+					this.attach(attachment);
 				}
 			} else if (header === 'subject') {
 				this.header.subject = mimeWordEncode(headers.subject);
