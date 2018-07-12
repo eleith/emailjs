@@ -4,17 +4,6 @@ const addressparser = require('addressparser');
 
 class Client {
 	/**
-	 * @typedef {Object} SMTPOptions
-	 * @property {number} [timeout]
-	 * @property {string} [user]
-	 * @property {string} [password]
-	 * @property {string} [domain]
-	 * @property {string} [host]
-	 * @property {number} [port]
-	 * @property {boolean} [ssl]
-	 * @property {boolean} [tls]
-	 * @property {string[]} [authentication]
-	 *
 	 * @typedef {Object} MessageStack
 	 * @property {function(Error, Message): void} [callback]
 	 * @property {Message} [message]
@@ -26,6 +15,23 @@ class Client {
 	 * @property {Array} [bcc]
 	 * @property {string} [text]
 	 * @property {*} [attachment]
+	 *
+	 * @typedef {Object} SMTPSocketOptions
+	 * @property {string} key
+	 * @property {string} ca
+	 * @property {string} cert
+	 *
+	 * @typedef {Object} SMTPOptions
+	 * @property {number} [timeout]
+	 * @property {string} [user]
+	 * @property {string} [password]
+	 * @property {string} [domain]
+	 * @property {string} [host]
+	 * @property {number} [port]
+	 * @property {boolean|SMTPSocketOptions} [ssl]
+	 * @property {boolean|SMTPSocketOptions} [tls]
+	 * @property {string[]} [authentication]
+	 * @property {function(...any): void} [logger]
 	 *
 	 * @constructor
 	 * @param {SMTPOptions} server smtp options
