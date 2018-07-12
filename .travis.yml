@@ -3,14 +3,6 @@ node_js:
   - "6"
   - "8"
   - "10"
-env:
-  - CXX=g++-4.8
 script:
   - yarn test
   - yarn rollup
-addons:
-  apt:
-    sources:
-      - ubuntu-toolchain-r-test
-    packages:
-      - g++-4.8
