@@ -4,3 +4,6 @@
 /.npmignore
 /.travis.yml
 /npm-debug.log
+/email.bundle.js
+/email.bundle.test.js
+/email.esm.js
