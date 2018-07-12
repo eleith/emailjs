@@ -133,7 +133,7 @@ class SMTP extends EventEmitter {
 
 		/**
 		 * @private
-		 * @type {number}
+		 * @type {0 | 1 | 2}
 		 */
 		this._state = SMTPState.NOTCONNECTED;
 
