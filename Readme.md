@@ -7,7 +7,7 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 	npm install emailjs
 
 ## FEATURES
- - works with SSL and TLS smtp servers 
+ - works with SSL and TLS smtp servers
  - supports smtp authentication ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
  - emails are queued and the queue is sent asynchronously
  - supports sending html emails and emails with multiple attachments (MIME)
@@ -23,16 +23,16 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 ```javascript
 var email 	= require("./path/to/emailjs/email");
 var server 	= email.server.connect({
-   user:    "username", 
-   password:"password", 
-   host:    "smtp.your-email.com", 
+   user:    "username",
+   password:"password",
+   host:    "smtp.your-email.com",
    ssl:     true
 });
 
 // send the message and get a callback with an error or details of the message that was sent
 server.send({
-   text:    "i hope this works", 
-   from:    "you <username@your-email.com>", 
+   text:    "i hope this works",
+   from:    "you <username@your-email.com>",
    to:      "someone <someone@your-email.com>, another <another@your-email.com>",
    cc:      "else <else@your-email.com>",
    subject: "testing emailjs"
@@ -44,19 +44,19 @@ server.send({
 ```javascript
 var email 	= require("./path/to/emailjs/email");
 var server 	= email.server.connect({
-   user:	"username", 
-   password:"password", 
-   host:	"smtp.your-email.com", 
+   user:	"username",
+   password:"password",
+   host:	"smtp.your-email.com",
    ssl:		true
 });
 
 var message	= {
-   text:	"i hope this works", 
-   from:	"you <username@your-email.com>", 
+   text:	"i hope this works",
+   from:	"you <username@your-email.com>",
    to:		"someone <someone@your-email.com>, another <another@your-email.com>",
    cc:		"else <else@your-email.com>",
    subject:	"testing emailjs",
-   attachment: 
+   attachment:
    [
       {data:"<html>i <i>hope</i> this works!</html>", alternative:true},
       {path:"path/to/file.zip", type:"application/zip", name:"renamed.zip"}
@@ -66,10 +66,10 @@ var message	= {
 // send the message and get a callback with an error or details of the message that was sent
 server.send(message, function(err, message) { console.log(err || message); });
 
-// you can continue to send more messages with successive calls to 'server.send', 
+// you can continue to send more messages with successive calls to 'server.send',
 // they will be queued on the same smtp connection
 
-// or you can create a new server connection with 'email.server.connect' 
+// or you can create a new server connection with 'email.server.connect'
 // to asynchronously send individual emails instead of a queue
 ```
 
@@ -78,19 +78,19 @@ server.send(message, function(err, message) { console.log(err || message); });
 ```javascript
 var email 	= require("./path/to/emailjs/email");
 var server 	= email.server.connect({
-   user:	"username", 
-   password:"password", 
-   host:	"smtp-mail.outlook.com", 
+   user:	"username",
+   password:"password",
+   host:	"smtp-mail.outlook.com",
    tls: {ciphers: "SSLv3"}
 });
 
 var message	= {
-   text:	"i hope this works", 
-   from:	"you <username@outlook.com>", 
+   text:	"i hope this works",
+   from:	"you <username@outlook.com>",
    to:		"someone <someone@your-email.com>, another <another@your-email.com>",
    cc:		"else <else@your-email.com>",
    subject:	"testing emailjs",
-   attachment: 
+   attachment:
    [
       {data:"<html>i <i>hope</i> this works!</html>", alternative:true},
       {path:"path/to/file.zip", type:"application/zip", name:"renamed.zip"}
@@ -106,19 +106,19 @@ server.send(message, function(err, message) { console.log(err || message); });
 ```javascript
 var email 	= require("./path/to/emailjs/email");
 var server 	= email.server.connect({
-   user:	"username", 
-   password:"password", 
-   host:	"smtp-mail.outlook.com", 
+   user:	"username",
+   password:"password",
+   host:	"smtp-mail.outlook.com",
    tls: {ciphers: "SSLv3"}
 });
 
 var message	= {
-   text:	"i hope this works", 
-   from:	"you <username@outlook.com>", 
+   text:	"i hope this works",
+   from:	"you <username@outlook.com>",
    to:		"someone <someone@your-email.com>, another <another@your-email.com>",
    cc:		"else <else@your-email.com>",
    subject:	"testing emailjs",
-   attachment: 
+   attachment:
    [
       {data: "<html>i <i>hope</i> this works! here is an image: <img src='cid:my-image' width='100' height ='50'> </html>"},
       {path:"path/to/file.zip", type:"application/zip", name:"renamed.zip"},
@@ -131,14 +131,14 @@ server.send(message, function(err, message) { console.log(err || message); });
 ```
 
 
-# API 
+# API
 
 ## email.server.connect(options)
 
 	// options is an object with the following keys
 	options =
 	{
-		user 		// username for logging into smtp 
+		user 		// username for logging into smtp
 		password // password for logging into smtp
 		host		// smtp host
 		port		// smtp port (if null a standard port number will be used)
@@ -147,10 +147,11 @@ server.send(message, function(err, message) { console.log(err || message); });
 		timeout	// max number of milliseconds to wait for smtp responses (defaults to 5000)
 		domain	// domain to greet smtp with (defaults to os.hostname)
     authentication // array of preferred authentication methods ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
+		logger // override the built-in logger (useful for e.g. Azure Function Apps, where console.log doesn't work)
 	}
-	
+
 ## email.server.send(message, callback)
-	
+
 	// message can be a smtp.Message (as returned by email.message.create)
 	// or an object identical to the first argument accepted by email.message.create
 
@@ -167,7 +168,7 @@ server.send(message, function(err, message) { console.log(err || message); });
 
 	headers =
 	{
-		text		// text of the email 
+		text		// text of the email
 		from		// sender of the format (address or name <address> or "name" <address>)
 		to			// recipients (same format as above), multiple recipients are separated by a comma
 		cc			// carbon copied recipients (same format as above)
@@ -184,7 +185,7 @@ associative array of currently supported SMTP authentication mechanisms
 
 	// can be called multiple times, each adding a new attachment
 	// options is an object with the following possible keys:
-   
+
     options =
     {
         // one of these fields is required
@@ -193,7 +194,7 @@ associative array of currently supported SMTP authentication mechanisms
         stream    // binary stream that will provide attachment data (make sure it is in the paused state)
                   // better performance for binary streams is achieved if buffer.length % (76*6) == 0
                   // current max size of buffer must be no larger than Message.BUFFERSIZE
-      
+
         // optionally these fields are also accepted
         type	      // string of the file mime type
         name        // name to give the file as perceived by the recipient
@@ -205,7 +206,7 @@ associative array of currently supported SMTP authentication mechanisms
         headers     // object containing header=>value pairs for inclusion in this attachment's header
         related     // an array of attachments that you want to be related to the parent attachment
     }
-	
+
 ## Authors
 
 eleith
