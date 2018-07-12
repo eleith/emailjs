@@ -52,6 +52,16 @@ const AUTH_METHODS = {
 };
 
 /**
+ * @readonly
+ * @enum
+ */
+const SMTPState = {
+	NOTCONNECTED: /** @type {0} */ (0),
+	CONNECTING: /** @type {1} */ (1),
+	CONNECTED: /** @type {2} */ (2),
+};
+
+/**
  * @type {0 | 1}
  */
 let DEBUG = 0;
@@ -83,12 +93,6 @@ const caller = (callback, ...args) => {
 	if (typeof callback === 'function') {
 		callback.apply(null, args);
 	}
-};
-
-const SMTPState = {
-	NOTCONNECTED: 0,
-	CONNECTING: 1,
-	CONNECTED: 2,
 };
 
 class SMTP extends EventEmitter {
