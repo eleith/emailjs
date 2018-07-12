@@ -1,6 +1,3 @@
-/*
- * SMTP class written using python's (2.7) smtplib.py as a base
- */
 const { Socket } = require('net');
 const { createHmac } = require('crypto');
 const { hostname } = require('os');
@@ -97,6 +94,8 @@ const caller = (callback, ...args) => {
 
 class SMTP extends EventEmitter {
 	/**
+	 * SMTP class written using python's (2.7) smtplib.py as a base
+	 *
 	 * @typedef {Object} SMTPSocketOptions
 	 * @property {string} key
 	 * @property {string} ca
