@@ -4,7 +4,7 @@ import resolve from 'rollup-plugin-node-resolve';
 export default {
   input: 'email.esm.js',
   output: {
-    file: 'email.bundle.js',
+    file: 'rollup/email.bundle.js',
 		format: 'cjs',
 		interop: false,
 		freeze: false,
