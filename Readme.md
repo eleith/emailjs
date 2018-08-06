@@ -210,6 +210,7 @@ associative array of currently supported SMTP authentication mechanisms
 ## Authors
 
 eleith
+zackschuster
 
 ## Testing
 
