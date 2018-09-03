@@ -1,6 +1,3 @@
-/*
- * SMTP class written using python's (2.7) smtplib.py as a base
- */
 const { Socket } = require('net');
 const { createHmac } = require('crypto');
 const { hostname } = require('os');
@@ -52,17 +49,35 @@ const AUTH_METHODS = {
 };
 
 /**
+ * @readonly
+ * @enum
+ */
+const SMTPState = {
+	NOTCONNECTED: /** @type {0} */ (0),
+	CONNECTING: /** @type {1} */ (1),
+	CONNECTED: /** @type {2} */ (2),
+};
+
+/**
  * @type {0 | 1}
  */
 let DEBUG = 0;
 
 /**
- * @param {...string} args the message(s) to log
+ * @param {...any} args the message(s) to log
  * @returns {void}
  */
 const log = (...args) => {
 	if (DEBUG === 1) {
-		args.forEach(d => console.log(d));
+		args.forEach(d =>
+			console.log(
+				typeof d === 'object'
+					? d instanceof Error
+						? d.message
+						: JSON.stringify(d)
+					: d
+			)
+		);
 	}
 };
 
@@ -77,14 +92,10 @@ const caller = (callback, ...args) => {
 	}
 };
 
-const SMTPState = {
-	NOTCONNECTED: 0,
-	CONNECTING: 1,
-	CONNECTED: 2,
-};
-
 class SMTP extends EventEmitter {
 	/**
+	 * SMTP class written using python's (2.7) smtplib.py as a base
+	 *
 	 * @typedef {Object} SMTPSocketOptions
 	 * @property {string} key
 	 * @property {string} ca
@@ -100,6 +111,7 @@ class SMTP extends EventEmitter {
 	 * @property {boolean|SMTPSocketOptions} [ssl]
 	 * @property {boolean|SMTPSocketOptions} [tls]
 	 * @property {string[]} [authentication]
+	 * @property {function(...any): void} [logger]
 	 *
 	 * @constructor
 	 * @param {SMTPOptions} [options] instance options
@@ -113,13 +125,14 @@ class SMTP extends EventEmitter {
 		port,
 		ssl,
 		tls,
+		logger,
 		authentication,
 	} = {}) {
 		super();
 
 		/**
 		 * @private
-		 * @type {number}
+		 * @type {0 | 1 | 2}
 		 */
 		this._state = SMTPState.NOTCONNECTED;
 
@@ -204,6 +217,8 @@ class SMTP extends EventEmitter {
 		// keep these strings hidden when quicky debugging/logging
 		this.user = /** @returns {string} */ () => user;
 		this.password = /** @returns {string} */ () => password;
+
+		this.log = typeof logger === 'function' ? logger : log;
 	}
 
 	/**
@@ -258,7 +273,7 @@ class SMTP extends EventEmitter {
 		 * @returns {void}
 		 */
 		const connected = () => {
-			log(`connected: ${this.host}:${this.port}`);
+			this.log(`connected: ${this.host}:${this.port}`);
 
 			if (this.ssl && !this.tls) {
 				// if key/ca/cert was passed in, check if connection is authorized
@@ -290,6 +305,7 @@ class SMTP extends EventEmitter {
 				connected();
 			} else {
 				this.close(true);
+				this.log(err);
 				caller(
 					callback,
 					SMTPError('could not connect', SMTPError.COULDNOTCONNECT, err)
@@ -305,13 +321,13 @@ class SMTP extends EventEmitter {
 				this.close(true);
 				caller(callback, err);
 			} else if (msg.code == '220') {
-				log(msg.data);
+				this.log(msg.data);
 
 				// might happen first, so no need to wait on connected()
 				this._state = SMTPState.CONNECTED;
 				caller(callback, null, msg.data);
 			} else {
-				log(`response (data): ${msg.data}`);
+				this.log(`response (data): ${msg.data}`);
 				this.quit(() => {
 					caller(
 						callback,
@@ -327,7 +343,7 @@ class SMTP extends EventEmitter {
 		};
 
 		this._state = SMTPState.CONNECTING;
-		log(`connecting: ${this.host}:${this.port}`);
+		this.log(`connecting: ${this.host}:${this.port}`);
 
 		if (this.ssl) {
 			this.sock = connect(
@@ -359,13 +375,13 @@ class SMTP extends EventEmitter {
 	 */
 	send(str, callback) {
 		if (this.sock && this._state === SMTPState.CONNECTED) {
-			log(str);
+			this.log(str);
 
 			this.sock.once('response', (err, msg) => {
 				if (err) {
 					caller(callback, err);
 				} else {
-					log(msg.data);
+					this.log(msg.data);
 					caller(callback, null, msg);
 				}
 			});
@@ -590,7 +606,7 @@ class SMTP extends EventEmitter {
 	 * @returns {void}
 	 */
 	message(data) {
-		log(data);
+		this.log(data);
 		this.sock.write(data);
 	}
 
@@ -830,10 +846,10 @@ class SMTP extends EventEmitter {
 	close(force = false) {
 		if (this.sock) {
 			if (force) {
-				log('smtp connection destroyed!');
+				this.log('smtp connection destroyed!');
 				this.sock.destroy();
 			} else {
-				log('smtp connection closed.');
+				this.log('smtp connection closed.');
 				this.sock.end();
 			}
 		}
