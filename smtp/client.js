@@ -295,7 +295,15 @@ class Client {
 	_sendmessage(stack) {
 		const stream = stack.message.stream();
 
-		stream.on('data', data => this.smtp.message(data));
+		stream.on('data', (data) => {
+			if(this.smtp.state() === state.NOTCONNECTED) {
+				// if the smtp connection is already closed, 
+				// we should close the stream and exit.
+				return stream.close(new Error('smtp connection already closed.'));
+			}
+			this.smtp.message(data);
+		});
+
 		stream.on('end', () => {
 			this.smtp.data_end(
 				this._sendsmtp(stack, () => this._senddone(null, stack))
