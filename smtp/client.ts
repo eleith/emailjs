@@ -1,20 +1,28 @@
 import addressparser from 'addressparser';
-import { Message, create } from './message.js';
+import { Message, create, MessageAttachment } from './message.js';
 import { SMTP, SMTPState } from './smtp.js';
 
+export interface MessageStack {
+	callback: (error: Error, message: Message) => void;
+	message: Message;
+	attachment: MessageAttachment;
+	text: string;
+	returnPath: string;
+	from: string;
+	to: string | string[];
+	cc: string[];
+	bcc: string[];
+}
+
 class Client {
+	public smtp: SMTP;
+	public queue: any[];
+	public timer: any;
+	public sending: boolean;
+	public ready: boolean;
+
 	/**
 	 * @typedef {Object} MessageStack
-	 * @property {function(Error, Message): void} [callback]
-	 * @property {Message} [message]
-	 * @property {string} [returnPath]
-	 * @property {string} [from]
-	 * @property {string} [subject]
-	 * @property {string|Array} [to]
-	 * @property {Array} [cc]
-	 * @property {Array} [bcc]
-	 * @property {string} [text]
-	 * @property {*} [attachment]
 	 *
 	 * @typedef {Object} SMTPSocketOptions
 	 * @property {string} key
