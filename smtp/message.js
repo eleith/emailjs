@@ -1,9 +1,11 @@
-const fs = require('fs');
-const { hostname } = require('os');
-const { Stream } = require('stream');
-const addressparser = require('addressparser');
-const { mimeWordEncode } = require('emailjs-mime-codec');
-const { getRFC2822Date } = require('./date');
+import fs from 'fs';
+import { hostname } from 'os';
+import { Stream } from 'stream';
+
+import addressparser from 'addressparser';
+import emailjsMimeCodec from 'emailjs-mime-codec';
+
+import { getRFC2822Date } from './date.js';
 
 const CRLF = '\r\n';
 
@@ -23,7 +25,7 @@ const MIME64CHUNK = /** @type {456} */ (MIMECHUNK * 6);
  * size of the message stream buffer
  * @type {12768}
  */
-const BUFFERSIZE = /** @type {12768} */ (MIMECHUNK * 24 * 7);
+export const BUFFERSIZE = /** @type {12768} */ (MIMECHUNK * 24 * 7);
 
 /**
  * @type {number}
@@ -53,7 +55,7 @@ function person2address(l) {
 	return addressparser(l)
 		.map(({ name, address }) => {
 			return name
-				? `${mimeWordEncode(name).replace(/,/g, '=2C')} <${address}>`
+				? `${emailjsMimeCodec.mimeWordEncode(name).replace(/,/g, '=2C')} <${address}>`
 				: address;
 		})
 		.join(', ');
@@ -69,7 +71,7 @@ function fix_header_name_case(header_name) {
 		.replace(/^(.)|-(.)/g, match => match.toUpperCase());
 }
 
-class Message {
+export class Message {
 	/**
 	 * @typedef {Object} MessageHeaders
 	 * @property {string?} content-type
@@ -112,7 +114,7 @@ class Message {
 					this.attach(attachment);
 				}
 			} else if (header === 'subject') {
-				this.header.subject = mimeWordEncode(headers.subject);
+				this.header.subject = emailjsMimeCodec.mimeWordEncode(headers.subject);
 			} else if (/^(cc|bcc|to|from)/i.test(header)) {
 				this.header[header.toLowerCase()] = person2address(headers[header]);
 			} else {
@@ -339,7 +341,7 @@ class MessageStream extends Stream {
 				'content-transfer-encoding': 'base64',
 				'content-disposition': attachment.inline
 					? 'inline'
-					: `attachment; filename="${mimeWordEncode(attachment.name)}"`,
+					: `attachment; filename="${emailjsMimeCodec.mimeWordEncode(attachment.name)}"`,
 			};
 
 			// allow sender to override default headers
@@ -732,6 +734,7 @@ class MessageStream extends Stream {
 	}
 }
 
-exports.Message = Message;
-exports.BUFFERSIZE = BUFFERSIZE;
-exports.create = headers => new Message(headers);
+export /**
+ * @param {{ content: string; subject?: string; text?: string; attachment?: MessageAttachment; }} headers
+ */
+ const create = headers => new Message(headers);

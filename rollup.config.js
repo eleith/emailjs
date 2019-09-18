@@ -2,7 +2,7 @@ import commonjs from 'rollup-plugin-commonjs';
 import resolve from 'rollup-plugin-node-resolve';
 
 export default {
-  input: 'email.esm.js',
+  input: 'email.js',
   output: {
     file: 'rollup/email.bundle.js',
 		format: 'cjs',

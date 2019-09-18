@@ -1,17 +1,18 @@
-const { Socket } = require('net');
-const { createHmac } = require('crypto');
-const { hostname } = require('os');
-const { connect, createSecureContext, TLSSocket } = require('tls');
-const { EventEmitter } = require('events');
+import { Socket } from 'net';
+import { createHmac } from 'crypto';
+import { hostname } from 'os';
+import { connect, createSecureContext, TLSSocket } from 'tls';
+import { EventEmitter } from 'events';
 
-const SMTPResponse = require('./response');
-const SMTPError = require('./error');
+import { SMTPResponse, monitor } from './response.js';
+import { makeSMTPError, CONNECTIONAUTH, COULDNOTCONNECT, BADRESPONSE, NOCONNECTION, AUTHFAILED, AUTHNOTSUPPORTED } from './error.js';
 
 /**
  * @readonly
  * @type {5000}
  */
 const TIMEOUT = 5000;
+export { TIMEOUT as DEFAULT_TIMEOUT };
 
 /**
  * @readonly
@@ -41,7 +42,7 @@ const CRLF = '\r\n';
  * @readonly
  * @enum
  */
-const AUTH_METHODS = {
+export const AUTH_METHODS = {
 	PLAIN: /** @type {'PLAIN'} */ ('PLAIN'),
 	CRAM_MD5: /** @type {'CRAM-MD5'} */ ('CRAM-MD5'),
 	LOGIN: /** @type {'LOGIN'} */ ('LOGIN'),
@@ -52,7 +53,7 @@ const AUTH_METHODS = {
  * @readonly
  * @enum
  */
-const SMTPState = {
+export const SMTPState = {
 	NOTCONNECTED: /** @type {0} */ (0),
 	CONNECTING: /** @type {1} */ (1),
 	CONNECTED: /** @type {2} */ (2),
@@ -92,7 +93,7 @@ const caller = (callback, ...args) => {
 	}
 };
 
-class SMTP extends EventEmitter {
+export class SMTP extends EventEmitter {
 	/**
 	 * SMTP class written using python's (2.7) smtplib.py as a base
 	 *
@@ -153,7 +154,7 @@ class SMTP extends EventEmitter {
 		this.features = null;
 
 		/**
-		 * @type {SMTPResponse.SMTPResponse}
+		 * @type {SMTPResponse}
 		 */
 		this.monitor = null;
 
@@ -163,11 +164,11 @@ class SMTP extends EventEmitter {
 		this.authentication = Array.isArray(authentication)
 			? authentication
 			: [
-					AUTH_METHODS.CRAM_MD5,
-					AUTH_METHODS.LOGIN,
-					AUTH_METHODS.PLAIN,
-					AUTH_METHODS.XOAUTH2,
-			  ];
+				AUTH_METHODS.CRAM_MD5,
+				AUTH_METHODS.LOGIN,
+				AUTH_METHODS.PLAIN,
+				AUTH_METHODS.XOAUTH2,
+			];
 
 		/**
 		 * @type {number} }
@@ -189,8 +190,8 @@ class SMTP extends EventEmitter {
 		 */
 		this.ssl =
 			ssl != null &&
-			(typeof ssl === 'boolean' ||
-				(typeof ssl === 'object' && Array.isArray(ssl) === false))
+				(typeof ssl === 'boolean' ||
+					(typeof ssl === 'object' && Array.isArray(ssl) === false))
 				? ssl
 				: false;
 
@@ -199,8 +200,8 @@ class SMTP extends EventEmitter {
 		 */
 		this.tls =
 			tls != null &&
-			(typeof tls === 'boolean' ||
-				(typeof tls === 'object' && Array.isArray(tls) === false))
+				(typeof tls === 'boolean' ||
+					(typeof tls === 'object' && Array.isArray(tls) === false))
 				? tls
 				: false;
 
@@ -285,9 +286,9 @@ class SMTP extends EventEmitter {
 					this.close(true);
 					caller(
 						callback,
-						SMTPError(
+						makeSMTPError(
 							'could not establish an ssl connection',
-							SMTPError.CONNECTIONAUTH
+							CONNECTIONAUTH
 						)
 					);
 				} else {
@@ -308,7 +309,7 @@ class SMTP extends EventEmitter {
 				this.log(err);
 				caller(
 					callback,
-					SMTPError('could not connect', SMTPError.COULDNOTCONNECT, err)
+					makeSMTPError('could not connect', COULDNOTCONNECT, err)
 				);
 			}
 		};
@@ -331,9 +332,9 @@ class SMTP extends EventEmitter {
 				this.quit(() => {
 					caller(
 						callback,
-						SMTPError(
+						makeSMTPError(
 							'bad response on connection',
-							SMTPError.BADRESPONSE,
+							BADRESPONSE,
 							err,
 							msg.data
 						)
@@ -361,7 +362,7 @@ class SMTP extends EventEmitter {
 			);
 		}
 
-		this.monitor = SMTPResponse.monitor(this.sock, this.timeout, () =>
+		this.monitor = monitor(this.sock, this.timeout, () =>
 			this.close(true)
 		);
 		this.sock.once('response', response);
@@ -390,7 +391,7 @@ class SMTP extends EventEmitter {
 			this.close(true);
 			caller(
 				callback,
-				SMTPError('no connection has been established', SMTPError.NOCONNECTION)
+				makeSMTPError('no connection has been established', NOCONNECTION)
 			);
 		}
 	}
@@ -418,10 +419,10 @@ class SMTP extends EventEmitter {
 					const suffix = msg.message ? `: ${msg.message}` : '';
 					const errorMessage = `bad response on command '${
 						cmd.split(' ')[0]
-					}'${suffix}`;
+						}'${suffix}`;
 					caller(
 						callback,
-						SMTPError(errorMessage, SMTPError.BADRESPONSE, null, msg.data)
+						makeSMTPError(errorMessage, BADRESPONSE, null, msg.data)
 					);
 				}
 			}
@@ -474,7 +475,7 @@ class SMTP extends EventEmitter {
 				this._secure = true;
 				this.sock = secureSocket;
 
-				SMTPResponse.monitor(this.sock, this.timeout, () => this.close(true));
+				monitor(this.sock, this.timeout, () => this.close(true));
 				caller(callback, msg.data);
 			}
 		};
@@ -747,7 +748,7 @@ class SMTP extends EventEmitter {
 				this.close(); // if auth is bad, close the connection, it won't get better by itself
 				caller(
 					callback,
-					SMTPError('authorization.failed', SMTPError.AUTHFAILED, err, data)
+					makeSMTPError('authorization.failed', AUTHFAILED, err, data)
 				);
 			};
 
@@ -830,7 +831,7 @@ class SMTP extends EventEmitter {
 					break;
 				default:
 					const msg = 'no form of authorization supported';
-					const err = SMTPError(msg, SMTPError.AUTHNOTSUPPORTED, null, data);
+					const err = makeSMTPError(msg, AUTHNOTSUPPORTED, null, data);
 					caller(callback, err);
 					break;
 			}
@@ -881,8 +882,3 @@ class SMTP extends EventEmitter {
 		);
 	}
 }
-
-exports.SMTP = SMTP;
-exports.state = SMTPState;
-exports.authentication = AUTH_METHODS;
-exports.DEFAULT_TIMEOUT = TIMEOUT;

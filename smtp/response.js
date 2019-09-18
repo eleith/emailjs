@@ -1,11 +1,11 @@
-const SMTPError = require('./error');
+import { makeSMTPError, ERROR, TIMEDOUT, CONNECTIONCLOSED, CONNECTIONENDED } from './error.js';
 
 /**
  * @typedef {import('net').Socket} Socket
  * @typedef {import('tls').TLSSocket} TLSSocket
  */
 
-class SMTPResponse {
+export class SMTPResponse {
 	/**
 	 * @constructor
 	 * @param {Socket | TLSSocket} stream the open socket to stream a response from
@@ -50,7 +50,7 @@ class SMTPResponse {
 		const error = err => {
 			stream.emit(
 				'response',
-				SMTPError('connection encountered an error', SMTPError.ERROR, err)
+				makeSMTPError('connection encountered an error', ERROR, err)
 			);
 		};
 
@@ -62,9 +62,9 @@ class SMTPResponse {
 			stream.end();
 			stream.emit(
 				'response',
-				SMTPError(
+				makeSMTPError(
 					'timedout while connecting to smtp server',
-					SMTPError.TIMEDOUT,
+					TIMEDOUT,
 					err
 				)
 			);
@@ -88,7 +88,7 @@ class SMTPResponse {
 		const close = err => {
 			stream.emit(
 				'response',
-				SMTPError('connection has closed', SMTPError.CONNECTIONCLOSED, err)
+				makeSMTPError('connection has closed', CONNECTIONCLOSED, err)
 			);
 		};
 
@@ -99,7 +99,7 @@ class SMTPResponse {
 		const end = err => {
 			stream.emit(
 				'response',
-				SMTPError('connection has ended', SMTPError.CONNECTIONENDED, err)
+				makeSMTPError('connection has ended', CONNECTIONENDED, err)
 			);
 		};
 
@@ -127,13 +127,11 @@ class SMTPResponse {
 	}
 }
 
-exports.SMTPResponse = SMTPResponse;
-
 /**
  * @param {Socket | TLSSocket} stream the open socket to stream a response from
  * @param {number} timeout the time to wait (in milliseconds) before closing the socket
  * @param {function(Error): void} onerror the function to call on error
  * @returns {SMTPResponse} the smtp response
  */
-exports.monitor = (stream, timeout, onerror) =>
+export const monitor = (stream, timeout, onerror) =>
 	new SMTPResponse(stream, timeout, onerror);
