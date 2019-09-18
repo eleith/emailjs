@@ -1,3 +1,4 @@
+import { builtinModules as external } from 'module';
 import commonjs from 'rollup-plugin-commonjs';
 import resolve from 'rollup-plugin-node-resolve';
 
@@ -9,7 +10,7 @@ export default {
 		interop: false,
 		freeze: false,
 	},
-	external: require('module').builtinModules,
+	external,
   plugins: [
 		resolve(),
 		commonjs(),
