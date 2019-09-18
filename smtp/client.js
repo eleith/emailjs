@@ -1,6 +1,6 @@
-const { SMTP, state } = require('./smtp');
-const { Message, create } = require('./message');
-const addressparser = require('addressparser');
+import addressparser from 'addressparser';
+import { Message, create } from './message.js';
+import { SMTP, SMTPState } from './smtp.js';
 
 class Client {
 	/**
@@ -127,10 +127,10 @@ class Client {
 		clearTimeout(this.timer);
 
 		if (this.queue.length) {
-			if (this.smtp.state() == state.NOTCONNECTED) {
+			if (this.smtp.state() == SMTPState.NOTCONNECTED) {
 				this._connect(this.queue[0]);
 			} else if (
-				this.smtp.state() == state.CONNECTED &&
+				this.smtp.state() == SMTPState.CONNECTED &&
 				!this.sending &&
 				this.ready
 			) {
@@ -139,7 +139,7 @@ class Client {
 		}
 		// wait around 1 seconds in case something does come in,
 		// otherwise close out SMTP connection if still open
-		else if (this.smtp.state() == state.CONNECTED) {
+		else if (this.smtp.state() == SMTPState.CONNECTED) {
 			this.timer = setTimeout(() => this.smtp.quit(), 1000);
 		}
 	}
@@ -323,10 +323,8 @@ class Client {
 	}
 }
 
-exports.Client = Client;
-
 /**
  * @param {SMTPOptions} server smtp options
  * @returns {Client} the client
  */
-exports.connect = server => new Client(server);
+export const connect = server => new Client(server);

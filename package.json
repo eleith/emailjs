@@ -35,7 +35,8 @@
   "engine": [
     "node >= 6"
   ],
-  "main": "email.js",
+	"main": "email.js",
+	"type": "module",
   "scripts": {
 		"rollup": "rollup -c rollup.config.js && npm run rollup:test",
 		"rollup:test": "npm run test -- --file rollup/email.bundle.test.js",

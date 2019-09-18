@@ -1,5 +1,7 @@
-exports.server = require('./smtp/client');
-exports.message = require('./smtp/message');
-exports.date = require('./smtp/date');
-exports.SMTP = require('./smtp/smtp');
-exports.error = require('./smtp/error');
+import * as server from './smtp/client.js';
+import * as message from './smtp/message.js';
+import * as date from './smtp/date.js';
+import * as SMTP from './smtp/smtp.js';
+import * as error from './smtp/error.js';
+
+export { server, message, date, SMTP, error };
