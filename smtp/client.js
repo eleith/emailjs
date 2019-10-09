@@ -1,6 +1,9 @@
 const { SMTP, state } = require('./smtp');
 const { Message, create } = require('./message');
 const addressparser = require('addressparser');
+const _ = {
+	unionWith: require('lodash.unionwith'),
+};
 
 class Client {
 	/**
@@ -95,11 +98,11 @@ class Client {
 				};
 
 				if (message.header.cc) {
-					stack.to = stack.to.concat(addressparser(message.header.cc));
+					stack.to = _.unionWith(stack.to, addressparser(message.header.cc), (x, y) => x.address === y.address);
 				}
 
 				if (message.header.bcc) {
-					stack.to = stack.to.concat(addressparser(message.header.bcc));
+					stack.to = _.unionWith(stack.to, addressparser(message.header.bcc), (x, y) => x.address === y.address);
 				}
 
 				if (

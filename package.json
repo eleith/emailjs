@@ -8,7 +8,8 @@
     "Hiverness",
     "mscdex",
     "jimmybergman",
-    "zackschuster"
+    "zackschuster",
+    "Yuping Zuo (https://github.com/zypA13510)"
   ],
   "repository": {
     "type": "git",
@@ -16,7 +17,8 @@
   },
   "dependencies": {
     "addressparser": "^0.3.2",
-    "emailjs-mime-codec": "^2.0.7"
+    "emailjs-mime-codec": "^2.0.7",
+    "lodash.unionwith": "^4.6.0"
   },
   "devDependencies": {
     "chai": "^4.1.2",
@@ -37,8 +39,8 @@
   ],
   "main": "email.js",
   "scripts": {
-		"rollup": "rollup -c rollup.config.js && npm run rollup:test",
-		"rollup:test": "npm run test -- --file rollup/email.bundle.test.js",
+    "rollup": "rollup -c rollup.config.js && npm run rollup:test",
+    "rollup:test": "npm run test -- --file rollup/email.bundle.test.js",
     "test": "mocha"
   },
   "license": "MIT",
