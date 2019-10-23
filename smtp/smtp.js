@@ -280,6 +280,7 @@ class SMTP extends EventEmitter {
 				if (
 					typeof this.ssl !== 'boolean' &&
 					this.sock instanceof TLSSocket &&
+					this.ssl.rejectUnauthorized !== false &&
 					!this.sock.authorized
 				) {
 					this.close(true);

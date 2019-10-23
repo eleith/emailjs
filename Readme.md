@@ -142,7 +142,7 @@ server.send(message, function(err, message) { console.log(err || message); });
 		password // password for logging into smtp
 		host		// smtp host
 		port		// smtp port (if null a standard port number will be used)
-		ssl		// boolean or object {key, ca, cert} (if true or object, ssl connection will be made)
+		ssl		// boolean or object {key, ca, cert, rejectUnauthorized} (if true or object, ssl connection will be made)
 		tls		// boolean or object (if true or object, starttls will be initiated)
 		timeout	// max number of milliseconds to wait for smtp responses (defaults to 5000)
 		domain	// domain to greet smtp with (defaults to os.hostname)
