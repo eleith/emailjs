@@ -1,22 +1,23 @@
+// @ts-ignore
 import addressparser from 'addressparser';
-import { Message, create, MessageAttachment } from './message.js';
-import { SMTP, SMTPState } from './smtp.js';
+import { Message, MessageHeaders, MessageAttachment } from './message';
+import { SMTP, SMTPState, SMTPOptions } from './smtp';
 
 export interface MessageStack {
-	callback: (error: Error, message: Message) => void;
+	callback: (error: Error | null, message: Message) => void;
 	message: Message;
 	attachment: MessageAttachment;
 	text: string;
 	returnPath: string;
 	from: string;
-	to: string | string[];
+	to: string | { address: string }[];
 	cc: string[];
 	bcc: string[];
 }
 
-class Client {
+export class Client {
 	public smtp: SMTP;
-	public queue: any[];
+	public queue: MessageStack[] = []
 	public timer: any;
 	public sending: boolean;
 	public ready: boolean;
@@ -44,14 +45,9 @@ class Client {
 	 * @constructor
 	 * @param {SMTPOptions} server smtp options
 	 */
-	constructor(server) {
+	constructor(server: Partial<SMTPOptions>) {
 		this.smtp = new SMTP(server);
 		//this.smtp.debug(1);
-
-		/**
-		 * @type {MessageStack[]}
-		 */
-		this.queue = [];
 
 		/**
 		 * @type {NodeJS.Timer}
@@ -69,27 +65,16 @@ class Client {
 		this.ready = false;
 	}
 
-	/**
-	 * @param {Message|MessageStack} msg msg
-	 * @param {function(Error, MessageStack): void} callback callback
-	 * @returns {void}
-	 */
-	send(msg, callback) {
-		/**
-		 * @type {Message}
-		 */
-		const message =
+	send(msg: Message, callback: (err: Error, msg: Message) => void): void {
+		const message: Message | null =
 			msg instanceof Message
 				? msg
 				: this._canMakeMessage(msg)
-					? create(msg)
+					? new Message(msg)
 					: null;
 
 		if (message == null) {
-			callback(
-				new Error('message is not a valid Message instance'),
-				/** @type {MessageStack} */ (msg)
-			);
+			callback(new Error('message is not a valid Message instance'), msg);
 			return;
 		}
 
@@ -100,7 +85,7 @@ class Client {
 					to: addressparser(message.header.to),
 					from: addressparser(message.header.from)[0].address,
 					callback: (callback || function() {}).bind(this),
-				};
+				} as MessageStack;
 
 				if (message.header.cc) {
 					stack.to = stack.to.concat(addressparser(message.header.cc));
@@ -131,23 +116,23 @@ class Client {
 	 * @private
 	 * @returns {void}
 	 */
-	_poll() {
+	_poll(): void {
 		clearTimeout(this.timer);
 
-		if (this.queue.length) {
-			if (this.smtp.state() == SMTPState.NOTCONNECTED) {
+		if (this.queue.length > 0) {
+			if (this.smtp.state == SMTPState.NOTCONNECTED) {
 				this._connect(this.queue[0]);
 			} else if (
-				this.smtp.state() == SMTPState.CONNECTED &&
+				this.smtp.state == SMTPState.CONNECTED &&
 				!this.sending &&
 				this.ready
 			) {
-				this._sendmail(this.queue.shift());
+				this._sendmail(this.queue.shift() as MessageStack);
 			}
 		}
 		// wait around 1 seconds in case something does come in,
 		// otherwise close out SMTP connection if still open
-		else if (this.smtp.state() == SMTPState.CONNECTED) {
+		else if (this.smtp.state == SMTPState.CONNECTED) {
 			this.timer = setTimeout(() => this.smtp.quit(), 1000);
 		}
 	}
@@ -157,14 +142,14 @@ class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_connect(stack) {
+	_connect(stack: MessageStack): void {
 		/**
 		 * @param {Error} err callback error
 		 * @returns {void}
 		 */
-		const connect = err => {
+		const connect = (err: Error): void => {
 			if (!err) {
-				const begin = err => {
+				const begin = (err: Error) => {
 					if (!err) {
 						this.ready = true;
 						this._poll();
@@ -177,7 +162,7 @@ class Client {
 					}
 				};
 
-				if (!this.smtp.authorized()) {
+				if (!this.smtp.isAuthorized) {
 					this.smtp.login(begin);
 				} else {
 					this.smtp.ehlo_or_helo_if_needed(begin);
@@ -200,11 +185,11 @@ class Client {
 	 * @param {MessageStack} msg message stack
 	 * @returns {boolean} can make message
 	 */
-	_canMakeMessage(msg) {
-		return (
+	_canMakeMessage(msg: MessageHeaders): boolean {
+		return !!(
 			msg.from &&
 			(msg.to || msg.cc || msg.bcc) &&
-			(msg.text !== undefined || this._containsInlinedHtml(msg.attachment))
+			(msg.text != null || this._containsInlinedHtml(msg.attachment))
 		);
 	}
 
@@ -213,7 +198,7 @@ class Client {
 	 * @param {*} attachment attachment
 	 * @returns {boolean} does contain
 	 */
-	_containsInlinedHtml(attachment) {
+	_containsInlinedHtml(attachment: any): boolean {
 		if (Array.isArray(attachment)) {
 			return attachment.some(att => {
 				return this._isAttachmentInlinedHtml(att);
@@ -228,7 +213,7 @@ class Client {
 	 * @param {*} attachment attachment
 	 * @returns {boolean} is inlined
 	 */
-	_isAttachmentInlinedHtml(attachment) {
+	_isAttachmentInlinedHtml(attachment: any): boolean {
 		return (
 			attachment &&
 			(attachment.data || attachment.path) &&
@@ -242,7 +227,7 @@ class Client {
 	 * @param {function(MessageStack): void} next next
 	 * @returns {function(Error): void} callback
 	 */
-	_sendsmtp(stack, next) {
+	_sendsmtp(stack: MessageStack, next: (msg: MessageStack) => void): (err: Error) => void {
 		/**
 		 * @param {Error} [err] error
 		 * @returns {void}
@@ -263,7 +248,7 @@ class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendmail(stack) {
+	_sendmail(stack: MessageStack): void {
 		const from = stack.returnPath || stack.from;
 		this.sending = true;
 		this.smtp.mail(this._sendsmtp(stack, this._sendrcpt), '<' + from + '>');
@@ -274,12 +259,12 @@ class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendrcpt(stack) {
+	_sendrcpt(stack: MessageStack): void {
 		if (stack.to == null || typeof stack.to === 'string') {
 			throw new TypeError('stack.to must be array');
 		}
 
-		const to = stack.to.shift().address;
+		const { address: to } = stack.to.shift() ?? {};
 		this.smtp.rcpt(
 			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
 			`<${to}>`
@@ -291,7 +276,7 @@ class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_senddata(stack) {
+	_senddata(stack: MessageStack): void {
 		this.smtp.data(this._sendsmtp(stack, this._sendmessage));
 	}
 
@@ -300,7 +285,7 @@ class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendmessage(stack) {
+	_sendmessage(stack: MessageStack): void {
 		const stream = stack.message.stream();
 
 		stream.on('data', data => this.smtp.message(data));
@@ -324,15 +309,9 @@ class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_senddone(err, stack) {
+	_senddone(err: Error | null, stack: MessageStack): void {
 		this.sending = false;
 		stack.callback(err, stack.message);
 		this._poll();
 	}
 }
-
-/**
- * @param {SMTPOptions} server smtp options
- * @returns {Client} the client
- */
-export const connect = server => new Client(server);
