@@ -1,7 +1,7 @@
 import { Socket } from 'net';
 import { TLSSocket } from 'tls';
 
-import { makeSMTPError, SMTPErrorStates } from './error.js';
+import { makeSMTPError, SMTPErrorStates } from './error';
 
 export class SMTPResponse {
 	private buffer = '';
@@ -47,7 +47,7 @@ export class SMTPResponse {
 					.trim()
 					.split(/\n/)
 					.pop()
-					.match(/^(\d{3})\s/)
+					?.match(/^(\d{3})\s/) ?? false
 			) {
 				return;
 			}
