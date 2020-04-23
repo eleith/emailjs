@@ -2,11 +2,11 @@
 	"extends": "@ledge/configs/tsconfig.json",
 	"include": [
 		"email.ts",
-		"smtp/**/*.ts",
-		"test/**/*.ts",
-		"test/-register.js"
+		"smtp/*.ts",
+		"test/*.ts"
 	],
 	"ts-node": {
+		"transpileOnly": true,
 		"compilerOptions": {
 			"module": "commonjs"
 		}

@@ -58,7 +58,7 @@
 			"ts"
 		],
 		"require": [
-			"ts-node/register/transpile-only"
+			"ts-node/register"
 		],
 		"nodeArguments": [
 			"--experimental-modules"
