@@ -57,6 +57,9 @@
 		],
 		"require": [
 			"ts-node/register/transpile-only"
+		],
+		"nodeArguments": [
+			"--experimental-modules"
 		]
 	},
 	"eslintIgnore": [
