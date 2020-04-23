@@ -1,23 +1,23 @@
-import { Socket } from 'net';
-import { TLSSocket } from 'tls';
-
 import { makeSMTPError, SMTPErrorStates } from './error';
 
+type Socket = import('net').Socket | import('tls').TLSSocket;
 export class SMTPResponse {
 	private buffer = '';
 	public stop: (err?: Error) => void;
 
-	/**
-	 * @param [stream] The open socket to stream a response from
-	 * @param [timeout] The time to wait (in milliseconds) before closing the socket
-	 * @param [onerror] The function to call on error
-	 */
-	constructor(private stream: Socket | TLSSocket, timeout: number, onerror: (err: Error) => void) {
-		const watch = (data: Parameters<SMTPResponse['watch']>[0]) => this.watch(data);
+	constructor(
+		private stream: Socket,
+		timeout: number,
+		onerror: (err: Error) => void
+	) {
+		const watch = (data: Parameters<SMTPResponse['watch']>[0]) =>
+			this.watch(data);
 		const end = () => this.end();
 		const close = () => this.close();
-		const error = (data: Parameters<SMTPResponse['error']>[0]) => this.error(data);
-		const timedout = (data: Parameters<SMTPResponse['timedout']>[0]) => this.timedout(data);
+		const error = (data: Parameters<SMTPResponse['error']>[0]) =>
+			this.error(data);
+		const timedout = (data: Parameters<SMTPResponse['timedout']>[0]) =>
+			this.timedout(data);
 
 		this.stream.on('data', watch);
 		this.stream.on('end', end);
@@ -25,7 +25,7 @@ export class SMTPResponse {
 		this.stream.on('error', error);
 		this.stream.setTimeout(timeout, timedout);
 
-		this.stop = err => {
+		this.stop = (err) => {
 			this.stream.removeAllListeners('response');
 			this.stream.removeListener('data', watch);
 			this.stream.removeListener('end', end);
@@ -47,7 +47,8 @@ export class SMTPResponse {
 					.trim()
 					.split(/\n/)
 					.pop()
-					?.match(/^(\d{3})\s/) ?? false
+					?.match(/^(\d{3})\s/) ??
+				false
 			) {
 				return;
 			}
@@ -66,7 +67,11 @@ export class SMTPResponse {
 	protected error(err: Error) {
 		this.stream.emit(
 			'response',
-			makeSMTPError('connection encountered an error', SMTPErrorStates.ERROR, err)
+			makeSMTPError(
+				'connection encountered an error',
+				SMTPErrorStates.ERROR,
+				err
+			)
 		);
 	}
 
@@ -103,11 +108,3 @@ export class SMTPResponse {
 		);
 	}
 }
-
-/**
- * @param [stream] the open socket to stream a response from
- * @param [timeout] the time to wait (in milliseconds) before closing the socket
- * @param [onerror] the function to call on error
- */
-export const monitor = (stream: Socket | TLSSocket, timeout: number, onerror: (err: Error) => void) =>
-	new SMTPResponse(stream, timeout, onerror);

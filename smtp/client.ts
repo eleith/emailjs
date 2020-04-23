@@ -1,12 +1,12 @@
 // @ts-ignore
 import addressparser from 'addressparser';
-import { Message, MessageHeaders, MessageAttachment } from './message';
-import { SMTP, SMTPState, SMTPOptions } from './smtp';
+import { Message } from './message';
+import { SMTP, SMTPState } from './smtp';
 
 export interface MessageStack {
 	callback: (error: Error | null, message: Message) => void;
 	message: Message;
-	attachment: MessageAttachment;
+	attachment: import('./message').MessageAttachment;
 	text: string;
 	returnPath: string;
 	from: string;
@@ -17,7 +17,7 @@ export interface MessageStack {
 
 export class Client {
 	public smtp: SMTP;
-	public queue: MessageStack[] = []
+	public queue: MessageStack[] = [];
 	public timer: any;
 	public sending: boolean;
 	public ready: boolean;
@@ -45,7 +45,7 @@ export class Client {
 	 * @constructor
 	 * @param {SMTPOptions} server smtp options
 	 */
-	constructor(server: Partial<SMTPOptions>) {
+	constructor(server: Partial<import('./smtp').SMTPOptions>) {
 		this.smtp = new SMTP(server);
 		//this.smtp.debug(1);
 
@@ -70,8 +70,8 @@ export class Client {
 			msg instanceof Message
 				? msg
 				: this._canMakeMessage(msg)
-					? new Message(msg)
-					: null;
+				? new Message(msg)
+				: null;
 
 		if (message == null) {
 			callback(new Error('message is not a valid Message instance'), msg);
@@ -84,7 +84,7 @@ export class Client {
 					message,
 					to: addressparser(message.header.to),
 					from: addressparser(message.header.from)[0].address,
-					callback: (callback || function() {}).bind(this),
+					callback: (callback || function () {}).bind(this),
 				} as MessageStack;
 
 				if (message.header.cc) {
@@ -107,7 +107,7 @@ export class Client {
 				this.queue.push(stack);
 				this._poll();
 			} else {
-				callback(new Error(why), /** @type {MessageStack} */ (msg));
+				callback(new Error(why), /** @type {MessageStack} */ msg);
 			}
 		});
 	}
@@ -185,7 +185,7 @@ export class Client {
 	 * @param {MessageStack} msg message stack
 	 * @returns {boolean} can make message
 	 */
-	_canMakeMessage(msg: MessageHeaders): boolean {
+	_canMakeMessage(msg: import('./message').MessageHeaders): boolean {
 		return !!(
 			msg.from &&
 			(msg.to || msg.cc || msg.bcc) &&
@@ -200,7 +200,7 @@ export class Client {
 	 */
 	_containsInlinedHtml(attachment: any): boolean {
 		if (Array.isArray(attachment)) {
-			return attachment.some(att => {
+			return attachment.some((att) => {
 				return this._isAttachmentInlinedHtml(att);
 			});
 		} else {
@@ -227,12 +227,15 @@ export class Client {
 	 * @param {function(MessageStack): void} next next
 	 * @returns {function(Error): void} callback
 	 */
-	_sendsmtp(stack: MessageStack, next: (msg: MessageStack) => void): (err: Error) => void {
+	_sendsmtp(
+		stack: MessageStack,
+		next: (msg: MessageStack) => void
+	): (err: Error) => void {
 		/**
 		 * @param {Error} [err] error
 		 * @returns {void}
 		 */
-		return err => {
+		return (err) => {
 			if (!err && next) {
 				next.apply(this, [stack]);
 			} else {
@@ -288,7 +291,7 @@ export class Client {
 	_sendmessage(stack: MessageStack): void {
 		const stream = stack.message.stream();
 
-		stream.on('data', data => this.smtp.message(data));
+		stream.on('data', (data) => this.smtp.message(data));
 		stream.on('end', () => {
 			this.smtp.data_end(
 				this._sendsmtp(stack, () => this._senddone(null, stack))
@@ -297,7 +300,7 @@ export class Client {
 
 		// there is no way to cancel a message while in the DATA portion,
 		// so we have to close the socket to prevent a bad email from going out
-		stream.on('error', err => {
+		stream.on('error', (err) => {
 			this.smtp.close();
 			this._senddone(err, stack);
 		});

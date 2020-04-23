@@ -1,11 +1,17 @@
 {
+	"parser": "@typescript-eslint/parser",
+	"parserOptions": {
+		"ecmaVersion": 8,
+		"ecmaFeatures": {
+			"modules": true
+		},
+		"sourceType": "module"
+	},
 	"env": {
-		"es6": true,
-		"mocha": true,
 		"node": true
 	},
 	"plugins": [
-		"mocha"
+		"@typescript-eslint"
 	],
 	"extends": [
 		"eslint:recommended",
@@ -30,11 +36,6 @@
 				"ignoreRestSiblings": true
 			}
 		],
-		"valid-jsdoc": "error",
-		"mocha/handle-done-callback": "error",
-		"mocha/no-exclusive-tests": "error",
-		"mocha/no-global-tests": "error",
-		"mocha/no-mocha-arrows": "error",
-		"mocha/no-skipped-tests": "error"
+		"valid-jsdoc": "error"
 	}
 }

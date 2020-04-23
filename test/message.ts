@@ -2,25 +2,36 @@ import { readFileSync, createReadStream } from 'fs';
 import { join } from 'path';
 
 import test from 'ava';
-import { Readable } from 'stream';
 import { simpleParser } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
 import { client as c, message as m } from '../email';
 
 const port = 2526;
-const client = new c.Client({ port, user: 'pooh', password: 'honey', ssl: true });
+const client = new c.Client({
+	port,
+	user: 'pooh',
+	password: 'honey',
+	ssl: true,
+});
 const smtp = new SMTPServer({ secure: true, authMethods: ['LOGIN'] });
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
-const send = (message: m.Message, verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void) => {
+const send = (
+	message: m.Message,
+	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void
+) => {
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // prevent CERT_HAS_EXPIRED errors
 
-	smtp.onData = (stream: Readable, _session, callback: () => void) => {
+	smtp.onData = (
+		stream: import('stream').Readable,
+		_session,
+		callback: () => void
+	) => {
 		simpleParser(stream).then(verify);
 		stream.on('end', callback);
 	};
-	client.send(message, err => {
+	client.send(message, (err) => {
 		if (err) {
 			throw err;
 		}
@@ -42,7 +53,7 @@ test.before(() => {
 
 test.after(() => smtp.close());
 
-test.cb('simple text message', t => {
+test.cb('simple text message', (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'zelda@gmail.com',
@@ -51,7 +62,7 @@ test.cb('simple text message', t => {
 		'message-id': 'this is a special id',
 	};
 
-	send(new m.Message(msg), mail => {
+	send(new m.Message(msg), (mail) => {
 		t.is(mail.text, msg.text + '\n\n\n');
 		t.is(mail.subject, msg.subject);
 		t.is(mail.from?.text, msg.from);
@@ -61,7 +72,7 @@ test.cb('simple text message', t => {
 	});
 });
 
-test.cb('null text message', t => {
+test.cb('null text message', (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'zelda@gmail.com',
@@ -70,13 +81,13 @@ test.cb('null text message', t => {
 		'message-id': 'this is a special id',
 	};
 
-	send(new m.Message(msg), mail => {
+	send(new m.Message(msg), (mail) => {
 		t.is(mail.text, '\n\n\n');
 		t.end();
 	});
 });
 
-test.cb('empty text message', t => {
+test.cb('empty text message', (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'zelda@gmail.com',
@@ -85,13 +96,13 @@ test.cb('empty text message', t => {
 		'message-id': 'this is a special id',
 	};
 
-	send(new m.Message(msg), mail => {
+	send(new m.Message(msg), (mail) => {
 		t.is(mail.text, '\n\n\n');
 		t.end();
 	});
 });
 
-test.cb('simple unicode text message', t => {
+test.cb('simple unicode text message', (t) => {
 	const msg = {
 		subject: 'this ✓ is a test ✓ TEXT message from emailjs',
 		from: 'zelda✓ <zelda@gmail.com>',
@@ -99,7 +110,7 @@ test.cb('simple unicode text message', t => {
 		text: 'hello ✓ friend, i hope this message finds you well.',
 	};
 
-	send(new m.Message(msg), mail => {
+	send(new m.Message(msg), (mail) => {
 		t.is(mail.text, msg.text + '\n\n\n');
 		t.is(mail.subject, msg.subject);
 		t.is(mail.from?.text, msg.from);
@@ -108,7 +119,7 @@ test.cb('simple unicode text message', t => {
 	});
 });
 
-test.cb('very large text message', t => {
+test.cb('very large text message', (t) => {
 	t.timeout(20000);
 
 	// thanks to jart+loberstech for this one!
@@ -116,13 +127,10 @@ test.cb('very large text message', t => {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'ninjas@gmail.com',
 		to: 'pirates@gmail.com',
-		text: readFileSync(
-			join(__dirname, 'attachments/smtp.txt'),
-			'utf-8'
-		),
+		text: readFileSync(join(__dirname, 'attachments/smtp.txt'), 'utf-8'),
 	};
 
-	send(new m.Message(msg), mail => {
+	send(new m.Message(msg), (mail) => {
 		t.is(mail.text, msg.text.replace(/\r/g, '') + '\n\n\n');
 		t.is(mail.subject, msg.subject);
 		t.is(mail.from?.text, msg.from);
@@ -131,7 +139,7 @@ test.cb('very large text message', t => {
 	});
 });
 
-test.cb('very large text data message', t => {
+test.cb('very large text data message', (t) => {
 	t.timeout(10000);
 
 	const text =
@@ -145,10 +153,13 @@ test.cb('very large text data message', t => {
 		to: 'lizards@gmail.com',
 		text:
 			'hello friend if you are seeing this, you can not view html emails. it is attached inline.',
-		attachment: { data: text, alternative: true } as unknown as m.MessageAttachment,
+		attachment: ({
+			data: text,
+			alternative: true,
+		} as unknown) as m.MessageAttachment,
 	};
 
-	send(new m.Message(msg), mail => {
+	send(new m.Message(msg), (mail) => {
 		t.is(mail.html, text.replace(/\r/g, ''));
 		t.is(mail.text, msg.text + '\n');
 		t.is(mail.subject, msg.subject);
@@ -158,19 +169,19 @@ test.cb('very large text data message', t => {
 	});
 });
 
-test.cb('html data message', t => {
-	const html = readFileSync(
-		join(__dirname, 'attachments/smtp.html'),
-		'utf-8'
-	);
+test.cb('html data message', (t) => {
+	const html = readFileSync(join(__dirname, 'attachments/smtp.html'), 'utf-8');
 	const msg = {
 		subject: 'this is a test TEXT+HTML+DATA message from emailjs',
 		from: 'obama@gmail.com',
 		to: 'mitt@gmail.com',
-		attachment: { data: html, alternative: true } as unknown as m.MessageAttachment,
+		attachment: ({
+			data: html,
+			alternative: true,
+		} as unknown) as m.MessageAttachment,
 	};
 
-	send(new m.Message(msg), mail => {
+	send(new m.Message(msg), (mail) => {
 		t.is(mail.html, html.replace(/\r/g, ''));
 		t.is(mail.text, '\n');
 		t.is(mail.subject, msg.subject);
@@ -180,19 +191,19 @@ test.cb('html data message', t => {
 	});
 });
 
-test.cb('html file message', t => {
-	const html = readFileSync(
-		join(__dirname, 'attachments/smtp.html'),
-		'utf-8'
-	);
+test.cb('html file message', (t) => {
+	const html = readFileSync(join(__dirname, 'attachments/smtp.html'), 'utf-8');
 	const msg = {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
 		from: 'thomas@gmail.com',
 		to: 'nikolas@gmail.com',
-		attachment: { path: join(__dirname, 'attachments/smtp.html'), alternative: true } as unknown as m.MessageAttachment,
+		attachment: ({
+			path: join(__dirname, 'attachments/smtp.html'),
+			alternative: true,
+		} as unknown) as m.MessageAttachment,
 	};
 
-	send(new m.Message(msg), mail => {
+	send(new m.Message(msg), (mail) => {
 		t.is(mail.html, html.replace(/\r/g, ''));
 		t.is(mail.text, '\n');
 		t.is(mail.subject, msg.subject);
@@ -202,17 +213,14 @@ test.cb('html file message', t => {
 	});
 });
 
-test.cb('html with image embed message', t => {
-	const html = readFileSync(
-		join(__dirname, 'attachments/smtp2.html'),
-		'utf-8'
-	);
+test.cb('html with image embed message', (t) => {
+	const html = readFileSync(join(__dirname, 'attachments/smtp2.html'), 'utf-8');
 	const image = readFileSync(join(__dirname, 'attachments/smtp.gif'));
 	const msg = {
 		subject: 'this is a test TEXT+HTML+IMAGE message from emailjs',
 		from: 'ninja@gmail.com',
 		to: 'pirate@gmail.com',
-		attachment: {
+		attachment: ({
 			path: join(__dirname, 'attachments/smtp2.html'),
 			alternative: true,
 			related: [
@@ -223,11 +231,14 @@ test.cb('html with image embed message', t => {
 					headers: { 'Content-ID': '<smtp-diagram@local>' },
 				},
 			],
-		} as unknown as m.MessageAttachment,
+		} as unknown) as m.MessageAttachment,
 	};
 
-	send(new m.Message(msg), mail => {
-		t.is(mail.attachments[0].content.toString('base64'), image.toString('base64'));
+	send(new m.Message(msg), (mail) => {
+		t.is(
+			mail.attachments[0].content.toString('base64'),
+			image.toString('base64')
+		);
 		t.is(mail.html, html.replace(/\r/g, ''));
 		t.is(mail.text, '\n');
 		t.is(mail.subject, msg.subject);
@@ -237,7 +248,7 @@ test.cb('html with image embed message', t => {
 	});
 });
 
-test.cb('html data and attachment message', t => {
+test.cb('html data and attachment message', (t) => {
 	const html = readFileSync(join(__dirname, 'attachments/smtp.html'), 'utf-8');
 	const msg = {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
@@ -249,7 +260,7 @@ test.cb('html data and attachment message', t => {
 		] as m.MessageAttachment[],
 	};
 
-	send(new m.Message(msg), mail => {
+	send(new m.Message(msg), (mail) => {
 		t.is(mail.html, html.replace(/\r/g, ''));
 		t.is(mail.text, '\n');
 		t.is(mail.subject, msg.subject);
@@ -259,7 +270,7 @@ test.cb('html data and attachment message', t => {
 	});
 });
 
-test.cb('attachment message', t => {
+test.cb('attachment message', (t) => {
 	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
 	const msg = {
 		subject: 'this is a test TEXT+ATTACHMENT message from emailjs',
@@ -273,8 +284,11 @@ test.cb('attachment message', t => {
 		} as m.MessageAttachment,
 	};
 
-	send(new m.Message(msg), mail => {
-		t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
+	send(new m.Message(msg), (mail) => {
+		t.is(
+			mail.attachments[0].content.toString('base64'),
+			pdf.toString('base64')
+		);
 		t.is(mail.text, msg.text + '\n');
 		t.is(mail.subject, msg.subject);
 		t.is(mail.from?.text, msg.from);
@@ -283,7 +297,7 @@ test.cb('attachment message', t => {
 	});
 });
 
-test.cb('attachment sent with unicode filename message', t => {
+test.cb('attachment sent with unicode filename message', (t) => {
 	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
 	const msg = {
 		subject: 'this is a test TEXT+ATTACHMENT message from emailjs',
@@ -297,8 +311,11 @@ test.cb('attachment sent with unicode filename message', t => {
 		} as m.MessageAttachment,
 	};
 
-	send(new m.Message(msg), mail => {
-		t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
+	send(new m.Message(msg), (mail) => {
+		t.is(
+			mail.attachments[0].content.toString('base64'),
+			pdf.toString('base64')
+		);
 		t.is(mail.attachments[0].filename, 'smtp-✓-info.pdf');
 		t.is(mail.text, msg.text + '\n');
 		t.is(mail.subject, msg.subject);
@@ -308,7 +325,7 @@ test.cb('attachment sent with unicode filename message', t => {
 	});
 });
 
-test.cb('attachments message', t => {
+test.cb('attachments message', (t) => {
 	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
 	const tar = readFileSync(join(__dirname, 'attachments/postfix-2.8.7.tar.gz'));
 	const msg = {
@@ -330,9 +347,15 @@ test.cb('attachments message', t => {
 		] as m.MessageAttachment[],
 	};
 
-	send(new m.Message(msg), mail => {
-		t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
-		t.is(mail.attachments[1].content.toString('base64'), tar.toString('base64'));
+	send(new m.Message(msg), (mail) => {
+		t.is(
+			mail.attachments[0].content.toString('base64'),
+			pdf.toString('base64')
+		);
+		t.is(
+			mail.attachments[1].content.toString('base64'),
+			tar.toString('base64')
+		);
 		t.is(mail.text, msg.text + '\n');
 		t.is(mail.subject, msg.subject);
 		t.is(mail.from?.text, msg.from);
@@ -341,31 +364,42 @@ test.cb('attachments message', t => {
 	});
 });
 
-test.cb('streams message', t => {
+test.cb('streams message', (t) => {
 	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
 	const tar = readFileSync(join(__dirname, 'attachments/postfix-2.8.7.tar.gz'));
 	const stream = createReadStream(join(__dirname, 'attachments/smtp.pdf'));
-	const stream2 = createReadStream(join(__dirname, 'attachments/postfix-2.8.7.tar.gz'));
+	const stream2 = createReadStream(
+		join(__dirname, 'attachments/postfix-2.8.7.tar.gz')
+	);
 
 	const msg = {
-		subject:
-			'this is a test TEXT+2+STREAMED+ATTACHMENTS message from emailjs',
+		subject: 'this is a test TEXT+2+STREAMED+ATTACHMENTS message from emailjs',
 		from: 'stanford@gmail.com',
 		to: 'mit@gmail.com',
 		text:
 			'hello friend, i hope this message and streamed attachments finds you well.',
-		attachment: [
+		attachment: ([
 			{ stream, type: 'application/pdf', name: 'smtp-info.pdf' },
-			{ stream: stream2, type: 'application/x-gzip', name: 'postfix.source.2.8.7.tar.gz' },
-		] as unknown as m.MessageAttachment[],
+			{
+				stream: stream2,
+				type: 'application/x-gzip',
+				name: 'postfix.source.2.8.7.tar.gz',
+			},
+		] as unknown) as m.MessageAttachment[],
 	};
 
 	stream.pause();
 	stream2.pause();
 
-	send(new m.Message(msg), mail => {
-		t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
-		t.is(mail.attachments[1].content.toString('base64'), tar.toString('base64'));
+	send(new m.Message(msg), (mail) => {
+		t.is(
+			mail.attachments[0].content.toString('base64'),
+			pdf.toString('base64')
+		);
+		t.is(
+			mail.attachments[1].content.toString('base64'),
+			tar.toString('base64')
+		);
 		t.is(mail.text, msg.text + '\n');
 		t.is(mail.subject, msg.subject);
 		t.is(mail.from?.text, msg.from);
