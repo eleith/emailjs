@@ -365,6 +365,8 @@ describe('messages', function() {
 	});
 
 	it('attachments', function(done) {
+		this.timeout(4000); /** simpleParser takes a while on macOS */
+
 		var pdf = fs.readFileSync(path.join(__dirname, 'attachments/smtp.pdf'));
 		var tar = fs.readFileSync(
 			path.join(__dirname, 'attachments/postfix-2.8.7.tar.gz')
@@ -407,6 +409,8 @@ describe('messages', function() {
 	});
 
 	it('streams', function(done) {
+		this.timeout(4000); /** simpleParser takes a while on macOS */
+
 		var pdf = fs.readFileSync(path.join(__dirname, 'attachments/smtp.pdf'));
 		var tar = fs.readFileSync(
 			path.join(__dirname, 'attachments/postfix-2.8.7.tar.gz')
