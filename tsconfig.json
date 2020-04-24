@@ -1,7 +1,7 @@
 {
 	"extends": "@ledge/configs/tsconfig.json",
 	"include": [
-		"email.ts",
+		"*.ts",
 		"smtp/*.ts",
 		"test/*.ts"
 	],

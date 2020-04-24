@@ -30,10 +30,10 @@
   dependencies:
     arrify "^1.0.1"
 
-"@ledge/configs@22.0.2":
-  version "22.0.2"
-  resolved "https://registry.npmjs.org/@ledge/configs/-/configs-22.0.2.tgz#969f53a0dd025c2a11f7594b1f7f6abafcd9b467"
-  integrity sha512-qmb2E3Js/Fcfmnr7tU+ldMYUWH47XoUHtxO2AAFoUK2Y1reoaZ0qZ5aAtLzkhCis6fnXeL16NLjLY/SxC2sQEA==
+"@ledge/configs@23.0.0":
+  version "23.0.0"
+  resolved "https://registry.npmjs.org/@ledge/configs/-/configs-23.0.0.tgz#263621257da40011f20fcc20b26a9c6376b55cfc"
+  integrity sha512-4yvm4OIS92LpiR5fmFYCOvkurssjxNCYnpms5kI7xPVzeQHdP7o/Kx40Gbb4qmFQEV3u7Isxy6gy49hIcpqd8w==
 
 "@ledge/types@6.1.0":
   version "6.1.0"
@@ -87,7 +87,15 @@
     is-module "^1.0.0"
     resolve "^1.14.2"
 
-"@rollup/pluginutils@^3.0.8":
+"@rollup/plugin-typescript@4.1.1":
+  version "4.1.1"
+  resolved "https://registry.npmjs.org/@rollup/plugin-typescript/-/plugin-typescript-4.1.1.tgz#bcb38ca4d89a35da2238a6f1136af460a1b2cb09"
+  integrity sha512-KYZCn1Iw9hZWkeEPqPs5YjlmvSjR7UdezVca8z0e8rm/29wU24UD9Y4IZHhnc9tm749hzsgBTiOUxA85gfShEQ==
+  dependencies:
+    "@rollup/pluginutils" "^3.0.1"
+    resolve "^1.14.1"
+
+"@rollup/pluginutils@^3.0.1", "@rollup/pluginutils@^3.0.8":
   version "3.0.9"
   resolved "https://registry.npmjs.org/@rollup/pluginutils/-/pluginutils-3.0.9.tgz#aa6adca2c45e5a1b950103a999e3cddfe49fd775"
   integrity sha512-TLZavlfPAZYI7v33wQh4mTP6zojne14yok3DNSLcjoG/Hirxfkonn6icP5rrNWRn8nZsirJBFFpijVOJzkUHDg==
@@ -2231,7 +2239,7 @@ resolve@^1.10.0:
   dependencies:
     path-parse "^1.0.6"
 
-resolve@^1.11.0, resolve@^1.14.2:
+resolve@^1.11.0, resolve@^1.14.1, resolve@^1.14.2:
   version "1.17.0"
   resolved "https://registry.npmjs.org/resolve/-/resolve-1.17.0.tgz#b25941b54968231cc2d1bb76a79cb7f2c0bf8444"
   integrity sha512-ic+7JYiV8Vi2yzQGFWOkiZD5Z9z7O2Zhm9XMaTxdJExKasieFCr+yXZ/WmXsckHiKl12ar0y6XiXDx3m4RHn1w==
@@ -2612,7 +2620,7 @@ ts-node@8.9.0:
     source-map-support "^0.5.17"
     yn "3.1.1"
 
-tslib@^1.8.1, tslib@^1.9.0:
+tslib@1.11.1, tslib@^1.8.1, tslib@^1.9.0:
   version "1.11.1"
   resolved "https://registry.npmjs.org/tslib/-/tslib-1.11.1.tgz#eb15d128827fbee2841549e171f45ed338ac7e35"
   integrity sha512-aZW88SY8kQbU7gpV19lN24LtXh/yD4ZZg6qieAJDDg+YBsJcSmLGK9QpnUjAKVG/xefmvJGd1WUmfpT/g6AJGA==
