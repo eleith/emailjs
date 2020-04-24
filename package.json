@@ -43,7 +43,11 @@
 	"engine": [
 		"node >= 10"
 	],
-	"main": "email.js",
+	"main": "email.cjs",
+  "exports": {
+    "import": "email.mjs",
+    "require": "email.cjs"
+  },
 	"type": "module",
 	"scripts": {
 		"build": "rollup -c rollup.config.ts",
