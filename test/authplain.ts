@@ -1,6 +1,6 @@
 import test from 'ava';
-import { simpleParser } from 'mailparser';
-import { SMTPServer } from 'smtp-server';
+import mailparser from 'mailparser';
+import smtp from 'smtp-server';
 
 import { client as c, message as m } from '../email';
 
@@ -13,20 +13,22 @@ const client = new c.Client({
 	password: 'honey',
 	ssl: true,
 });
-const smtp = new SMTPServer({ secure: true, authMethods: ['LOGIN'] });
+const server = new smtp.SMTPServer({ secure: true, authMethods: ['LOGIN'] });
 
 const send = (
 	message: m.Message,
-	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void
+	verify: (
+		mail: UnPromisify<ReturnType<typeof mailparser.simpleParser>>
+	) => void
 ) => {
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // prevent CERT_HAS_EXPIRED errors
 
-	smtp.onData = (
+	server.onData = (
 		stream: import('stream').Readable,
 		_session,
 		callback: () => void
 	) => {
-		simpleParser(stream).then(verify);
+		mailparser.simpleParser(stream).then(verify);
 		stream.on('end', callback);
 	};
 	client.send(message, (err) => {
@@ -37,8 +39,8 @@ const send = (
 };
 
 test.before(() => {
-	smtp.listen(port, function () {
-		smtp.onAuth = function (auth, _session, callback) {
+	server.listen(port, function () {
+		server.onAuth = function (auth, _session, callback) {
 			if (auth.username == 'pooh' && auth.password == 'honey') {
 				callback(null, { user: 'pooh' });
 			} else {
@@ -48,7 +50,7 @@ test.before(() => {
 	});
 });
 
-test.after(() => smtp.close());
+test.after(() => server.close());
 
 test.cb('authorize plain', (t) => {
 	const msg = {
