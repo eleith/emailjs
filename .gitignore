@@ -1,7 +1,7 @@
-/.vscode/
-/node_modules/
-/test/config.js
-/npm-debug.log
+.vscode
+node_modules
+
+*.log
 *.swp
 *.swo
 *~
