@@ -8,10 +8,6 @@ import { SMTPResponse } from './response';
 import { makeSMTPError, SMTPErrorStates } from './error';
 
 /* eslint-disable no-unused-vars */
-/**
- * @readonly
- * @enum
- */
 export enum AUTH_METHODS {
 	PLAIN = 'PLAIN',
 	CRAM_MD5 = 'CRAM-MD5',
@@ -19,10 +15,6 @@ export enum AUTH_METHODS {
 	XOAUTH2 = 'XOAUTH2',
 }
 
-/**
- * @readonly
- * @enum
- */
 export enum SMTPState {
 	NOTCONNECTED = 0,
 	CONNECTING = 1,
@@ -30,39 +22,11 @@ export enum SMTPState {
 }
 /* eslint-enable no-unused-vars */
 
-/**
- * @readonly
- * @type {5000}
- */
-export const DEFAULT_TIMEOUT: 5000 = 5000;
-
-/**
- * @readonly
- * @type {25}
- */
-const SMTP_PORT: 25 = 25;
-
-/**
- * @readonly
- * @type {465}
- */
-const SMTP_SSL_PORT: 465 = 465;
-
-/**
- * @readonly
- * @type {587}
- */
-const SMTP_TLS_PORT: 587 = 587;
-
-/**
- * @readonly
- * @type {'\r\n'}
- */
-const CRLF: '\r\n' = '\r\n';
-
-/**
- * @type {0 | 1}
- */
+export const DEFAULT_TIMEOUT = 5000 as const;
+const SMTP_PORT = 25 as const;
+const SMTP_SSL_PORT = 465 as const;
+const SMTP_TLS_PORT = 587 as const;
+const CRLF = '\r\n' as const;
 let DEBUG: 0 | 1 = 0;
 
 /**
@@ -118,34 +82,28 @@ export interface ConnectOptions {
 }
 
 export class SMTP extends EventEmitter {
-	private _state: 0 | 1 | 2 = SMTPState.NOTCONNECTED;
+	private _state: SMTPState = SMTPState.NOTCONNECTED;
 	private _isAuthorized = false;
 	private _isSecure = false;
 	private _user?: string = '';
 	private _password?: string = '';
-	private _timeout: number = DEFAULT_TIMEOUT;
+	public timeout: number = DEFAULT_TIMEOUT;
 
 	public set debug(level: 0 | 1) {
 		DEBUG = level;
 	}
 
-	public get state() {
+	public state() {
 		return this._state;
 	}
 
-	public get timeout() {
-		return this._timeout;
-	}
+	public user: () => string;
+	public password: () => string;
 
-	public get user() {
-		return this._user;
-	}
-
-	public get password() {
-		return this._password;
-	}
-
-	public get isAuthorized() {
+	/**
+	 * @returns {boolean} whether or not the instance is authorized
+	 */
+	public authorized() {
 		return this._isAuthorized;
 	}
 
@@ -177,9 +135,6 @@ export class SMTP extends EventEmitter {
 	}: Partial<SMTPOptions> = {}) {
 		super();
 
-		this._user = user;
-		this._password = password;
-
 		this.authentication = Array.isArray(authentication)
 			? authentication
 			: [
@@ -190,7 +145,7 @@ export class SMTP extends EventEmitter {
 			  ];
 
 		if (typeof timeout === 'number') {
-			this._timeout = timeout;
+			this.timeout = timeout;
 		}
 
 		if (typeof domain === 'string') {
@@ -230,6 +185,10 @@ export class SMTP extends EventEmitter {
 		}
 
 		this._isAuthorized = user && password ? false : true;
+
+		// keep these strings hidden when quicky debugging/logging
+		this.user = () => user as string;
+		this.password = () => password as string;
 	}
 
 	/**
@@ -351,7 +310,7 @@ export class SMTP extends EventEmitter {
 			this.sock.connect(this.port, this.host, connectedErrBack);
 		}
 
-		this.monitor = new SMTPResponse(this.sock, this._timeout, () =>
+		this.monitor = new SMTPResponse(this.sock, this.timeout, () =>
 			this.close(true)
 		);
 		this.sock.once('response', response);
@@ -483,7 +442,7 @@ export class SMTP extends EventEmitter {
 				this._isSecure = true;
 				this.sock = secureSocket;
 
-				new SMTPResponse(this.sock, this._timeout, () => this.close(true));
+				new SMTPResponse(this.sock, this.timeout, () => this.close(true));
 				caller(callback, msg.data);
 			}
 		};
@@ -689,8 +648,8 @@ export class SMTP extends EventEmitter {
 		options: { method?: string; domain?: string } = {}
 	): void {
 		const login = {
-			user: () => user || this.user || '',
-			password: () => password || this.password || '',
+			user: (user?.length ?? 0) > 0 ? () => user : this.user,
+			password: (password?.length ?? 0) > 0 ? () => password : this.password,
 			method: options && options.method ? options.method.toUpperCase() : '',
 		};
 

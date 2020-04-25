@@ -18,51 +18,16 @@ export interface MessageStack {
 export class Client {
 	public smtp: SMTP;
 	public queue: MessageStack[] = [];
-	public timer: any;
-	public sending: boolean;
-	public ready: boolean;
+	public timer: NodeJS.Timer | null = null;
+	public sending = false;
+	public ready = false;
 
 	/**
-	 * @typedef {Object} MessageStack
-	 *
-	 * @typedef {Object} SMTPSocketOptions
-	 * @property {string} key
-	 * @property {string} ca
-	 * @property {string} cert
-	 *
-	 * @typedef {Object} SMTPOptions
-	 * @property {number} [timeout]
-	 * @property {string} [user]
-	 * @property {string} [password]
-	 * @property {string} [domain]
-	 * @property {string} [host]
-	 * @property {number} [port]
-	 * @property {boolean|SMTPSocketOptions} [ssl]
-	 * @property {boolean|SMTPSocketOptions} [tls]
-	 * @property {string[]} [authentication]
-	 * @property {function(...any): void} [logger]
-	 *
-	 * @constructor
-	 * @param {SMTPOptions} server smtp options
+	 * @param {*} server smtp options
 	 */
 	constructor(server: Partial<import('./smtp').SMTPOptions>) {
 		this.smtp = new SMTP(server);
 		//this.smtp.debug(1);
-
-		/**
-		 * @type {NodeJS.Timer}
-		 */
-		this.timer = null;
-
-		/**
-		 * @type {boolean}
-		 */
-		this.sending = false;
-
-		/**
-		 * @type {boolean}
-		 */
-		this.ready = false;
 	}
 
 	send(msg: Message, callback: (err: Error, msg: Message) => void): void {
@@ -107,7 +72,7 @@ export class Client {
 				this.queue.push(stack);
 				this._poll();
 			} else {
-				callback(new Error(why), /** @type {MessageStack} */ msg);
+				callback(new Error(why), msg);
 			}
 		});
 	}
@@ -117,13 +82,15 @@ export class Client {
 	 * @returns {void}
 	 */
 	_poll(): void {
-		clearTimeout(this.timer);
+		if (this.timer != null) {
+			clearTimeout(this.timer);
+		}
 
 		if (this.queue.length > 0) {
-			if (this.smtp.state == SMTPState.NOTCONNECTED) {
+			if (this.smtp.state() == SMTPState.NOTCONNECTED) {
 				this._connect(this.queue[0]);
 			} else if (
-				this.smtp.state == SMTPState.CONNECTED &&
+				this.smtp.state() == SMTPState.CONNECTED &&
 				!this.sending &&
 				this.ready
 			) {
@@ -132,7 +99,7 @@ export class Client {
 		}
 		// wait around 1 seconds in case something does come in,
 		// otherwise close out SMTP connection if still open
-		else if (this.smtp.state == SMTPState.CONNECTED) {
+		else if (this.smtp.state() == SMTPState.CONNECTED) {
 			this.timer = setTimeout(() => this.smtp.quit(), 1000);
 		}
 	}
@@ -162,10 +129,10 @@ export class Client {
 					}
 				};
 
-				if (!this.smtp.isAuthorized) {
-					this.smtp.login(begin);
-				} else {
+				if (this.smtp.authorized()) {
 					this.smtp.ehlo_or_helo_if_needed(begin);
+				} else {
+					this.smtp.login(begin);
 				}
 			} else {
 				stack.callback(err, stack.message);
@@ -189,16 +156,16 @@ export class Client {
 		return !!(
 			msg.from &&
 			(msg.to || msg.cc || msg.bcc) &&
-			(msg.text != null || this._containsInlinedHtml(msg.attachment))
+			(msg.text !== undefined || this._containsInlinedHtml(msg.attachment))
 		);
 	}
 
 	/**
 	 * @private
 	 * @param {*} attachment attachment
-	 * @returns {boolean} does contain
+	 * @returns {*} whether the attachment contains inlined html
 	 */
-	_containsInlinedHtml(attachment: any): boolean {
+	_containsInlinedHtml(attachment: any) {
 		if (Array.isArray(attachment)) {
 			return attachment.some((att) => {
 				return this._isAttachmentInlinedHtml(att);
@@ -211,9 +178,9 @@ export class Client {
 	/**
 	 * @private
 	 * @param {*} attachment attachment
-	 * @returns {boolean} is inlined
+	 * @returns {boolean} whether the attachment is inlined html
 	 */
-	_isAttachmentInlinedHtml(attachment: any): boolean {
+	_isAttachmentInlinedHtml(attachment: any) {
 		return (
 			attachment &&
 			(attachment.data || attachment.path) &&
@@ -267,9 +234,12 @@ export class Client {
 			throw new TypeError('stack.to must be array');
 		}
 
-		const { address: to } = stack.to.shift() ?? {};
+		const to = stack.to.shift()?.address;
 		this.smtp.rcpt(
-			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
+			this._sendsmtp(
+				stack,
+				stack.to.length > 0 ? this._sendrcpt : this._senddata
+			),
 			`<${to}>`
 		);
 	}

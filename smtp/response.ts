@@ -12,8 +12,8 @@ export class SMTPResponse {
 	) {
 		const watch = (data: Parameters<SMTPResponse['watch']>[0]) =>
 			this.watch(data);
-		const end = () => this.end();
-		const close = () => this.close();
+		const end = (err: Error) => this.end(err);
+		const close = (err: Error) => this.close(err);
 		const error = (data: Parameters<SMTPResponse['error']>[0]) =>
 			this.error(data);
 		const timedout = (data: Parameters<SMTPResponse['timedout']>[0]) =>
@@ -43,12 +43,13 @@ export class SMTPResponse {
 			// parse buffer for response codes
 			const line = this.buffer.replace('\r', '');
 			if (
-				!line
-					.trim()
-					.split(/\n/)
-					.pop()
-					?.match(/^(\d{3})\s/) ??
-				false
+				!(
+					line
+						.trim()
+						.split(/\n/)
+						.pop()
+						?.match(/^(\d{3})\s/) ?? false
+				)
 			) {
 				return;
 			}
@@ -75,13 +76,6 @@ export class SMTPResponse {
 		);
 	}
 
-	protected watch(data: string | Buffer) {
-		if (data !== null) {
-			this.buffer += data.toString();
-			this.notify();
-		}
-	}
-
 	protected timedout(err: Error) {
 		this.stream.end();
 		this.stream.emit(
@@ -94,17 +88,32 @@ export class SMTPResponse {
 		);
 	}
 
-	protected close() {
+	protected watch(data: string | Buffer) {
+		if (data !== null) {
+			this.buffer += data.toString();
+			this.notify();
+		}
+	}
+
+	protected close(err: Error) {
 		this.stream.emit(
 			'response',
-			makeSMTPError('connection has closed', SMTPErrorStates.CONNECTIONCLOSED)
+			makeSMTPError(
+				'connection has closed',
+				SMTPErrorStates.CONNECTIONCLOSED,
+				err
+			)
 		);
 	}
 
-	protected end() {
+	protected end(err: Error) {
 		this.stream.emit(
 			'response',
-			makeSMTPError('connection has ended', SMTPErrorStates.CONNECTIONENDED)
+			makeSMTPError(
+				'connection has ended',
+				SMTPErrorStates.CONNECTIONENDED,
+				err
+			)
 		);
 	}
 }

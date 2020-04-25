@@ -10,22 +10,22 @@ import { getRFC2822Date } from './date';
 
 type Indexed = import('@ledge/types').Indexed;
 
-const CRLF = '\r\n';
+const CRLF = '\r\n' as const;
 
 /**
  * MIME standard wants 76 char chunks when sending out.
  */
-export const MIMECHUNK: 76 = 76;
+export const MIMECHUNK = 76 as const;
 
 /**
  * meets both base64 and mime divisibility
  */
-export const MIME64CHUNK: 456 = (MIMECHUNK * 6) as 456;
+export const MIME64CHUNK = (MIMECHUNK * 6) as 456;
 
 /**
  * size of the message stream buffer
  */
-export const BUFFERSIZE: 12768 = (MIMECHUNK * 24 * 7) as 12768;
+export const BUFFERSIZE = (MIMECHUNK * 24 * 7) as 12768;
 
 export interface MessageAttachmentHeaders extends Indexed {
 	'content-type'?: string;
@@ -34,7 +34,7 @@ export interface MessageAttachmentHeaders extends Indexed {
 }
 
 export interface AlternateMessageAttachment extends Indexed {
-	headers: MessageAttachmentHeaders;
+	headers?: MessageAttachmentHeaders;
 	inline: boolean;
 	alternative?: MessageAttachment;
 	related?: MessageAttachment[];
@@ -97,35 +97,33 @@ function convertDashDelimitedTextToSnakeCase(text: string) {
 export class Message {
 	attachments: any[] = [];
 	alternative: AlternateMessageAttachment | null = null;
-	header: Partial<MessageHeaders>;
-	content: string;
+	header: Partial<MessageHeaders> = {
+		'message-id': `<${new Date().getTime()}.${counter++}.${
+			process.pid
+		}@${hostname()}>`,
+		date: getRFC2822Date(),
+	};
+	content = 'text/plain; charset=utf-8';
 	text: any;
 
 	constructor(headers: Partial<MessageHeaders>) {
-		this.header = {
-			'message-id': `<${new Date().getTime()}.${counter++}.${
-				process.pid
-			}@${hostname()}>`,
-			date: getRFC2822Date(),
-		};
-
-		this.content = 'text/plain; charset=utf-8';
 		for (const header in headers) {
 			// allow user to override default content-type to override charset or send a single non-text message
 			if (/^content-type$/i.test(header)) {
 				this.content = headers[header];
 			} else if (header === 'text') {
 				this.text = headers[header];
-			} else if (header === 'attachment') {
+			} else if (
+				header === 'attachment' &&
+				typeof headers[header] === 'object'
+			) {
 				const attachment = headers[header];
-				if (attachment != null) {
-					if (Array.isArray(attachment)) {
-						for (let i = 0; i < attachment.length; i++) {
-							this.attach(attachment[i]);
-						}
-					} else {
-						this.attach(attachment);
+				if (Array.isArray(attachment)) {
+					for (let i = 0; i < attachment.length; i++) {
+						this.attach(attachment[i]);
 					}
+				} else if (attachment != null) {
+					this.attach(attachment);
 				}
 			} else if (header === 'subject') {
 				this.header.subject = mimeWordEncode(headers.subject);
@@ -166,11 +164,10 @@ export class Message {
 	 * @param {string} [charset='utf-8'] the charset to encode as
 	 * @returns {Message} the current Message instance
 	 */
-	attach_alternative(html: string, charset = 'utf-8'): Message {
+	attach_alternative(html: string, charset: string): Message {
 		this.alternative = {
-			headers: {},
 			data: html,
-			charset,
+			charset: charset || 'utf-8',
 			type: 'text/html',
 			inline: true,
 		};
@@ -182,7 +179,7 @@ export class Message {
 	 * @param {function(boolean, string): void} callback This callback is displayed as part of the Requester class.
 	 * @returns {void}
 	 */
-	valid(callback: (arg0: boolean, arg1?: string) => void): void {
+	valid(callback: (arg0: boolean, arg1?: string) => void) {
 		if (!this.header.from) {
 			callback(false, 'message does not have a valid sender');
 		}
@@ -213,10 +210,9 @@ export class Message {
 	}
 
 	/**
-	 * returns a stream of the current message
-	 * @returns {MessageStream} a stream of the current message
+	 * @returns {*} a stream of the current message
 	 */
-	stream(): MessageStream {
+	stream() {
 		return new MessageStream(this);
 	}
 
@@ -224,7 +220,7 @@ export class Message {
 	 * @param {function(Error, string): void} callback the function to call with the error and buffer
 	 * @returns {void}
 	 */
-	read(callback: (arg0: Error, arg1: string) => void): void {
+	read(callback: (err: Error, buffer: string) => void) {
 		let buffer = '';
 		const str = this.stream();
 		str.on('data', (data) => (buffer += data));
@@ -234,46 +230,18 @@ export class Message {
 }
 
 class MessageStream extends Stream {
-	message: Message;
-	readable: boolean;
-	paused: boolean;
-	buffer: Buffer | null;
-	bufferIndex: number;
+	readable = true;
+	paused = false;
+	buffer: Buffer | null = Buffer.alloc(MIMECHUNK * 24 * 7);
+	bufferIndex = 0;
+
 	/**
-	 * @param {Message} message the message to stream
+	 * @param {*} message the message to stream
 	 */
-	constructor(message: Message) {
+	constructor(private message: Message) {
 		super();
 
-		/**
-		 * @type {Message}
-		 */
-		this.message = message;
-
-		/**
-		 * @type {boolean}
-		 */
-		this.readable = true;
-
-		/**
-		 * @type {boolean}
-		 */
-		this.paused = false;
-
-		/**
-		 * @type {Buffer}
-		 */
-		this.buffer = Buffer.alloc(MIMECHUNK * 24 * 7);
-
-		/**
-		 * @type {number}
-		 */
-		this.bufferIndex = 0;
-
-		/**
-		 * @returns {void}
-		 */
-		const output_mixed = (): void => {
+		const output_mixed = () => {
 			const boundary = generate_boundary();
 			output(
 				`Content-Type: multipart/mixed; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`
@@ -303,7 +271,7 @@ class MessageStream extends Stream {
 			list: MessageAttachment[],
 			index: number,
 			callback: () => void
-		): void => {
+		) => {
 			if (index < list.length) {
 				output(`--${boundary}${CRLF}`);
 				if (list[index].related) {
@@ -327,7 +295,7 @@ class MessageStream extends Stream {
 		 */
 		const output_attachment_headers = (
 			attachment: MessageAttachment | AlternateMessageAttachment
-		): void => {
+		) => {
 			let data: string[] = [];
 			const headers: Partial<MessageHeaders> = {
 				'content-type':
@@ -341,8 +309,10 @@ class MessageStream extends Stream {
 			};
 
 			// allow sender to override default headers
-			for (const header in attachment.headers || {}) {
-				headers[header.toLowerCase()] = attachment.headers[header];
+			if (attachment.headers != null) {
+				for (const header in attachment.headers) {
+					headers[header.toLowerCase()] = attachment.headers[header];
+				}
 			}
 
 			for (const header in headers) {
@@ -360,7 +330,7 @@ class MessageStream extends Stream {
 		const output_attachment = (
 			attachment: MessageAttachment | AlternateMessageAttachment,
 			callback: () => void
-		): void => {
+		) => {
 			const build = attachment.path
 				? output_file
 				: attachment.stream
@@ -378,7 +348,7 @@ class MessageStream extends Stream {
 		const output_data = (
 			attachment: MessageAttachment | AlternateMessageAttachment,
 			callback: () => void
-		): void => {
+		) => {
 			output_base64(
 				attachment.encoded
 					? attachment.data
@@ -390,7 +360,7 @@ class MessageStream extends Stream {
 		const output_file = (
 			attachment: MessageAttachment | AlternateMessageAttachment,
 			next: (err: NodeJS.ErrnoException) => void
-		): void => {
+		) => {
 			const chunk = MIME64CHUNK * 16;
 			const buffer = Buffer.alloc(chunk);
 			const closed = (fd: number) => fs.closeSync(fd);
@@ -400,7 +370,7 @@ class MessageStream extends Stream {
 			 * @param {number} fd the file descriptor
 			 * @returns {void}
 			 */
-			const opened = (err: Error, fd: number): void => {
+			const opened = (err: Error, fd: number) => {
 				if (!err) {
 					const read = (err: Error, bytes: number) => {
 						if (!err && this.readable) {
@@ -452,13 +422,13 @@ class MessageStream extends Stream {
 		const output_stream = (
 			attachment: MessageAttachment | AlternateMessageAttachment,
 			callback: () => void
-		): void => {
+		) => {
 			if (attachment.stream.readable) {
 				let previous = Buffer.alloc(0);
 
 				attachment.stream.resume();
 
-				(attachment as MessageAttachment).on('end', () => {
+				(attachment as MessageAttachment).stream.on('end', () => {
 					output_base64(previous.toString('base64'), callback);
 					this.removeListener('pause', attachment.stream.pause);
 					this.removeListener('resume', attachment.stream.resume);
@@ -497,7 +467,7 @@ class MessageStream extends Stream {
 		 * @param {function(): void} [callback] the function to call after output is finished
 		 * @returns {void}
 		 */
-		const output_base64 = (data: string, callback?: () => void): void => {
+		const output_base64 = (data: string, callback?: () => void) => {
 			const loops = Math.ceil(data.length / MIMECHUNK);
 			let loop = 0;
 			while (loop < loops) {
@@ -513,7 +483,7 @@ class MessageStream extends Stream {
 		 * @param {Message} message the message to output
 		 * @returns {void}
 		 */
-		const output_text = (message: Message): void => {
+		const output_text = (message: Message) => {
 			let data: string[] = [];
 
 			data = data.concat([
@@ -537,7 +507,7 @@ class MessageStream extends Stream {
 		const output_alternative = (
 			message: Message & { alternative: AlternateMessageAttachment },
 			callback: () => void
-		): void => {
+		) => {
 			const boundary = generate_boundary();
 			output(
 				`Content-Type: multipart/alternative; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`
@@ -548,7 +518,7 @@ class MessageStream extends Stream {
 			/**
 			 * @returns {void}
 			 */
-			const finish = (): void => {
+			const finish = () => {
 				output([CRLF, '--', boundary, '--', CRLF, CRLF].join(''));
 				callback();
 			};
@@ -568,7 +538,7 @@ class MessageStream extends Stream {
 		const output_related = (
 			message: AlternateMessageAttachment,
 			callback: () => void
-		): void => {
+		) => {
 			const boundary = generate_boundary();
 			output(
 				`Content-Type: multipart/related; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`
@@ -584,7 +554,7 @@ class MessageStream extends Stream {
 		/**
 		 * @returns {void}
 		 */
-		const output_header_data = (): void => {
+		const output_header_data = () => {
 			if (this.message.attachments.length || this.message.alternative) {
 				output(`MIME-Version: 1.0${CRLF}`);
 				output_mixed();
@@ -598,14 +568,15 @@ class MessageStream extends Stream {
 		/**
 		 * @returns {void}
 		 */
-		const output_header = (): void => {
+		const output_header = () => {
 			let data: string[] = [];
 
 			for (const header in this.message.header) {
 				// do not output BCC in the headers (regex) nor custom Object.prototype functions...
 				if (
 					!/bcc/i.test(header) &&
-					Object.prototype.hasOwnProperty.call(this.message.header, header)
+					// eslint-disable-next-line no-prototype-builtins
+					this.message.header.hasOwnProperty(header)
 				) {
 					data = data.concat([
 						convertDashDelimitedTextToSnakeCase(header),
@@ -626,11 +597,7 @@ class MessageStream extends Stream {
 		 * @param {any[]} [args] array of arguments to pass to the callback
 		 * @returns {void}
 		 */
-		const output = (
-			data: string,
-			callback?: (...args: any[]) => void,
-			args: any[] = []
-		) => {
+		const output = (data: string) => {
 			// can we buffer the data?
 			if (this.buffer != null) {
 				const bytes = Buffer.byteLength(data);
@@ -638,9 +605,6 @@ class MessageStream extends Stream {
 				if (bytes + this.bufferIndex < this.buffer.length) {
 					this.buffer.write(data, this.bufferIndex);
 					this.bufferIndex += bytes;
-					if (callback) {
-						callback.apply(null, args);
-					}
 				}
 				// we can't buffer the data, so ship it out!
 				else if (bytes > this.buffer.length) {
@@ -673,24 +637,15 @@ class MessageStream extends Stream {
 						);
 						this.buffer.write(data, 0);
 						this.bufferIndex = bytes;
-						// we could get paused after emitting data...
-
-						if (typeof callback === 'function') {
-							if (this.paused) {
-								this.once('resume', () => callback.apply(null, args));
-							} else {
-								callback.apply(null, args);
-							}
-						}
-					} // we can't empty out the buffer, so let's wait till we resume before adding to it
-					else {
-						this.once('resume', () => output(data, callback, args));
+					} else {
+						// we can't empty out the buffer, so let's wait till we resume before adding to it
+						this.once('resume', () => output(data));
 					}
 				}
 			}
 		};
 
-		const close = (err?: any): void => {
+		const close = (err?: any) => {
 			if (err) {
 				this.emit('error', err);
 			} else {
@@ -718,7 +673,7 @@ class MessageStream extends Stream {
 	 * pause the stream
 	 * @returns {void}
 	 */
-	pause(): void {
+	pause() {
 		this.paused = true;
 		this.emit('pause');
 	}
@@ -727,7 +682,7 @@ class MessageStream extends Stream {
 	 * resume the stream
 	 * @returns {void}
 	 */
-	resume(): void {
+	resume() {
 		this.paused = false;
 		this.emit('resume');
 	}
@@ -736,7 +691,7 @@ class MessageStream extends Stream {
 	 * destroy the stream
 	 * @returns {void}
 	 */
-	destroy(): void {
+	destroy() {
 		this.emit(
 			'destroy',
 			this.bufferIndex > 0 ? { message: 'message stream destroyed' } : null
@@ -747,7 +702,7 @@ class MessageStream extends Stream {
 	 * destroy the stream at first opportunity
 	 * @returns {void}
 	 */
-	destroySoon(): void {
+	destroySoon() {
 		this.emit('destroy');
 	}
 }
