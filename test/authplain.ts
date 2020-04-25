@@ -38,7 +38,7 @@ const send = (
 	});
 };
 
-test.before(() => {
+test.beforeEach.cb((t) => {
 	server.listen(port, function () {
 		server.onAuth = function (auth, _session, callback) {
 			if (auth.username == 'pooh' && auth.password == 'honey') {
@@ -47,10 +47,11 @@ test.before(() => {
 				return callback(new Error('invalid user / pass'));
 			}
 		};
+		t.end();
 	});
 });
 
-test.after(() => server.close());
+test.afterEach.cb((t) => server.close(t.end));
 
 test.cb('authorize plain', (t) => {
 	const msg = {

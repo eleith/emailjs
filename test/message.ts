@@ -40,7 +40,7 @@ const send = (
 	});
 };
 
-test.before(() => {
+test.before.cb((t) => {
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // prevent CERT_HAS_EXPIRED errors
 	server.listen(port, function () {
 		server.onAuth = function (auth, _session, callback) {
@@ -50,10 +50,11 @@ test.before(() => {
 				return callback(new Error('invalid user / pass'));
 			}
 		};
+		t.end();
 	});
 });
 
-test.after(() => server.close());
+test.after.cb((t) => server.close(t.end));
 
 test.cb('simple text message', (t) => {
 	const msg = {
