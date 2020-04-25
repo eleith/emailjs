@@ -1,5 +1,9 @@
 {
 	"extends": "@ledge/configs/tsconfig.json",
+	"compilerOptions": {
+		"declarationDir": "dist",
+		"declaration": true
+	},
 	"include": [
 		"*.ts",
 		"smtp/*.ts",

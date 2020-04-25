@@ -7,14 +7,16 @@ export default {
 	input: 'email.ts',
 	output: [
 		{
-			file: 'email.cjs',
+			entryFileNames: '[name].cjs',
+			dir: 'dist',
 			format: 'cjs',
 			interop: false,
 			freeze: false,
 			sourcemap: true,
 		},
 		{
-			file: 'email.mjs',
+			entryFileNames: '[name].mjs',
+			dir: 'dist',
 			format: 'es',
 			interop: false,
 			freeze: false,
@@ -22,5 +24,9 @@ export default {
 		},
 	],
 	external: module.builtinModules,
-	plugins: [resolve(), commonjs(), typescript()],
+	plugins: [
+		resolve(),
+		commonjs(),
+		typescript({ include: ['email.ts', 'smtp/*.ts']})
+	],
 };
