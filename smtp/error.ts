@@ -17,6 +17,10 @@ class SMTPError extends Error {
 	public code: number | null = null;
 	public smtp: any = null;
 	public previous: Error | null = null;
+
+	constructor(message: string) {
+		super(message);
+	}
 }
 
 export function makeSMTPError(
@@ -25,8 +29,7 @@ export function makeSMTPError(
 	error?: Error,
 	smtp?: any
 ) {
-	const msg =
-		error != null && error.message ? `${message} (${error.message})` : message;
+	const msg = error?.message ? `${message} (${error.message})` : message;
 	const err = new SMTPError(msg);
 
 	err.code = code;

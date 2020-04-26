@@ -30,7 +30,7 @@ export class Client {
 		//this.smtp.debug(1);
 	}
 
-	send(msg: Message, callback: (err: Error, msg: Message) => void): void {
+	send(msg: Message, callback: (err: Error, msg: Message) => void) {
 		const message: Message | null =
 			msg instanceof Message
 				? msg
@@ -81,7 +81,7 @@ export class Client {
 	 * @private
 	 * @returns {void}
 	 */
-	_poll(): void {
+	_poll() {
 		if (this.timer != null) {
 			clearTimeout(this.timer);
 		}
@@ -109,12 +109,12 @@ export class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_connect(stack: MessageStack): void {
+	_connect(stack: MessageStack) {
 		/**
 		 * @param {Error} err callback error
 		 * @returns {void}
 		 */
-		const connect = (err: Error): void => {
+		const connect = (err: Error) => {
 			if (!err) {
 				const begin = (err: Error) => {
 					if (!err) {
@@ -218,7 +218,7 @@ export class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendmail(stack: MessageStack): void {
+	_sendmail(stack: MessageStack) {
 		const from = stack.returnPath || stack.from;
 		this.sending = true;
 		this.smtp.mail(this._sendsmtp(stack, this._sendrcpt), '<' + from + '>');
@@ -229,7 +229,7 @@ export class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendrcpt(stack: MessageStack): void {
+	_sendrcpt(stack: MessageStack) {
 		if (stack.to == null || typeof stack.to === 'string') {
 			throw new TypeError('stack.to must be array');
 		}
@@ -249,7 +249,7 @@ export class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_senddata(stack: MessageStack): void {
+	_senddata(stack: MessageStack) {
 		this.smtp.data(this._sendsmtp(stack, this._sendmessage));
 	}
 
@@ -258,7 +258,7 @@ export class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendmessage(stack: MessageStack): void {
+	_sendmessage(stack: MessageStack) {
 		const stream = stack.message.stream();
 
 		stream.on('data', (data) => this.smtp.message(data));
@@ -282,7 +282,7 @@ export class Client {
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_senddone(err: Error | null, stack: MessageStack): void {
+	_senddone(err: Error | null, stack: MessageStack) {
 		this.sending = false;
 		stack.callback(err, stack.message);
 		this._poll();

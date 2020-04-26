@@ -104,7 +104,7 @@ export class Message {
 		date: getRFC2822Date(),
 	};
 	content = 'text/plain; charset=utf-8';
-	text: any;
+	text?: string;
 
 	constructor(headers: Partial<MessageHeaders>) {
 		for (const header in headers) {
@@ -112,7 +112,7 @@ export class Message {
 			if (/^content-type$/i.test(header)) {
 				this.content = headers[header];
 			} else if (header === 'text') {
-				this.text = headers[header];
+				this.text = headers[header] as string;
 			} else if (
 				header === 'attachment' &&
 				typeof headers[header] === 'object'

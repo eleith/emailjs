@@ -27,6 +27,6 @@ export default {
 	plugins: [
 		resolve(),
 		commonjs(),
-		typescript({ include: ['email.ts', 'smtp/*.ts']})
+		typescript({ include: ['email.ts', 'smtp/*.ts'] }),
 	],
 };
