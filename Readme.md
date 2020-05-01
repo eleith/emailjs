@@ -72,7 +72,7 @@ client.send(message, function(err, message) { console.log(err || message); });
 // you can continue to send more messages with successive calls to 'client.send',
 // they will be queued on the same smtp connection
 
-// or instead of using the built-in client you can create an instance of 'SMTP.SMTPConnection'
+// or instead of using the built-in client you can create an instance of 'smtp.SMTPConnection'
 ```
 
 ## EXAMPLE USAGE - sending through outlook
@@ -213,7 +213,7 @@ client.send(message, (err, message) => {
         related     // an array of attachments that you want to be related to the parent attachment
     }
 
-## new SMTP.SMTPConnection(options)
+## new smtp.SMTPConnection(options)
 
 	// options is an object with the following keys
 	options =
@@ -230,7 +230,7 @@ client.send(message, (err, message) => {
 		logger // override the built-in logger (useful for e.g. Azure Function Apps, where console.log doesn't work)
 	}
 
-## SMTP.SMTPConnection#authentication
+## smtp.SMTPConnection#authentication
 
 associative array of currently supported SMTP authentication mechanisms
 

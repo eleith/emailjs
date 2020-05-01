@@ -1,6 +1,6 @@
 import test from 'ava';
 
-import { client as c, message as m, SMTP } from '../email';
+import { client as c, message as m, smtp as s } from '../email';
 
 test.cb(
 	'connecting to wrong email server should not invoke callback multiple times',
@@ -27,20 +27,11 @@ test('should have a default timeout', async (t) => {
 		port: 1234,
 		timeout: undefined as number | null | undefined,
 	};
-	t.deepEqual(
-		new c.Client(connectionOptions).smtp.timeout,
-		SMTP.DEFAULT_TIMEOUT
-	);
+	t.deepEqual(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
 
 	connectionOptions.timeout = null;
-	t.deepEqual(
-		new c.Client(connectionOptions).smtp.timeout,
-		SMTP.DEFAULT_TIMEOUT
-	);
+	t.deepEqual(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
 
 	connectionOptions.timeout = undefined;
-	t.deepEqual(
-		new c.Client(connectionOptions).smtp.timeout,
-		SMTP.DEFAULT_TIMEOUT
-	);
+	t.deepEqual(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
 });
