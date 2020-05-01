@@ -66,6 +66,9 @@
 		"require": [
 			"ts-node/register"
 		],
+		"environmentVariables": {
+			"NODE_TLS_REJECT_UNAUTHORIZED": "0"
+		},
 		"nodeArguments": [
 			"--experimental-modules"
 		]

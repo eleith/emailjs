@@ -22,8 +22,6 @@ const send = (
 	) => void,
 	done: () => void
 ) => {
-	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // prevent CERT_HAS_EXPIRED errors
-
 	server.onData = (
 		stream: import('stream').Readable,
 		_session,

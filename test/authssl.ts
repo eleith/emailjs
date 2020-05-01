@@ -38,8 +38,6 @@ const send = (
 };
 
 test.before.cb((t) => {
-	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // prevent CERT_HAS_EXPIRED errors
-
 	server.listen(port, function () {
 		server.onAuth = function (auth, _session, callback) {
 			if (auth.username == 'pooh' && auth.password == 'honey') {
