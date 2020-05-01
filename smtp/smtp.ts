@@ -73,7 +73,7 @@ export interface SMTPSocketOptions {
 	cert: string;
 }
 
-export interface SMTPOptions {
+export interface SMTPConnectionOptions {
 	timeout: number | null;
 	user: string;
 	password: string;
@@ -90,7 +90,7 @@ export interface ConnectOptions {
 	ssl?: boolean;
 }
 
-export class SMTP extends EventEmitter {
+export class SMTPConnection extends EventEmitter {
 	private _state: 0 | 1 | 2 = SMTPState.NOTCONNECTED;
 	private _secure = false;
 
@@ -124,7 +124,7 @@ export class SMTP extends EventEmitter {
 		tls,
 		logger,
 		authentication,
-	}: Partial<SMTPOptions> = {}) {
+	}: Partial<SMTPConnectionOptions> = {}) {
 		super();
 
 		this.authentication = Array.isArray(authentication)

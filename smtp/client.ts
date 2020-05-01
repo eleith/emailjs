@@ -1,8 +1,8 @@
 import addressparser from 'addressparser';
 import { Message } from './message';
 import type { MessageAttachment, MessageHeaders } from './message'; // eslint-disable-line no-unused-vars
-import { SMTP, SMTPState } from './smtp';
-import type { SMTPOptions } from './smtp'; // eslint-disable-line no-unused-vars
+import { SMTPConnection, SMTPState } from './smtp';
+import type { SMTPConnectionOptions } from './smtp'; // eslint-disable-line no-unused-vars
 
 export interface MessageStack {
 	callback: (error: Error | null, message: Message) => void;
@@ -17,7 +17,7 @@ export interface MessageStack {
 }
 
 export class Client {
-	public smtp: SMTP;
+	public smtp: SMTPConnection;
 	public queue: MessageStack[] = [];
 	public timer: NodeJS.Timer | null = null;
 	public sending = false;
@@ -26,8 +26,8 @@ export class Client {
 	/**
 	 * @param {*} server smtp options
 	 */
-	constructor(server: Partial<SMTPOptions>) {
-		this.smtp = new SMTP(server);
+	constructor(server: Partial<SMTPConnectionOptions>) {
+		this.smtp = new SMTPConnection(server);
 		//this.smtp.debug(1);
 	}
 
