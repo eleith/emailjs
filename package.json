@@ -48,7 +48,6 @@
     "import": "email.mjs",
     "require": "email.cjs"
   },
-	"type": "module",
 	"scripts": {
 		"build": "rollup -c rollup.config.ts",
 		"lint": "eslint *.ts \"+(smtp|test)/*.ts\"",
@@ -68,10 +67,7 @@
 		],
 		"environmentVariables": {
 			"NODE_TLS_REJECT_UNAUTHORIZED": "0"
-		},
-		"nodeArguments": [
-			"--experimental-modules"
-		]
+		}
 	},
 	"eslintIgnore": [
 		"rollup.config.js",
