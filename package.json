@@ -64,19 +64,5 @@
 		"test": "ava --serial",
 		"test:rollup": "ava --file rollup/email.bundle.test.js"
 	},
-	"license": "MIT",
-	"ava": {
-		"files": [
-			"test/*.ts"
-		],
-		"extensions": [
-			"ts"
-		],
-		"require": [
-			"ts-node/register"
-		],
-		"environmentVariables": {
-			"NODE_TLS_REJECT_UNAUTHORIZED": "0"
-		}
-	}
+	"license": "MIT"
 }
