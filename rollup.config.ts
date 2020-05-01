@@ -7,16 +7,14 @@ export default {
 	input: 'email.ts',
 	output: [
 		{
-			entryFileNames: '[name].cjs',
-			dir: 'dist',
+			file: 'email.cjs',
 			format: 'cjs',
 			interop: false,
 			freeze: false,
 			sourcemap: true,
 		},
 		{
-			entryFileNames: '[name].mjs',
-			dir: 'dist',
+			file: 'email.mjs',
 			format: 'es',
 			interop: false,
 			freeze: false,

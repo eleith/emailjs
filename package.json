@@ -43,7 +43,17 @@
 	"engine": [
 		"node >= 10"
 	],
+	"files": [
+		"dist",
+		"smtp",
+		"email.ts",
+		"email.cjs",
+		"email.cjs.map",
+		"email.mjs.map",
+		"email.mjs.map"
+	],
 	"main": "email.cjs",
+	"types": "email.ts",
   "exports": {
     "import": "email.mjs",
     "require": "email.cjs"
@@ -69,11 +79,6 @@
 			"NODE_TLS_REJECT_UNAUTHORIZED": "0"
 		}
 	},
-	"eslintIgnore": [
-		"rollup.config.js",
-		"rollup/email.bundle.js",
-		"email.esm.js"
-	],
 	"prettier": {
 		"singleQuote": true,
 		"trailingComma": "es5",
