@@ -19,7 +19,8 @@ const send = (
 	message: m.Message,
 	verify: (
 		mail: UnPromisify<ReturnType<typeof mailparser.simpleParser>>
-	) => void
+	) => void,
+	done: () => void
 ) => {
 	process.env.NODE_TLS_REJECT_UNAUTHORIZED = '0'; // prevent CERT_HAS_EXPIRED errors
 
@@ -28,7 +29,7 @@ const send = (
 		_session,
 		callback: () => void
 	) => {
-		mailparser.simpleParser(stream).then(verify);
+		mailparser.simpleParser(stream).then(verify).then(done).catch(done);
 		stream.on('end', callback);
 	};
 	client.send(message, (err) => {
@@ -38,7 +39,7 @@ const send = (
 	});
 };
 
-test.beforeEach.cb((t) => {
+test.before.cb((t) => {
 	server.listen(port, function () {
 		server.onAuth = function (auth, _session, callback) {
 			if (auth.username == 'pooh' && auth.password == 'honey') {
@@ -51,7 +52,7 @@ test.beforeEach.cb((t) => {
 	});
 });
 
-test.afterEach.cb((t) => server.close(t.end));
+test.after.cb((t) => server.close(t.end));
 
 test.cb('authorize plain', (t) => {
 	const msg = {
@@ -61,11 +62,14 @@ test.cb('authorize plain', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 
-	send(new m.Message(msg), (mail) => {
-		t.is(mail.text, msg.text + '\n\n\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-		t.end();
-	});
+	send(
+		new m.Message(msg),
+		(mail) => {
+			t.is(mail.text, msg.text + '\n\n\n');
+			t.is(mail.subject, msg.subject);
+			t.is(mail.from?.text, msg.from);
+			t.is(mail.to?.text, msg.to);
+		},
+		t.end
+	);
 });

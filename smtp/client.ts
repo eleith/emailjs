@@ -86,7 +86,7 @@ export class Client {
 			clearTimeout(this.timer);
 		}
 
-		if (this.queue.length > 0) {
+		if (this.queue.length) {
 			if (this.smtp.state() == SMTPState.NOTCONNECTED) {
 				this._connect(this.queue[0]);
 			} else if (
@@ -129,10 +129,10 @@ export class Client {
 					}
 				};
 
-				if (this.smtp.authorized()) {
-					this.smtp.ehlo_or_helo_if_needed(begin);
-				} else {
+				if (!this.smtp.authorized()) {
 					this.smtp.login(begin);
+				} else {
+					this.smtp.ehlo_or_helo_if_needed(begin);
 				}
 			} else {
 				stack.callback(err, stack.message);
@@ -152,8 +152,8 @@ export class Client {
 	 * @param {MessageStack} msg message stack
 	 * @returns {boolean} can make message
 	 */
-	_canMakeMessage(msg: import('./message').MessageHeaders): boolean {
-		return !!(
+	_canMakeMessage(msg: import('./message').MessageHeaders) {
+		return (
 			msg.from &&
 			(msg.to || msg.cc || msg.bcc) &&
 			(msg.text !== undefined || this._containsInlinedHtml(msg.attachment))
@@ -194,15 +194,12 @@ export class Client {
 	 * @param {function(MessageStack): void} next next
 	 * @returns {function(Error): void} callback
 	 */
-	_sendsmtp(
-		stack: MessageStack,
-		next: (msg: MessageStack) => void
-	): (err: Error) => void {
+	_sendsmtp(stack: MessageStack, next: (msg: MessageStack) => void) {
 		/**
 		 * @param {Error} [err] error
 		 * @returns {void}
 		 */
-		return (err) => {
+		return (err: Error) => {
 			if (!err && next) {
 				next.apply(this, [stack]);
 			} else {
@@ -234,12 +231,9 @@ export class Client {
 			throw new TypeError('stack.to must be array');
 		}
 
-		const to = stack.to.shift()?.address;
+		const to = stack.to.shift()!.address;
 		this.smtp.rcpt(
-			this._sendsmtp(
-				stack,
-				stack.to.length > 0 ? this._sendrcpt : this._senddata
-			),
+			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
 			`<${to}>`
 		);
 	}

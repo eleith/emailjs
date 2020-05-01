@@ -359,7 +359,7 @@ class MessageStream extends Stream {
 
 		const output_file = (
 			attachment: MessageAttachment | AlternateMessageAttachment,
-			next: (err: NodeJS.ErrnoException) => void
+			next: (err: NodeJS.ErrnoException | null) => void
 		) => {
 			const chunk = MIME64CHUNK * 16;
 			const buffer = Buffer.alloc(chunk);
@@ -370,9 +370,9 @@ class MessageStream extends Stream {
 			 * @param {number} fd the file descriptor
 			 * @returns {void}
 			 */
-			const opened = (err: Error, fd: number) => {
+			const opened = (err: NodeJS.ErrnoException | null, fd: number) => {
 				if (!err) {
-					const read = (err: Error, bytes: number) => {
+					const read = (err: NodeJS.ErrnoException | null, bytes: number) => {
 						if (!err && this.readable) {
 							let encoding =
 								attachment && attachment.headers

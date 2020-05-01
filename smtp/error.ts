@@ -1,17 +1,19 @@
-/* eslint-disable no-unused-vars */
-export enum SMTPErrorStates {
-	COULDNOTCONNECT = 1,
-	BADRESPONSE = 2,
-	AUTHFAILED = 3,
-	TIMEDOUT = 4,
-	ERROR = 5,
-	NOCONNECTION = 6,
-	AUTHNOTSUPPORTED = 7,
-	CONNECTIONCLOSED = 8,
-	CONNECTIONENDED = 9,
-	CONNECTIONAUTH = 10,
-}
-/* eslint-enable no-unused-vars */
+/**
+ * @readonly
+ * @enum
+ */
+export const SMTPErrorStates = {
+	COULDNOTCONNECT: 1,
+	BADRESPONSE: 2,
+	AUTHFAILED: 3,
+	TIMEDOUT: 4,
+	ERROR: 5,
+	NOCONNECTION: 6,
+	AUTHNOTSUPPORTED: 7,
+	CONNECTIONCLOSED: 8,
+	CONNECTIONENDED: 9,
+	CONNECTIONAUTH: 10,
+} as const;
 
 class SMTPError extends Error {
 	public code: number | null = null;
@@ -26,7 +28,7 @@ class SMTPError extends Error {
 export function makeSMTPError(
 	message: string,
 	code: number,
-	error?: Error,
+	error?: Error | null,
 	smtp?: any
 ) {
 	const msg = error?.message ? `${message} (${error.message})` : message;

@@ -19,14 +19,15 @@ const send = (
 	message: m.Message,
 	verify: (
 		mail: UnPromisify<ReturnType<typeof mailparser.simpleParser>>
-	) => void
+	) => void,
+	done: () => void
 ) => {
 	server.onData = (
 		stream: import('stream').Readable,
 		_session,
 		callback: () => void
 	) => {
-		mailparser.simpleParser(stream).then(verify);
+		mailparser.simpleParser(stream).then(verify).then(done).catch(done);
 		stream.on('end', callback);
 	};
 	client.send(message, (err) => {
@@ -61,11 +62,14 @@ test.cb('authorize ssl', (t) => {
 		text: 'hello friend, i hope this message finds you well.',
 	};
 
-	send(new m.Message(msg), (mail) => {
-		t.is(mail.text, msg.text + '\n\n\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-		t.end();
-	});
+	send(
+		new m.Message(msg),
+		(mail) => {
+			t.is(mail.text, msg.text + '\n\n\n');
+			t.is(mail.subject, msg.subject);
+			t.is(mail.from?.text, msg.from);
+			t.is(mail.to?.text, msg.to);
+		},
+		t.end
+	);
 });
