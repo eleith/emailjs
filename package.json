@@ -44,7 +44,6 @@
 		"node >= 10"
 	],
 	"files": [
-		"dist",
 		"smtp",
 		"email.ts",
 		"email.cjs",
@@ -61,8 +60,7 @@
 	"scripts": {
 		"build": "rollup -c rollup.config.ts",
 		"lint": "eslint *.ts \"+(smtp|test)/*.ts\"",
-		"test": "ava --serial",
-		"test:rollup": "ava --file rollup/email.bundle.test.js"
+		"test": "ava --serial"
 	},
 	"license": "MIT"
 }
