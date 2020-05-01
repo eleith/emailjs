@@ -129,7 +129,7 @@ test.cb('simple unicode text message', (t) => {
 	);
 });
 
-test.cb.skip('very large text message', (t) => {
+test.cb('very large text message', (t) => {
 	// thanks to jart+loberstech for this one!
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
