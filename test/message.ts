@@ -133,8 +133,6 @@ test.cb('simple unicode text message', (t) => {
 });
 
 test.cb.skip('very large text message', (t) => {
-	t.timeout(20000);
-
 	// thanks to jart+loberstech for this one!
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
@@ -156,8 +154,6 @@ test.cb.skip('very large text message', (t) => {
 });
 
 test.cb('very large text data message', (t) => {
-	t.timeout(10000);
-
 	const text =
 		'<html><body><pre>' +
 		readFileSync(join(__dirname, 'attachments/smtp.txt'), 'utf-8') +
