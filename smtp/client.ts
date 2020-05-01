@@ -17,11 +17,12 @@ export interface MessageStack {
 }
 
 export class Client {
-	public smtp: SMTPConnection;
-	public queue: MessageStack[] = [];
-	public timer: NodeJS.Timer | null = null;
-	public sending = false;
-	public ready = false;
+	public readonly smtp: SMTPConnection;
+	public readonly queue: MessageStack[] = [];
+
+	protected sending = false;
+	protected ready = false;
+	protected timer: NodeJS.Timer | null = null;
 
 	/**
 	 * @param {SMTPConnectionOptions} server smtp options

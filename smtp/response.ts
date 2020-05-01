@@ -3,7 +3,7 @@ import type { Socket } from 'net'; // eslint-disable-line no-unused-vars
 import type { TLSSocket } from 'tls'; // eslint-disable-line no-unused-vars
 
 export class SMTPResponse {
-	public stop: (err?: Error) => void;
+	public readonly stop: (err?: Error) => void;
 
 	constructor(
 		stream: Socket | TLSSocket,

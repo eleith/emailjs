@@ -91,24 +91,30 @@ export interface ConnectOptions {
 }
 
 export class SMTPConnection extends EventEmitter {
-	private _state: 0 | 1 | 2 = SMTPState.NOTCONNECTED;
-	private _secure = false;
+	public readonly user: () => string;
+	public readonly password: () => string;
+	public readonly timeout: number = DEFAULT_TIMEOUT;
+
+	protected readonly log = log;
+	protected readonly authentication: (keyof typeof AUTH_METHODS)[] = [
+		AUTH_METHODS['CRAM-MD5'],
+		AUTH_METHODS.LOGIN,
+		AUTH_METHODS.PLAIN,
+		AUTH_METHODS.XOAUTH2,
+	];
+
+	protected _state: 0 | 1 | 2 = SMTPState.NOTCONNECTED;
+	protected _secure = false;
+	protected loggedin = false;
 
 	protected sock: Socket | TLSSocket | null = null;
 	protected features: Indexed<string | boolean> | null = null;
 	protected monitor: SMTPResponse | null = null;
-	protected authentication: (keyof typeof AUTH_METHODS)[];
 	protected domain = hostname();
 	protected host = 'localhost';
 	protected ssl: boolean | SMTPSocketOptions = false;
 	protected tls: boolean | SMTPSocketOptions = false;
 	protected port: number;
-	protected loggedin = false;
-	protected log = log;
-
-	public user: () => string;
-	public password: () => string;
-	public timeout: number = DEFAULT_TIMEOUT;
 
 	/**
 	 * SMTP class written using python's (2.7) smtplib.py as a base
@@ -127,14 +133,9 @@ export class SMTPConnection extends EventEmitter {
 	}: Partial<SMTPConnectionOptions> = {}) {
 		super();
 
-		this.authentication = Array.isArray(authentication)
-			? authentication
-			: [
-					AUTH_METHODS['CRAM-MD5'],
-					AUTH_METHODS.LOGIN,
-					AUTH_METHODS.PLAIN,
-					AUTH_METHODS.XOAUTH2,
-			  ];
+		if (Array.isArray(authentication)) {
+			this.authentication = authentication;
+		}
 
 		if (typeof timeout === 'number') {
 			this.timeout = timeout;

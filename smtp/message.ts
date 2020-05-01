@@ -93,16 +93,16 @@ function convertDashDelimitedTextToSnakeCase(text: string) {
 }
 
 export class Message {
-	attachments: any[] = [];
-	alternative: AlternateMessageAttachment | null = null;
-	header: Partial<MessageHeaders> = {
+	public readonly attachments: any[] = [];
+	public readonly header: Partial<MessageHeaders> = {
 		'message-id': `<${new Date().getTime()}.${counter++}.${
 			process.pid
 		}@${hostname()}>`,
 		date: getRFC2822Date(),
 	};
-	content = 'text/plain; charset=utf-8';
-	text?: string;
+	public readonly content = 'text/plain; charset=utf-8';
+	public readonly text?: string;
+	public alternative: AlternateMessageAttachment | null = null;
 
 	constructor(headers: Partial<MessageHeaders>) {
 		for (const header in headers) {
