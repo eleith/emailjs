@@ -1,4 +1,3 @@
-// @ts-ignore
 import addressparser from 'addressparser';
 import { Message } from './message';
 import type { MessageAttachment, MessageHeaders } from './message'; // eslint-disable-line no-unused-vars
@@ -12,7 +11,7 @@ export interface MessageStack {
 	text: string;
 	returnPath: string;
 	from: string;
-	to: string | { address: string }[];
+	to: ReturnType<typeof addressparser>;
 	cc: string[];
 	bcc: string[];
 }

@@ -3,9 +3,7 @@ import { hostname } from 'os';
 import { Stream } from 'stream';
 import type { Duplex } from 'stream'; // eslint-disable-line no-unused-vars
 import type { Indexed } from '@ledge/types'; // eslint-disable-line no-unused-vars
-// @ts-ignore
 import addressparser from 'addressparser';
-// @ts-ignore
 import { mimeWordEncode } from 'emailjs-mime-codec';
 
 import { getRFC2822Date } from './date';
@@ -80,7 +78,7 @@ function generate_boundary() {
 
 function convertPersonToAddress(person: string) {
 	return addressparser(person)
-		.map(({ name, address }: { name: string; address: string }) => {
+		.map(({ name, address }) => {
 			return name
 				? `${mimeWordEncode(name).replace(/,/g, '=2C')} <${address}>`
 				: address;
