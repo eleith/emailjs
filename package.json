@@ -78,10 +78,5 @@
 		"environmentVariables": {
 			"NODE_TLS_REJECT_UNAUTHORIZED": "0"
 		}
-	},
-	"prettier": {
-		"singleQuote": true,
-		"trailingComma": "es5",
-		"useTabs": true
 	}
 }
