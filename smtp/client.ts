@@ -24,7 +24,7 @@ export class Client {
 	public ready = false;
 
 	/**
-	 * @param {*} server smtp options
+	 * @param {SMTPConnectionOptions} server smtp options
 	 */
 	constructor(server: Partial<SMTPConnectionOptions>) {
 		this.smtp = new SMTPConnection(server);
@@ -166,7 +166,7 @@ export class Client {
 	 * @param {*} attachment attachment
 	 * @returns {*} whether the attachment contains inlined html
 	 */
-	_containsInlinedHtml(attachment: any) {
+	_containsInlinedHtml(attachment: MessageAttachment | MessageAttachment[]) {
 		if (Array.isArray(attachment)) {
 			return attachment.some((att) => {
 				return this._isAttachmentInlinedHtml(att);
@@ -181,7 +181,7 @@ export class Client {
 	 * @param {*} attachment attachment
 	 * @returns {boolean} whether the attachment is inlined html
 	 */
-	_isAttachmentInlinedHtml(attachment: any) {
+	_isAttachmentInlinedHtml(attachment: MessageAttachment) {
 		return (
 			attachment &&
 			(attachment.data || attachment.path) &&

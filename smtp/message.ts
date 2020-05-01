@@ -34,7 +34,7 @@ export interface MessageAttachmentHeaders extends Indexed {
 export interface AlternateMessageAttachment extends Indexed {
 	headers?: MessageAttachmentHeaders;
 	inline: boolean;
-	alternative?: MessageAttachment;
+	alternative?: MessageAttachment | boolean;
 	related?: MessageAttachment[];
 	data: any;
 	encoded?: any;
