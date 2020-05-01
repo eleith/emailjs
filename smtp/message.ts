@@ -1,14 +1,14 @@
 import fs from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
+import type { Duplex } from 'stream'; // eslint-disable-line no-unused-vars
+import type { Indexed } from '@ledge/types'; // eslint-disable-line no-unused-vars
 // @ts-ignore
 import addressparser from 'addressparser';
 // @ts-ignore
 import { mimeWordEncode } from 'emailjs-mime-codec';
 
 import { getRFC2822Date } from './date';
-
-type Indexed = import('@ledge/types').Indexed;
 
 const CRLF = '\r\n' as const;
 
@@ -48,7 +48,7 @@ export interface MessageAttachment extends AlternateMessageAttachment {
 	charset: string;
 	method: string;
 	path: string;
-	stream: import('stream').Duplex;
+	stream: Duplex;
 }
 
 export interface MessageHeaders extends Indexed {

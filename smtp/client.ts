@@ -1,12 +1,14 @@
 // @ts-ignore
 import addressparser from 'addressparser';
 import { Message } from './message';
+import type { MessageAttachment, MessageHeaders } from './message'; // eslint-disable-line no-unused-vars
 import { SMTP, SMTPState } from './smtp';
+import type { SMTPOptions } from './smtp'; // eslint-disable-line no-unused-vars
 
 export interface MessageStack {
 	callback: (error: Error | null, message: Message) => void;
 	message: Message;
-	attachment: import('./message').MessageAttachment;
+	attachment: MessageAttachment;
 	text: string;
 	returnPath: string;
 	from: string;
@@ -25,7 +27,7 @@ export class Client {
 	/**
 	 * @param {*} server smtp options
 	 */
-	constructor(server: Partial<import('./smtp').SMTPOptions>) {
+	constructor(server: Partial<SMTPOptions>) {
 		this.smtp = new SMTP(server);
 		//this.smtp.debug(1);
 	}
@@ -152,7 +154,7 @@ export class Client {
 	 * @param {MessageStack} msg message stack
 	 * @returns {boolean} can make message
 	 */
-	_canMakeMessage(msg: import('./message').MessageHeaders) {
+	_canMakeMessage(msg: MessageHeaders) {
 		return (
 			msg.from &&
 			(msg.to || msg.cc || msg.bcc) &&

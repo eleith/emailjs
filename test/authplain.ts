@@ -1,3 +1,4 @@
+import type { Readable } from 'stream'; // eslint-disable-line no-unused-vars
 import test from 'ava';
 import mailparser from 'mailparser';
 import smtp from 'smtp-server';
@@ -22,11 +23,7 @@ const send = (
 	) => void,
 	done: () => void
 ) => {
-	server.onData = (
-		stream: import('stream').Readable,
-		_session,
-		callback: () => void
-	) => {
+	server.onData = (stream: Readable, _session, callback: () => void) => {
 		mailparser.simpleParser(stream).then(verify).then(done).catch(done);
 		stream.on('end', callback);
 	};

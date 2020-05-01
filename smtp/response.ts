@@ -1,10 +1,15 @@
 import { makeSMTPError, SMTPErrorStates } from './error';
+import type { Socket } from 'net'; // eslint-disable-line no-unused-vars
+import type { TLSSocket } from 'tls'; // eslint-disable-line no-unused-vars
 
-type Socket = import('net').Socket | import('tls').TLSSocket;
 export class SMTPResponse {
 	public stop: (err?: Error) => void;
 
-	constructor(stream: Socket, timeout: number, onerror: (err: Error) => void) {
+	constructor(
+		stream: Socket | TLSSocket,
+		timeout: number,
+		onerror: (err: Error) => void
+	) {
 		let buffer = '';
 
 		const notify = () => {
