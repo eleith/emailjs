@@ -27,11 +27,11 @@ test('should have a default timeout', async (t) => {
 		port: 1234,
 		timeout: undefined as number | null | undefined,
 	};
-	t.deepEqual(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
+	t.is(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
 
 	connectionOptions.timeout = null;
-	t.deepEqual(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
+	t.is(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
 
 	connectionOptions.timeout = undefined;
-	t.deepEqual(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
+	t.is(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
 });
