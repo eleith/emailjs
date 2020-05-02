@@ -35,13 +35,6 @@
   resolved "https://registry.npmjs.org/@ledge/configs/-/configs-23.0.0.tgz#263621257da40011f20fcc20b26a9c6376b55cfc"
   integrity sha512-4yvm4OIS92LpiR5fmFYCOvkurssjxNCYnpms5kI7xPVzeQHdP7o/Kx40Gbb4qmFQEV3u7Isxy6gy49hIcpqd8w==
 
-"@ledge/types@6.1.0":
-  version "6.1.0"
-  resolved "https://registry.npmjs.org/@ledge/types/-/types-6.1.0.tgz#f142a36c57c37e241560439652d7615d47151727"
-  integrity sha512-v52fE43n/RmRH1DV7qUqWs71lE5sRO2+lret2rTvf0B85MUVoiifkKCD7U1SeGt/GUvSGNVGx6NUvXjTV73V0Q==
-  dependencies:
-    "@types/node" "*"
-
 "@nodelib/fs.scandir@2.1.3":
   version "2.1.3"
   resolved "https://registry.npmjs.org/@nodelib/fs.scandir/-/fs.scandir-2.1.3.tgz#3a582bdb53804c6ba6d146579c46e52130cf4a3b"

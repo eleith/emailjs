@@ -20,7 +20,6 @@
 	},
 	"devDependencies": {
 		"@ledge/configs": "23.0.0",
-		"@ledge/types": "6.1.0",
 		"@rollup/plugin-commonjs": "11.1.0",
 		"@rollup/plugin-node-resolve": "7.1.3",
 		"@rollup/plugin-typescript": "4.1.1",
