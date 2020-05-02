@@ -2,7 +2,6 @@ import fs from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
 import type { Duplex } from 'stream'; // eslint-disable-line no-unused-vars
-import type { Indexed } from '@ledge/types'; // eslint-disable-line no-unused-vars
 import addressparser from 'addressparser';
 import { mimeWordEncode } from 'emailjs-mime-codec';
 
@@ -25,13 +24,15 @@ export const MIME64CHUNK = (MIMECHUNK * 6) as 456;
  */
 export const BUFFERSIZE = (MIMECHUNK * 24 * 7) as 12768;
 
-export interface MessageAttachmentHeaders extends Indexed {
+export interface MessageAttachmentHeaders {
+	[index: string]: any;
 	'content-type'?: string;
 	'content-transfer-encoding'?: string;
 	'content-disposition'?: string;
 }
 
-export interface AlternateMessageAttachment extends Indexed {
+export interface AlternateMessageAttachment {
+	[index: string]: any;
 	headers?: MessageAttachmentHeaders;
 	inline: boolean;
 	alternative?: MessageAttachment | boolean;
@@ -49,7 +50,8 @@ export interface MessageAttachment extends AlternateMessageAttachment {
 	stream: Duplex;
 }
 
-export interface MessageHeaders extends Indexed {
+export interface MessageHeaders {
+	[index: string]: any;
 	'content-type': string;
 	'message-id': string;
 	date: string;

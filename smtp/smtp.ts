@@ -3,7 +3,6 @@ import { createHmac } from 'crypto';
 import { hostname } from 'os';
 import { connect, createSecureContext, TLSSocket } from 'tls';
 import { EventEmitter } from 'events';
-import type { Indexed } from '@ledge/types'; // eslint-disable-line no-unused-vars
 
 import { SMTPResponse } from './response';
 import { makeSMTPError, SMTPErrorStates } from './error';
@@ -108,7 +107,7 @@ export class SMTPConnection extends EventEmitter {
 	protected loggedin = false;
 
 	protected sock: Socket | TLSSocket | null = null;
-	protected features: Indexed<string | boolean> | null = null;
+	protected features: { [index: string]: string | boolean } | null = null;
 	protected monitor: SMTPResponse | null = null;
 	protected domain = hostname();
 	protected host = 'localhost';
