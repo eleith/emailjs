@@ -32,7 +32,13 @@ export class Client {
 		//this.smtp.debug(1);
 	}
 
-	send(msg: Message, callback: (err: Error, msg: Message) => void) {
+	/**
+	 * @public
+	 * @param {Message} msg the message to send
+	 * @param {function(err: Error, msg: Message): void} callback sss
+	 * @returns {void}
+	 */
+	public send(msg: Message, callback: (err: Error, msg: Message) => void) {
 		const message: Message | null =
 			msg instanceof Message
 				? msg
@@ -80,10 +86,10 @@ export class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @returns {void}
 	 */
-	_poll() {
+	protected _poll() {
 		if (this.timer != null) {
 			clearTimeout(this.timer);
 		}
@@ -107,11 +113,11 @@ export class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_connect(stack: MessageStack) {
+	protected _connect(stack: MessageStack) {
 		/**
 		 * @param {Error} err callback error
 		 * @returns {void}
@@ -150,11 +156,11 @@ export class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} msg message stack
 	 * @returns {boolean} can make message
 	 */
-	_canMakeMessage(msg: MessageHeaders) {
+	protected _canMakeMessage(msg: MessageHeaders) {
 		return (
 			msg.from &&
 			(msg.to || msg.cc || msg.bcc) &&
@@ -163,11 +169,13 @@ export class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {*} attachment attachment
 	 * @returns {*} whether the attachment contains inlined html
 	 */
-	_containsInlinedHtml(attachment: MessageAttachment | MessageAttachment[]) {
+	protected _containsInlinedHtml(
+		attachment: MessageAttachment | MessageAttachment[]
+	) {
 		if (Array.isArray(attachment)) {
 			return attachment.some((att) => {
 				return this._isAttachmentInlinedHtml(att);
@@ -178,11 +186,11 @@ export class Client {
 	}
 
 	/**
-	 * @private
-	 * @param {*} attachment attachment
+	 * @protected
+	 * @param {MessageAttachment} attachment attachment
 	 * @returns {boolean} whether the attachment is inlined html
 	 */
-	_isAttachmentInlinedHtml(attachment: MessageAttachment) {
+	protected _isAttachmentInlinedHtml(attachment: MessageAttachment) {
 		return (
 			attachment &&
 			(attachment.data || attachment.path) &&
@@ -191,12 +199,12 @@ export class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @param {function(MessageStack): void} next next
 	 * @returns {function(Error): void} callback
 	 */
-	_sendsmtp(stack: MessageStack, next: (msg: MessageStack) => void) {
+	protected _sendsmtp(stack: MessageStack, next: (msg: MessageStack) => void) {
 		/**
 		 * @param {Error} [err] error
 		 * @returns {void}
@@ -213,22 +221,22 @@ export class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendmail(stack: MessageStack) {
+	protected _sendmail(stack: MessageStack) {
 		const from = stack.returnPath || stack.from;
 		this.sending = true;
 		this.smtp.mail(this._sendsmtp(stack, this._sendrcpt), '<' + from + '>');
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendrcpt(stack: MessageStack) {
+	protected _sendrcpt(stack: MessageStack) {
 		if (stack.to == null || typeof stack.to === 'string') {
 			throw new TypeError('stack.to must be array');
 		}
@@ -241,20 +249,20 @@ export class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_senddata(stack: MessageStack) {
+	protected _senddata(stack: MessageStack) {
 		this.smtp.data(this._sendsmtp(stack, this._sendmessage));
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendmessage(stack: MessageStack) {
+	protected _sendmessage(stack: MessageStack) {
 		const stream = stack.message.stream();
 
 		stream.on('data', (data) => this.smtp.message(data));
@@ -273,12 +281,12 @@ export class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {Error} err err
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_senddone(err: Error | null, stack: MessageStack) {
+	protected _senddone(err: Error | null, stack: MessageStack) {
 		this.sending = false;
 		stack.callback(err, stack.message);
 		this._poll();

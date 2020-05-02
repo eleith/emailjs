@@ -178,6 +178,7 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @param {0 | 1} level -
 	 * @returns {void}
 	 */
@@ -186,6 +187,7 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @returns {SMTPState} the current state
 	 */
 	public state() {
@@ -193,6 +195,7 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @returns {boolean} whether or not the instance is authorized
 	 */
 	public authorized() {
@@ -200,13 +203,14 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @param {function(...*): void} callback function to call after response
 	 * @param {number} [port] the port to use for the connection
 	 * @param {string} [host] the hostname to use for the connection
 	 * @param {ConnectOptions} [options={}] the options
 	 * @returns {void}
 	 */
-	connect(
+	public connect(
 		callback: (...rest: any[]) => void,
 		port: number = this.port,
 		host: string = this.host,
@@ -323,11 +327,12 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @param {string} str the string to send
 	 * @param {*} callback function to call after response
 	 * @returns {void}
 	 */
-	send(str: string, callback: any) {
+	public send(str: string, callback: any) {
 		if (this.sock && this._state === SMTPState.CONNECTED) {
 			this.log(str);
 
@@ -353,12 +358,13 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @param {string} cmd command to issue
 	 * @param {function(...*): void} callback function to call after response
 	 * @param {(number[] | number)} [codes=[250]] array codes
 	 * @returns {void}
 	 */
-	command(
+	public command(
 		cmd: string,
 		callback: (...rest: any[]) => void,
 		codes: number[] | number = [250]
@@ -400,7 +406,8 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
-	 * SMTP 'helo' command.
+	 * @public
+	 * @description SMTP 'helo' command.
 	 *
 	 * Hostname to send for self command defaults to the FQDN of the local
 	 * host.
@@ -409,7 +416,7 @@ export class SMTPConnection extends EventEmitter {
 	 * @param {string} domain the domain to associate with the 'helo' request
 	 * @returns {void}
 	 */
-	helo(callback: (...rest: any[]) => void, domain?: string) {
+	public helo(callback: (...rest: any[]) => void, domain?: string) {
 		this.command(`helo ${domain || this.domain}`, (err, data) => {
 			if (err) {
 				caller(callback, err);
@@ -421,10 +428,11 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
-	starttls(callback: (...rest: any[]) => void) {
+	public starttls(callback: (...rest: any[]) => void) {
 		const response = (err: Error, msg: { data: any }) => {
 			if (this.sock == null) {
 				throw new Error('null socket');
@@ -456,10 +464,11 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @param {string} data the string to parse for features
 	 * @returns {void}
 	 */
-	parse_smtp_features(data: string) {
+	public parse_smtp_features(data: string) {
 		//  According to RFC1869 some (badly written)
 		//  MTA's will disconnect on an ehlo. Toss an exception if
 		//  that happens -ddm
@@ -485,11 +494,12 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} domain the domain to associate with the 'ehlo' request
 	 * @returns {void}
 	 */
-	ehlo(callback: (...rest: any[]) => void, domain?: string) {
+	public ehlo(callback: (...rest: any[]) => void, domain?: string) {
 		this.features = {};
 		this.command(`ehlo ${domain || this.domain}`, (err, data) => {
 			if (err) {
@@ -507,106 +517,116 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @param {string} opt the features keyname to check
 	 * @returns {boolean} whether the extension exists
 	 */
-	has_extn(opt: string): boolean {
+	public has_extn(opt: string): boolean {
 		return (this.features ?? {})[opt.toLowerCase()] === undefined;
 	}
 
 	/**
-	 * SMTP 'help' command, returns text from the server
+	 * @public
+	 * @description SMTP 'help' command, returns text from the server
 	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} domain the domain to associate with the 'help' request
 	 * @returns {void}
 	 */
-	help(callback: (...rest: any[]) => void, domain: string) {
+	public help(callback: (...rest: any[]) => void, domain: string) {
 		this.command(domain ? `help ${domain}` : 'help', callback, [211, 214]);
 	}
 
 	/**
+	 * @public
 	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
-	rset(callback: (...rest: any[]) => void) {
+	public rset(callback: (...rest: any[]) => void) {
 		this.command('rset', callback);
 	}
 
 	/**
+	 * @public
 	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
-	noop(callback: (...rest: any[]) => void) {
+	public noop(callback: (...rest: any[]) => void) {
 		this.send('noop', callback);
 	}
 
 	/**
+	 * @public
 	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} from the sender
 	 * @returns {void}
 	 */
-	mail(callback: (...rest: any[]) => void, from: string) {
+	public mail(callback: (...rest: any[]) => void, from: string) {
 		this.command(`mail FROM:${from}`, callback);
 	}
 
 	/**
+	 * @public
 	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} to the receiver
 	 * @returns {void}
 	 */
-	rcpt(callback: (...rest: any[]) => void, to: string) {
+	public rcpt(callback: (...rest: any[]) => void, to: string) {
 		this.command(`RCPT TO:${to}`, callback, [250, 251]);
 	}
 
 	/**
+	 * @public
 	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
-	data(callback: (...rest: any[]) => void) {
+	public data(callback: (...rest: any[]) => void) {
 		this.command('data', callback, [354]);
 	}
 
 	/**
+	 * @public
 	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
-	data_end(callback: (...rest: any[]) => void) {
+	public data_end(callback: (...rest: any[]) => void) {
 		this.command(`${CRLF}.`, callback);
 	}
 
 	/**
+	 * @public
 	 * @param {string} data the message to send
 	 * @returns {void}
 	 */
-	message(data: string) {
+	public message(data: string) {
 		this.log(data);
 		this.sock?.write(data) ?? this.log('no socket to write to');
 	}
 
 	/**
-	 * SMTP 'verify' command -- checks for address validity.
-	 *
+	 * @public
+	 * @description SMTP 'verify' command -- checks for address validity.
 	 * @param {string} address the address to validate
 	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
-	verify(address: string, callback: (...rest: any[]) => void) {
+	public verify(address: string, callback: (...rest: any[]) => void) {
 		this.command(`vrfy ${address}`, callback, [250, 251, 252]);
 	}
 
 	/**
-	 * SMTP 'expn' command -- expands a mailing list.
-	 *
+	 * @public
+	 * @description SMTP 'expn' command -- expands a mailing list.
 	 * @param {string} address the mailing list to expand
 	 * @param {function(...*): void} callback function to call after response
 	 * @returns {void}
 	 */
-	expn(address: string, callback: (...rest: any[]) => void) {
+	public expn(address: string, callback: (...rest: any[]) => void) {
 		this.command(`expn ${address}`, callback);
 	}
 
 	/**
-	 * Calls this.ehlo() and, if an error occurs, this.helo().
+	 * @public
+	 * @description Calls this.ehlo() and, if an error occurs, this.helo().
 	 *
 	 * If there has been no previous EHLO or HELO command self session, self
 	 * method tries ESMTP EHLO first.
@@ -615,7 +635,10 @@ export class SMTPConnection extends EventEmitter {
 	 * @param {string} [domain] the domain to associate with the command
 	 * @returns {void}
 	 */
-	ehlo_or_helo_if_needed(callback: (...rest: any[]) => void, domain?: string) {
+	public ehlo_or_helo_if_needed(
+		callback: (...rest: any[]) => void,
+		domain?: string
+	) {
 		// is this code callable...?
 		if (!this.features) {
 			const response = (err: Error, data: any) => caller(callback, err, data);
@@ -630,6 +653,8 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
+	 *
 	 * Log in on an SMTP server that requires authentication.
 	 *
 	 * If there has been no previous EHLO or HELO command self session, self
@@ -643,7 +668,7 @@ export class SMTPConnection extends EventEmitter {
 	 * @param {{ method: string, domain: string }} [options] login options
 	 * @returns {void}
 	 */
-	login(
+	public login(
 		callback: (...rest: any[]) => void,
 		user?: string,
 		password?: string,
@@ -830,10 +855,11 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @param {boolean} [force=false] whether or not to force destroy the connection
 	 * @returns {void}
 	 */
-	close(force: boolean = false) {
+	public close(force: boolean = false) {
 		if (this.sock) {
 			if (force) {
 				this.log('smtp connection destroyed!');
@@ -857,10 +883,11 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * @public
 	 * @param {function(...*): void} [callback] function to call after response
 	 * @returns {void}
 	 */
-	quit(callback?: (...rest: any[]) => void) {
+	public quit(callback?: (...rest: any[]) => void) {
 		this.command(
 			'quit',
 			(err, data) => {

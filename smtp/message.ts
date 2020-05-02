@@ -138,10 +138,11 @@ export class Message {
 	}
 
 	/**
+	 * @public
 	 * @param {MessageAttachment} options attachment options
 	 * @returns {Message} the current instance for chaining
 	 */
-	attach(options: MessageAttachment): Message {
+	public attach(options: MessageAttachment): Message {
 		// sender can specify an attachment as an alternative
 		if (options.alternative) {
 			this.alternative = options;
@@ -174,10 +175,11 @@ export class Message {
 	}
 
 	/**
+	 * @public
 	 * @param {function(boolean, string): void} callback This callback is displayed as part of the Requester class.
 	 * @returns {void}
 	 */
-	valid(callback: (arg0: boolean, arg1?: string) => void) {
+	public valid(callback: (arg0: boolean, arg1?: string) => void) {
 		if (!this.header.from) {
 			callback(false, 'message does not have a valid sender');
 		}
@@ -208,17 +210,19 @@ export class Message {
 	}
 
 	/**
+	 * @public
 	 * @returns {*} a stream of the current message
 	 */
-	stream() {
+	public stream() {
 		return new MessageStream(this);
 	}
 
 	/**
+	 * @public
 	 * @param {function(Error, string): void} callback the function to call with the error and buffer
 	 * @returns {void}
 	 */
-	read(callback: (err: Error, buffer: string) => void) {
+	public read(callback: (err: Error, buffer: string) => void) {
 		let buffer = '';
 		const str = this.stream();
 		str.on('data', (data) => (buffer += data));
@@ -668,28 +672,31 @@ class MessageStream extends Stream {
 	}
 
 	/**
+	 * @public
 	 * pause the stream
 	 * @returns {void}
 	 */
-	pause() {
+	public pause() {
 		this.paused = true;
 		this.emit('pause');
 	}
 
 	/**
+	 * @public
 	 * resume the stream
 	 * @returns {void}
 	 */
-	resume() {
+	public resume() {
 		this.paused = false;
 		this.emit('resume');
 	}
 
 	/**
+	 * @public
 	 * destroy the stream
 	 * @returns {void}
 	 */
-	destroy() {
+	public destroy() {
 		this.emit(
 			'destroy',
 			this.bufferIndex > 0 ? { message: 'message stream destroyed' } : null
@@ -697,10 +704,11 @@ class MessageStream extends Stream {
 	}
 
 	/**
+	 * @public
 	 * destroy the stream at first opportunity
 	 * @returns {void}
 	 */
-	destroySoon() {
+	public destroySoon() {
 		this.emit('destroy');
 	}
 }
