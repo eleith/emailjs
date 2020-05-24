@@ -62,7 +62,7 @@ const log = (...args: any[]) => {
  */
 const caller = (callback?: (...rest: any[]) => void, ...args: any[]) => {
 	if (typeof callback === 'function') {
-		callback.apply(null, args);
+		callback(...args);
 	}
 };
 
@@ -331,7 +331,7 @@ export class SMTPConnection extends EventEmitter {
 	 * @param {*} callback function to call after response
 	 * @returns {void}
 	 */
-	public send(str: string, callback: any) {
+	public send(str: string, callback: (...args: any[]) => void) {
 		if (this.sock && this._state === SMTPState.CONNECTED) {
 			this.log(str);
 
@@ -432,7 +432,7 @@ export class SMTPConnection extends EventEmitter {
 	 * @returns {void}
 	 */
 	public starttls(callback: (...rest: any[]) => void) {
-		const response = (err: Error, msg: { data: any }) => {
+		const response = (err: Error, msg: { data: unknown }) => {
 			if (this.sock == null) {
 				throw new Error('null socket');
 			}
@@ -640,7 +640,8 @@ export class SMTPConnection extends EventEmitter {
 	) {
 		// is this code callable...?
 		if (!this.features) {
-			const response = (err: Error, data: any) => caller(callback, err, data);
+			const response = (err: Error, data: unknown) =>
+				caller(callback, err, data);
 			this.ehlo((err, data) => {
 				if (err) {
 					this.helo(response, domain);
@@ -681,7 +682,7 @@ export class SMTPConnection extends EventEmitter {
 
 		const domain = options?.domain || this.domain;
 
-		const initiate = (err: Error | null | undefined, data: any) => {
+		const initiate = (err: Error | null | undefined, data: unknown) => {
 			if (err) {
 				caller(callback, err);
 				return;
@@ -742,7 +743,7 @@ export class SMTPConnection extends EventEmitter {
 			 * @param {*} data data
 			 * @returns {void}
 			 */
-			const failed = (err: Error, data: any) => {
+			const failed = (err: Error, data: unknown) => {
 				this.loggedin = false;
 				this.close(); // if auth is bad, close the connection, it won't get better by itself
 				caller(
@@ -761,7 +762,7 @@ export class SMTPConnection extends EventEmitter {
 			 * @param {*} data data
 			 * @returns {void}
 			 */
-			const response = (err: Error | null | undefined, data: any) => {
+			const response = (err: Error | null | undefined, data: unknown) => {
 				if (err) {
 					failed(err, data);
 				} else {
@@ -778,7 +779,7 @@ export class SMTPConnection extends EventEmitter {
 			 */
 			const attempt = (
 				err: Error | null | undefined,
-				data: any,
+				data: unknown,
 				msg: string
 			) => {
 				if (err) {
@@ -802,7 +803,7 @@ export class SMTPConnection extends EventEmitter {
 			 * @param {string} msg msg
 			 * @returns {void}
 			 */
-			const attempt_user = (err: Error, data: any) => {
+			const attempt_user = (err: Error, data: unknown) => {
 				if (err) {
 					failed(err, data);
 				} else {
@@ -858,7 +859,7 @@ export class SMTPConnection extends EventEmitter {
 	 * @param {boolean} [force=false] whether or not to force destroy the connection
 	 * @returns {void}
 	 */
-	public close(force: boolean = false) {
+	public close(force = false) {
 		if (this.sock) {
 			if (force) {
 				this.log('smtp connection destroyed!');

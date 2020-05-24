@@ -1,4 +1,4 @@
-import type { Readable } from 'stream'; // eslint-disable-line no-unused-vars
+import type { Readable } from 'stream';
 import { readFileSync, createReadStream } from 'fs';
 import { join } from 'path';
 

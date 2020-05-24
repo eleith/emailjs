@@ -15,9 +15,19 @@
 	],
 	"extends": [
 		"eslint:recommended",
-		"plugin:prettier/recommended"
+		"plugin:prettier/recommended",
+		"plugin:@typescript-eslint/recommended"
 	],
 	"rules": {
+		"@typescript-eslint/camelcase": "off",
+		"@typescript-eslint/explicit-function-return-type": "off",
+		"@typescript-eslint/explicit-module-boundary-types": "off",
+		"@typescript-eslint/no-explicit-any": [
+			"error",
+			{
+				"ignoreRestArgs": true
+			}
+		],
 		"curly": [
 			"error",
 			"all"

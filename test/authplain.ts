@@ -1,4 +1,4 @@
-import type { Readable } from 'stream'; // eslint-disable-line no-unused-vars
+import type { Readable } from 'stream';
 import test from 'ava';
 import mailparser from 'mailparser';
 import smtp from 'smtp-server';

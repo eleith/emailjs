@@ -1,8 +1,8 @@
 import addressparser from 'addressparser';
 import { Message } from './message';
-import type { MessageAttachment, MessageHeaders } from './message'; // eslint-disable-line no-unused-vars
+import type { MessageAttachment, MessageHeaders } from './message';
 import { SMTPConnection, SMTPState } from './smtp';
-import type { SMTPConnectionOptions } from './smtp'; // eslint-disable-line no-unused-vars
+import type { SMTPConnectionOptions } from './smtp';
 
 export interface MessageStack {
 	callback: (error: Error | null, message: Message) => void;
@@ -57,7 +57,12 @@ export class Client {
 					message,
 					to: addressparser(message.header.to),
 					from: addressparser(message.header.from)[0].address,
-					callback: (callback || function () {}).bind(this),
+					callback: (
+						callback ||
+						function () {
+							/* ø */
+						}
+					).bind(this),
 				} as MessageStack;
 
 				if (message.header.cc) {
@@ -241,7 +246,7 @@ export class Client {
 			throw new TypeError('stack.to must be array');
 		}
 
-		const to = stack.to.shift()!.address;
+		const to = stack.to.shift()?.address;
 		this.smtp.rcpt(
 			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
 			`<${to}>`

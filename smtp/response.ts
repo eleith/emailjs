@@ -1,6 +1,6 @@
 import { makeSMTPError, SMTPErrorStates } from './error';
-import type { Socket } from 'net'; // eslint-disable-line no-unused-vars
-import type { TLSSocket } from 'tls'; // eslint-disable-line no-unused-vars
+import type { Socket } from 'net';
+import type { TLSSocket } from 'tls';
 
 export class SMTPResponse {
 	public readonly stop: (err?: Error) => void;
