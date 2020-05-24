@@ -7,14 +7,14 @@ export default {
 	input: 'email.ts',
 	output: [
 		{
-			file: 'email.cjs',
+			file: 'rollup/email.cjs',
 			format: 'cjs',
 			interop: false,
 			freeze: false,
 			sourcemap: true,
 		},
 		{
-			file: 'email.mjs',
+			file: 'rollup/email.mjs',
 			format: 'es',
 			interop: false,
 			freeze: false,

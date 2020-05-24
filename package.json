@@ -43,18 +43,15 @@
 		"node >= 10"
 	],
 	"files": [
-		"smtp",
 		"email.ts",
-		"email.cjs",
-		"email.cjs.map",
-		"email.mjs.map",
-		"email.mjs.map"
+		"smtp",
+		"rollup"
 	],
-	"main": "email.cjs",
+	"main": "rollup/email.cjs",
 	"types": "email.ts",
 	"exports": {
-		"import": "email.mjs",
-		"require": "email.cjs"
+		"import": "rollup/email.mjs",
+		"require": "rollup/email.cjs"
 	},
 	"scripts": {
 		"build": "rollup -c rollup.config.ts",

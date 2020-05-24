@@ -1,10 +1,6 @@
 .vscode
 node_modules
 
-*.cjs
-*.mjs
-*.map
-
 *.log
 *.swp
 *.swo
