@@ -56,7 +56,8 @@
 	"scripts": {
 		"build": "rollup -c rollup.config.ts",
 		"lint": "eslint *.ts \"+(smtp|test)/*.ts\"",
-		"test": "ava --serial"
+		"test": "ava --serial",
+		"test-cjs": "npm run build && npm run test -- --node-arguments='--title=cjs'"
 	},
 	"license": "MIT"
 }

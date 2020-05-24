@@ -11,18 +11,21 @@ jobs:
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
-    - name: checkout
-      uses: actions/checkout@v1
-      with:
-        fetch-depth: 1
+      - name: checkout
+        uses: actions/checkout@v1
+        with:
+          fetch-depth: 1
 
-    - name: node
-      uses: actions/setup-node@v1
-      with:
-        node-version: ${{ matrix.node-version }}
+      - name: node
+        uses: actions/setup-node@v1
+        with:
+          node-version: ${{ matrix.node-version }}
 
-    - name: install
-      run: yarn
+      - name: install
+        run: yarn
 
-    - name: test
-      run: yarn test
+      - name: test
+        run: yarn test
+
+      - name: test-cjs
+        run: yarn test-cjs
