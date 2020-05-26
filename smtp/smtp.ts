@@ -116,7 +116,9 @@ export class SMTPConnection extends EventEmitter {
 	protected port: number;
 
 	/**
-	 * SMTP class written using python's (2.7) smtplib.py as a base
+	 * SMTP class written using python's (2.7) smtplib.py as a base.
+	 *
+	 * To target a Message Transfer Agent (MTA), omit all options.
 	 */
 	constructor({
 		timeout,
