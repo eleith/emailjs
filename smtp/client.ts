@@ -66,11 +66,19 @@ export class Client {
 				} as MessageStack;
 
 				if (message.header.cc) {
-					stack.to = stack.to.concat(addressparser(message.header.cc));
+					stack.to = stack.to.concat(
+						addressparser(message.header.cc).filter(
+							(x) => stack.to.some((y) => y.address === x.address) === false
+						)
+					);
 				}
 
 				if (message.header.bcc) {
-					stack.to = stack.to.concat(addressparser(message.header.bcc));
+					stack.to = stack.to.concat(
+						addressparser(message.header.bcc).filter(
+							(x) => stack.to.some((y) => y.address === x.address) === false
+						)
+					);
 				}
 
 				if (

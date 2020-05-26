@@ -60,6 +60,8 @@ test.cb('simple text message', (t) => {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'zelda@gmail.com',
 		to: 'gannon@gmail.com',
+		cc: 'gannon@gmail.com',
+		bcc: 'gannon@gmail.com',
 		text: 'hello friend, i hope this message finds you well.',
 		'message-id': 'this is a special id',
 	};
