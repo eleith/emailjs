@@ -423,6 +423,9 @@ export class SMTPConnection extends EventEmitter {
 	 * Hostname to send for self command defaults to the FQDN of the local
 	 * host.
 	 *
+	 * As this command was deprecated by rfc2821, it should only be used for compatibility with non-compliant servers.
+	 * @see https://tools.ietf.org/html/rfc2821#appendix-F.3
+	 *
 	 * @param {function(...*): void} callback function to call after response
 	 * @param {string} domain the domain to associate with the 'helo' request
 	 * @returns {void}
