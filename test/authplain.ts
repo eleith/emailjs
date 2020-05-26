@@ -68,3 +68,15 @@ test.cb('authorize plain', (t) => {
 		t.end
 	);
 });
+
+test('Client constructor throws if `password` supplied without `user`', (t) => {
+	t.notThrows(() => new c.Client({ user: 'anything', password: 'anything' }));
+	t.throws(() => new c.Client({ password: 'anything' }));
+	t.throws(
+		() =>
+			new c.Client({ username: 'anything', password: 'anything' } as Record<
+				string,
+				unknown
+			>)
+	);
+});
