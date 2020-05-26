@@ -167,6 +167,10 @@ export class SMTPConnection extends EventEmitter {
 		this.port = port || (ssl ? SMTP_SSL_PORT : tls ? SMTP_TLS_PORT : SMTP_PORT);
 		this.loggedin = user && password ? false : true;
 
+		if (!user && (password?.length ?? 0) > 0) {
+			throw new Error('`password` cannot be set without `user`');
+		}
+
 		// keep these strings hidden when quicky debugging/logging
 		this.user = () => user as string;
 		this.password = () => password as string;
