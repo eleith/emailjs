@@ -5,6 +5,7 @@ import { client as c, message as m, smtp as s } from '../email';
 test.cb(
 	'connecting to wrong email server should not invoke callback multiple times',
 	(t) => {
+		t.plan(1);
 		const client = new c.Client({ host: 'bar.baz' });
 		const msg = {
 			from: 'foo@bar.baz',
