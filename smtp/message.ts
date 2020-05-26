@@ -150,6 +150,10 @@ export class Message {
 	}
 
 	/**
+	 * Attach a file to the message.
+	 *
+	 * Can be called multiple times, each adding a new attachment.
+	 *
 	 * @public
 	 * @param {MessageAttachment} options attachment options
 	 * @returns {Message} the current instance for chaining
