@@ -119,6 +119,8 @@ export class SMTPConnection extends EventEmitter {
 	 * SMTP class written using python's (2.7) smtplib.py as a base.
 	 *
 	 * To target a Message Transfer Agent (MTA), omit all options.
+	 *
+	 * NOTE: `host` is trimmed before being used to establish a connection. however, the original untrimmed value will still be visible in configuration.
 	 */
 	constructor({
 		timeout,
@@ -208,6 +210,10 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	/**
+	 * Establish an SMTP connection.
+	 *
+	 * NOTE: `host` is trimmed before being used to establish a connection. however, the original untrimmed value will still be visible in configuration.
+	 *
 	 * @public
 	 * @param {function(...*): void} callback function to call after response
 	 * @param {number} [port] the port to use for the connection
@@ -315,13 +321,13 @@ export class SMTPConnection extends EventEmitter {
 		if (this.ssl) {
 			this.sock = connect(
 				this.port,
-				this.host,
+				this.host.trim(),
 				typeof this.ssl === 'object' ? this.ssl : {},
 				connected
 			);
 		} else {
 			this.sock = new Socket();
-			this.sock.connect(this.port, this.host, connectedErrBack);
+			this.sock.connect(this.port, this.host.trim(), connectedErrBack);
 		}
 
 		this.monitor = new SMTPResponse(this.sock, this.timeout, () =>
