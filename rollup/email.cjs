@@ -2,1173 +2,13 @@
 
 Object.defineProperty(exports, '__esModule', { value: true });
 
+var fs = require('fs');
+var os = require('os');
+var stream = require('stream');
 var net = require('net');
 var crypto = require('crypto');
-var os = require('os');
 var tls = require('tls');
 var events = require('events');
-var fs = require('fs');
-var stream = require('stream');
-
-class SMTPError extends Error {
-	/**
-	 * @param {string} message the error message
-	 */
-	constructor(message) {
-		super(message);
-
-		/**
-		 * @type {number}
-		 */
-		this.code = null;
-
-		/**
-		 * @type {*}
-		 */
-		this.smtp = null;
-
-		/**
-		 * @type {Error}
-		 */
-		this.previous = null;
-	}
-}
-
-/**
- * @param {string} message the error message
- * @param {number} code the error code
- * @param {Error} [error] an error object
- * @param {*} [smtp] smtp
- * @returns {SMTPError} an smtp error object
- */
-var error = function(message, code, error, smtp) {
-	const err = new SMTPError(
-		error != null && error.message ? `${message} (${error.message})` : message
-	);
-
-	err.code = code;
-	err.smtp = smtp;
-
-	if (error) {
-		err.previous = error;
-	}
-
-	return err;
-};
-
-/**
- * @type {1}
- */
-var COULDNOTCONNECT = 1;
-/**
- * @type {2}
- */
-var BADRESPONSE = 2;
-/**
- * @type {3}
- */
-var AUTHFAILED = 3;
-/**
- * @type {4}
- */
-var TIMEDOUT = 4;
-/**
- * @type {5}
- */
-var ERROR = 5;
-/**
- * @type {6}
- */
-var NOCONNECTION = 6;
-/**
- * @type {7}
- */
-var AUTHNOTSUPPORTED = 7;
-/**
- * @type {8}
- */
-var CONNECTIONCLOSED = 8;
-/**
- * @type {9}
- */
-var CONNECTIONENDED = 9;
-/**
- * @type {10}
- */
-var CONNECTIONAUTH = 10;
-error.COULDNOTCONNECT = COULDNOTCONNECT;
-error.BADRESPONSE = BADRESPONSE;
-error.AUTHFAILED = AUTHFAILED;
-error.TIMEDOUT = TIMEDOUT;
-error.ERROR = ERROR;
-error.NOCONNECTION = NOCONNECTION;
-error.AUTHNOTSUPPORTED = AUTHNOTSUPPORTED;
-error.CONNECTIONCLOSED = CONNECTIONCLOSED;
-error.CONNECTIONENDED = CONNECTIONENDED;
-error.CONNECTIONAUTH = CONNECTIONAUTH;
-
-var error$1 = ({
-	default: error,
-	__moduleExports: error,
-	COULDNOTCONNECT: COULDNOTCONNECT,
-	BADRESPONSE: BADRESPONSE,
-	AUTHFAILED: AUTHFAILED,
-	TIMEDOUT: TIMEDOUT,
-	ERROR: ERROR,
-	NOCONNECTION: NOCONNECTION,
-	AUTHNOTSUPPORTED: AUTHNOTSUPPORTED,
-	CONNECTIONCLOSED: CONNECTIONCLOSED,
-	CONNECTIONENDED: CONNECTIONENDED,
-	CONNECTIONAUTH: CONNECTIONAUTH
-});
-
-/**
- * @typedef {import('net').Socket} Socket
- * @typedef {import('tls').TLSSocket} TLSSocket
- */
-
-class SMTPResponse {
-	/**
-	 * @constructor
-	 * @param {Socket | TLSSocket} stream the open socket to stream a response from
-	 * @param {number} timeout the time to wait (in milliseconds) before closing the socket
-	 * @param {function(Error): void} onerror the function to call on error
-	 */
-	constructor(stream$$1, timeout, onerror) {
-		let buffer = '';
-
-		/**
-		 * @returns {void}
-		 */
-		const notify = () => {
-			if (buffer.length) {
-				// parse buffer for response codes
-				const line = buffer.replace('\r', '');
-				if (
-					!line
-						.trim()
-						.split(/\n/)
-						.pop()
-						.match(/^(\d{3})\s/)
-				) {
-					return;
-				}
-
-				const match = line ? line.match(/(\d+)\s?(.*)/) : null;
-				const data =
-					match !== null
-						? { code: match[1], message: match[2], data: line }
-						: { code: -1, data: line };
-
-				stream$$1.emit('response', null, data);
-				buffer = '';
-			}
-		};
-
-		/**
-		 * @param {Error} err the error object
-		 * @returns {void}
-		 */
-		const error$$1 = err => {
-			stream$$1.emit(
-				'response',
-				error('connection encountered an error', error.ERROR, err)
-			);
-		};
-
-		/**
-		 * @param {Error} err the error object
-		 * @returns {void}
-		 */
-		const timedout = err => {
-			stream$$1.end();
-			stream$$1.emit(
-				'response',
-				error(
-					'timedout while connecting to smtp server',
-					error.TIMEDOUT,
-					err
-				)
-			);
-		};
-
-		/**
-		 * @param {string | Buffer} data the data
-		 * @returns {void}
-		 */
-		const watch = data => {
-			if (data !== null) {
-				buffer += data.toString();
-				notify();
-			}
-		};
-
-		/**
-		 * @param {Error} err the error object
-		 * @returns {void}
-		 */
-		const close = err => {
-			stream$$1.emit(
-				'response',
-				error('connection has closed', error.CONNECTIONCLOSED, err)
-			);
-		};
-
-		/**
-		 * @param {Error} err the error object
-		 * @returns {void}
-		 */
-		const end = err => {
-			stream$$1.emit(
-				'response',
-				error('connection has ended', error.CONNECTIONENDED, err)
-			);
-		};
-
-		/**
-		 * @param {Error} [err] the error object
-		 * @returns {void}
-		 */
-		this.stop = err => {
-			stream$$1.removeAllListeners('response');
-			stream$$1.removeListener('data', watch);
-			stream$$1.removeListener('end', end);
-			stream$$1.removeListener('close', close);
-			stream$$1.removeListener('error', error$$1);
-
-			if (err != null && typeof onerror === 'function') {
-				onerror(err);
-			}
-		};
-
-		stream$$1.on('data', watch);
-		stream$$1.on('end', end);
-		stream$$1.on('close', close);
-		stream$$1.on('error', error$$1);
-		stream$$1.setTimeout(timeout, timedout);
-	}
-}
-
-var SMTPResponse_1 = SMTPResponse;
-
-/**
- * @param {Socket | TLSSocket} stream the open socket to stream a response from
- * @param {number} timeout the time to wait (in milliseconds) before closing the socket
- * @param {function(Error): void} onerror the function to call on error
- * @returns {SMTPResponse} the smtp response
- */
-var monitor = (stream$$1, timeout, onerror) =>
-	new SMTPResponse(stream$$1, timeout, onerror);
-
-var response = {
-	SMTPResponse: SMTPResponse_1,
-	monitor: monitor
-};
-
-const { Socket } = net;
-const { createHmac } = crypto;
-const { hostname } = os;
-const { connect, createSecureContext, TLSSocket } = tls;
-const { EventEmitter } = events;
-
-
-
-
-/**
- * @readonly
- * @type {5000}
- */
-const TIMEOUT = 5000;
-
-/**
- * @readonly
- * @type {25}
- */
-const SMTP_PORT = 25;
-
-/**
- * @readonly
- * @type {465}
- */
-const SMTP_SSL_PORT = 465;
-
-/**
- * @readonly
- * @type {587}
- */
-const SMTP_TLS_PORT = 587;
-
-/**
- * @readonly
- * @type {'\r\n'}
- */
-const CRLF = '\r\n';
-
-/**
- * @readonly
- * @enum
- */
-const AUTH_METHODS = {
-	PLAIN: /** @type {'PLAIN'} */ ('PLAIN'),
-	CRAM_MD5: /** @type {'CRAM-MD5'} */ ('CRAM-MD5'),
-	LOGIN: /** @type {'LOGIN'} */ ('LOGIN'),
-	XOAUTH2: /** @type {'XOAUTH2'} */ ('XOAUTH2'),
-};
-
-/**
- * @readonly
- * @enum
- */
-const SMTPState = {
-	NOTCONNECTED: /** @type {0} */ (0),
-	CONNECTING: /** @type {1} */ (1),
-	CONNECTED: /** @type {2} */ (2),
-};
-
-/**
- * @type {0 | 1}
- */
-let DEBUG = 0;
-
-/**
- * @param {...any} args the message(s) to log
- * @returns {void}
- */
-const log = (...args) => {
-	if (DEBUG === 1) {
-		args.forEach(d =>
-			console.log(
-				typeof d === 'object'
-					? d instanceof Error
-						? d.message
-						: JSON.stringify(d)
-					: d
-			)
-		);
-	}
-};
-
-/**
- * @param {function(...*): void} callback the function to call
- * @param {...*} args the arguments to apply to the function
- * @returns {void}
- */
-const caller = (callback, ...args) => {
-	if (typeof callback === 'function') {
-		callback.apply(null, args);
-	}
-};
-
-class SMTP extends EventEmitter {
-	/**
-	 * SMTP class written using python's (2.7) smtplib.py as a base
-	 *
-	 * @typedef {Object} SMTPSocketOptions
-	 * @property {string} key
-	 * @property {string} ca
-	 * @property {string} cert
-	 *
-	 * @typedef {Object} SMTPOptions
-	 * @property {number} [timeout]
-	 * @property {string} [user]
-	 * @property {string} [password]
-	 * @property {string} [domain]
-	 * @property {string} [host]
-	 * @property {number} [port]
-	 * @property {boolean|SMTPSocketOptions} [ssl]
-	 * @property {boolean|SMTPSocketOptions} [tls]
-	 * @property {string[]} [authentication]
-	 * @property {function(...any): void} [logger]
-	 *
-	 * @constructor
-	 * @param {SMTPOptions} [options] instance options
-	 */
-	constructor({
-		timeout,
-		host,
-		user,
-		password,
-		domain,
-		port,
-		ssl,
-		tls: tls$$1,
-		logger,
-		authentication,
-	} = {}) {
-		super();
-
-		/**
-		 * @private
-		 * @type {0 | 1 | 2}
-		 */
-		this._state = SMTPState.NOTCONNECTED;
-
-		/**
-		 * @private
-		 * @type {boolean}
-		 */
-		this._secure = false;
-
-		/**
-		 * @type {Socket|TLSSocket}
-		 */
-		this.sock = null;
-
-		/**
-		 * @type {{ [i: string]: string | boolean }}
-		 */
-		this.features = null;
-
-		/**
-		 * @type {SMTPResponse.SMTPResponse}
-		 */
-		this.monitor = null;
-
-		/**
-		 * @type {string[]}
-		 */
-		this.authentication = Array.isArray(authentication)
-			? authentication
-			: [
-					AUTH_METHODS.CRAM_MD5,
-					AUTH_METHODS.LOGIN,
-					AUTH_METHODS.PLAIN,
-					AUTH_METHODS.XOAUTH2,
-			  ];
-
-		/**
-		 * @type {number} }
-		 */
-		this.timeout = typeof timeout === 'number' ? timeout : TIMEOUT;
-
-		/**
-		 * @type {string} }
-		 */
-		this.domain = typeof domain === 'string' ? domain : hostname();
-
-		/**
-		 * @type {string} }
-		 */
-		this.host = typeof host === 'string' ? host : 'localhost';
-
-		/**
-		 * @type {boolean|SMTPSocketOptions}
-		 */
-		this.ssl =
-			ssl != null &&
-			(typeof ssl === 'boolean' ||
-				(typeof ssl === 'object' && Array.isArray(ssl) === false))
-				? ssl
-				: false;
-
-		/**
-		 * @type {boolean|SMTPSocketOptions}
-		 */
-		this.tls =
-			tls$$1 != null &&
-			(typeof tls$$1 === 'boolean' ||
-				(typeof tls$$1 === 'object' && Array.isArray(tls$$1) === false))
-				? tls$$1
-				: false;
-
-		/**
-		 * @type {number}
-		 */
-		this.port = port || (ssl ? SMTP_SSL_PORT : tls$$1 ? SMTP_TLS_PORT : SMTP_PORT);
-
-		/**
-		 * @type {boolean}
-		 */
-		this.loggedin = user && password ? false : true;
-
-		// keep these strings hidden when quicky debugging/logging
-		this.user = /** @returns {string} */ () => user;
-		this.password = /** @returns {string} */ () => password;
-
-		this.log = typeof logger === 'function' ? logger : log;
-	}
-
-	/**
-	 * @param {0 | 1} level -
-	 * @returns {void}
-	 */
-	debug(level) {
-		DEBUG = level;
-	}
-
-	/**
-	 * @returns {number} the current state
-	 */
-	state() {
-		return this._state;
-	}
-
-	/**
-	 * @returns {boolean} whether or not the instance is authorized
-	 */
-	authorized() {
-		return this.loggedin;
-	}
-
-	/**
-	 * @typedef {Object} ConnectOptions
-	 * @property {boolean} [ssl]
-	 *
-	 * @param {function(...*): void} callback function to call after response
-	 * @param {number} [port] the port to use for the connection
-	 * @param {string} [host] the hostname to use for the connection
-	 * @param {ConnectOptions} [options={}] the options
-	 * @returns {void}
-	 */
-	connect(callback, port = this.port, host = this.host, options = {}) {
-		this.port = port;
-		this.host = host;
-		this.ssl = options.ssl || this.ssl;
-
-		if (this._state !== SMTPState.NOTCONNECTED) {
-			this.quit(() =>
-				this.connect(
-					callback,
-					port,
-					host,
-					options
-				)
-			);
-		}
-
-		/**
-		 * @returns {void}
-		 */
-		const connected = () => {
-			this.log(`connected: ${this.host}:${this.port}`);
-
-			if (this.ssl && !this.tls) {
-				// if key/ca/cert was passed in, check if connection is authorized
-				if (
-					typeof this.ssl !== 'boolean' &&
-					this.sock instanceof TLSSocket &&
-					!this.sock.authorized
-				) {
-					this.close(true);
-					caller(
-						callback,
-						error(
-							'could not establish an ssl connection',
-							error.CONNECTIONAUTH
-						)
-					);
-				} else {
-					this._secure = true;
-				}
-			}
-		};
-
-		/**
-		 * @param {Error} err err
-		 * @returns {void}
-		 */
-		const connectedErrBack = err => {
-			if (!err) {
-				connected();
-			} else {
-				this.close(true);
-				this.log(err);
-				caller(
-					callback,
-					error('could not connect', error.COULDNOTCONNECT, err)
-				);
-			}
-		};
-
-		const response$$1 = (err, msg) => {
-			if (err) {
-				if (this._state === SMTPState.NOTCONNECTED && !this.sock) {
-					return;
-				}
-				this.close(true);
-				caller(callback, err);
-			} else if (msg.code == '220') {
-				this.log(msg.data);
-
-				// might happen first, so no need to wait on connected()
-				this._state = SMTPState.CONNECTED;
-				caller(callback, null, msg.data);
-			} else {
-				this.log(`response (data): ${msg.data}`);
-				this.quit(() => {
-					caller(
-						callback,
-						error(
-							'bad response on connection',
-							error.BADRESPONSE,
-							err,
-							msg.data
-						)
-					);
-				});
-			}
-		};
-
-		this._state = SMTPState.CONNECTING;
-		this.log(`connecting: ${this.host}:${this.port}`);
-
-		if (this.ssl) {
-			this.sock = connect(
-				this.port,
-				this.host,
-				typeof this.ssl === 'object' ? this.ssl : {},
-				connected
-			);
-		} else {
-			this.sock = new Socket();
-			this.sock.connect(
-				this.port,
-				this.host,
-				connectedErrBack
-			);
-		}
-
-		this.monitor = response.monitor(this.sock, this.timeout, () =>
-			this.close(true)
-		);
-		this.sock.once('response', response$$1);
-		this.sock.once('error', response$$1); // the socket could reset or throw, so let's handle it and let the user know
-	}
-
-	/**
-	 * @param {string} str the string to send
-	 * @param {*} callback function to call after response
-	 * @returns {void}
-	 */
-	send(str, callback) {
-		if (this.sock && this._state === SMTPState.CONNECTED) {
-			this.log(str);
-
-			this.sock.once('response', (err, msg) => {
-				if (err) {
-					caller(callback, err);
-				} else {
-					this.log(msg.data);
-					caller(callback, null, msg);
-				}
-			});
-			this.sock.write(str);
-		} else {
-			this.close(true);
-			caller(
-				callback,
-				error('no connection has been established', error.NOCONNECTION)
-			);
-		}
-	}
-
-	/**
-	 * @param {string} cmd command to issue
-	 * @param {function(...*): void} callback function to call after response
-	 * @param {(number[] | number)} [codes=[250]] array codes
-	 * @returns {void}
-	 */
-	command(cmd, callback, codes = [250]) {
-		const codesArray = Array.isArray(codes)
-			? codes
-			: typeof codes === 'number'
-				? [codes]
-				: [250];
-
-		const response$$1 = (err, msg) => {
-			if (err) {
-				caller(callback, err);
-			} else {
-				if (codesArray.indexOf(Number(msg.code)) !== -1) {
-					caller(callback, err, msg.data, msg.message);
-				} else {
-					const suffix = msg.message ? `: ${msg.message}` : '';
-					const errorMessage = `bad response on command '${
-						cmd.split(' ')[0]
-					}'${suffix}`;
-					caller(
-						callback,
-						error(errorMessage, error.BADRESPONSE, null, msg.data)
-					);
-				}
-			}
-		};
-
-		this.send(cmd + CRLF, response$$1);
-	}
-
-	/**
-	 * SMTP 'helo' command.
-	 *
-	 * Hostname to send for self command defaults to the FQDN of the local
-	 * host.
-	 *
-	 * @param {function(...*): void} callback function to call after response
-	 * @param {string} domain the domain to associate with the 'helo' request
-	 * @returns {void}
-	 */
-	helo(callback, domain) {
-		this.command(`helo ${domain || this.domain}`, (err, data) => {
-			if (err) {
-				caller(callback, err);
-			} else {
-				this.parse_smtp_features(data);
-				caller(callback, err, data);
-			}
-		});
-	}
-
-	/**
-	 * @param {function(...*): void} callback function to call after response
-	 * @returns {void}
-	 */
-	starttls(callback) {
-		const response$$1 = (err, msg) => {
-			if (err) {
-				err.message += ' while establishing a starttls session';
-				caller(callback, err);
-			} else {
-				const secureContext = createSecureContext(
-					typeof this.tls === 'object' ? this.tls : {}
-				);
-				const secureSocket = new TLSSocket(this.sock, { secureContext });
-
-				secureSocket.on('error', err => {
-					this.close(true);
-					caller(callback, err);
-				});
-
-				this._secure = true;
-				this.sock = secureSocket;
-
-				response.monitor(this.sock, this.timeout, () => this.close(true));
-				caller(callback, msg.data);
-			}
-		};
-
-		this.command('starttls', response$$1, [220]);
-	}
-
-	/**
-	 * @param {string} data the string to parse for features
-	 * @returns {void}
-	 */
-	parse_smtp_features(data) {
-		//  According to RFC1869 some (badly written)
-		//  MTA's will disconnect on an ehlo. Toss an exception if
-		//  that happens -ddm
-
-		data.split('\n').forEach(ext => {
-			const parse = ext.match(/^(?:\d+[-=]?)\s*?([^\s]+)(?:\s+(.*)\s*?)?$/);
-
-			// To be able to communicate with as many SMTP servers as possible,
-			// we have to take the old-style auth advertisement into account,
-			// because:
-			// 1) Else our SMTP feature parser gets confused.
-			// 2) There are some servers that only advertise the auth methods we
-			// support using the old style.
-
-			if (parse != null) {
-				// RFC 1869 requires a space between ehlo keyword and parameters.
-				// It's actually stricter, in that only spaces are allowed between
-				// parameters, but were not going to check for that here.  Note
-				// that the space isn't present if there are no parameters.
-				this.features[parse[1].toLowerCase()] = parse[2] || true;
-			}
-		});
-	}
-
-	/**
-	 * @param {function(...*): void} callback function to call after response
-	 * @param {string} domain the domain to associate with the 'ehlo' request
-	 * @returns {void}
-	 */
-	ehlo(callback, domain) {
-		this.features = {};
-		this.command(`ehlo ${domain || this.domain}`, (err, data) => {
-			if (err) {
-				caller(callback, err);
-			} else {
-				this.parse_smtp_features(data);
-
-				if (this.tls && !this._secure) {
-					this.starttls(() => this.ehlo(callback, domain));
-				} else {
-					caller(callback, err, data);
-				}
-			}
-		});
-	}
-
-	/**
-	 * @param {string} opt the features keyname to check
-	 * @returns {boolean} whether the extension exists
-	 */
-	has_extn(opt) {
-		return this.features[opt.toLowerCase()] === undefined;
-	}
-
-	/**
-	 * SMTP 'help' command, returns text from the server
-	 * @param {function(...*): void} callback function to call after response
-	 * @param {string} domain the domain to associate with the 'help' request
-	 * @returns {void}
-	 */
-	help(callback, domain) {
-		this.command(domain ? `help ${domain}` : 'help', callback, [211, 214]);
-	}
-
-	/**
-	 * @param {function(...*): void} callback function to call after response
-	 * @returns {void}
-	 */
-	rset(callback) {
-		this.command('rset', callback);
-	}
-
-	/**
-	 * @param {function(...*): void} callback function to call after response
-	 * @returns {void}
-	 */
-	noop(callback) {
-		this.send('noop', callback);
-	}
-
-	/**
-	 * @param {function(...*): void} callback function to call after response
-	 * @param {string} from the sender
-	 * @returns {void}
-	 */
-	mail(callback, from) {
-		this.command(`mail FROM:${from}`, callback);
-	}
-
-	/**
-	 * @param {function(...*): void} callback function to call after response
-	 * @param {string} to the receiver
-	 * @returns {void}
-	 */
-	rcpt(callback, to) {
-		this.command(`RCPT TO:${to}`, callback, [250, 251]);
-	}
-
-	/**
-	 * @param {function(...*): void} callback function to call after response
-	 * @returns {void}
-	 */
-	data(callback) {
-		this.command('data', callback, [354]);
-	}
-
-	/**
-	 * @param {function(...*): void} callback function to call after response
-	 * @returns {void}
-	 */
-	data_end(callback) {
-		this.command(`${CRLF}.`, callback);
-	}
-
-	/**
-	 * @param {string} data the message to send
-	 * @returns {void}
-	 */
-	message(data) {
-		this.log(data);
-		this.sock.write(data);
-	}
-
-	/**
-	 * SMTP 'verify' command -- checks for address validity.
-	 *
-	 * @param {string} address the address to validate
-	 * @param {function(...*): void} callback function to call after response
-	 * @returns {void}
-	 */
-	verify(address, callback) {
-		this.command(`vrfy ${address}`, callback, [250, 251, 252]);
-	}
-
-	/**
-	 * SMTP 'expn' command -- expands a mailing list.
-	 *
-	 * @param {string} address the mailing list to expand
-	 * @param {function(...*): void} callback function to call after response
-	 * @returns {void}
-	 */
-	expn(address, callback) {
-		this.command(`expn ${address}`, callback);
-	}
-
-	/**
-	 * Calls this.ehlo() and, if an error occurs, this.helo().
-	 *
-	 * If there has been no previous EHLO or HELO command self session, self
-	 * method tries ESMTP EHLO first.
-	 *
-	 * @param {function(...*): void} callback function to call after response
-	 * @param {string} [domain] the domain to associate with the command
-	 * @returns {void}
-	 */
-	ehlo_or_helo_if_needed(callback, domain) {
-		// is this code callable...?
-		if (!this.features) {
-			const response$$1 = (err, data) => caller(callback, err, data);
-			this.ehlo((err, data) => {
-				if (err) {
-					this.helo(response$$1, domain);
-				} else {
-					caller(callback, err, data);
-				}
-			}, domain);
-		}
-	}
-
-	/**
-	 * Log in on an SMTP server that requires authentication.
-	 *
-	 * If there has been no previous EHLO or HELO command self session, self
-	 * method tries ESMTP EHLO first.
-	 *
-	 * This method will return normally if the authentication was successful.
-	 *
-	 * @param {function(...*): void} callback function to call after response
-	 * @param {string} [user] the username to authenticate with
-	 * @param {string} [password] the password for the authentication
-	 * @param {{ method: string, domain: string }} [options] login options
-	 * @returns {void}
-	 */
-	login(callback, user, password, options) {
-		const login = {
-			user: user ? () => user : this.user,
-			password: password ? () => password : this.password,
-			method: options && options.method ? options.method.toUpperCase() : '',
-		};
-
-		const domain = options && options.domain ? options.domain : this.domain;
-
-		const initiate = (err, data) => {
-			if (err) {
-				caller(callback, err);
-				return;
-			}
-
-			let method = null;
-
-			/**
-			 * @param {string} challenge challenge
-			 * @returns {string} base64 cram hash
-			 */
-			const encode_cram_md5 = challenge => {
-				const hmac = createHmac('md5', login.password());
-				hmac.update(Buffer.from(challenge, 'base64').toString('ascii'));
-				return Buffer.from(`${login.user()} ${hmac.digest('hex')}`).toString(
-					'base64'
-				);
-			};
-
-			/**
-			 * @returns {string} base64 login/password
-			 */
-			const encode_plain = () =>
-				Buffer.from(`\u0000${login.user()}\u0000${login.password()}`).toString(
-					'base64'
-				);
-
-			/**
-			 * @see https://developers.google.com/gmail/xoauth2_protocol
-			 * @returns {string} base64 xoauth2 auth token
-			 */
-			const encode_xoauth2 = () =>
-				Buffer.from(
-					`user=${login.user()}\u0001auth=Bearer ${login.password()}\u0001\u0001`
-				).toString('base64');
-
-			// List of authentication methods we support: from preferred to
-			// less preferred methods.
-			if (!method) {
-				const preferred = this.authentication;
-				let auth = '';
-
-				if (this.features && this.features.auth) {
-					if (typeof this.features.auth === 'string') {
-						auth = this.features.auth;
-					}
-				}
-
-				for (let i = 0; i < preferred.length; i++) {
-					if (auth.includes(preferred[i])) {
-						method = preferred[i];
-						break;
-					}
-				}
-			}
-
-			/**
-			 * handle bad responses from command differently
-			 * @param {Error} err err
-			 * @param {*} data data
-			 * @returns {void}
-			 */
-			const failed = (err, data) => {
-				this.loggedin = false;
-				this.close(); // if auth is bad, close the connection, it won't get better by itself
-				caller(
-					callback,
-					error('authorization.failed', error.AUTHFAILED, err, data)
-				);
-			};
-
-			/**
-			 * @param {Error} err err
-			 * @param {*} data data
-			 * @returns {void}
-			 */
-			const response$$1 = (err, data) => {
-				if (err) {
-					failed(err, data);
-				} else {
-					this.loggedin = true;
-					caller(callback, err, data);
-				}
-			};
-
-			/**
-			 * @param {Error} err err
-			 * @param {*} data data
-			 * @param {string} msg msg
-			 * @returns {void}
-			 */
-			const attempt = (err, data, msg) => {
-				if (err) {
-					failed(err, data);
-				} else {
-					if (method === AUTH_METHODS.CRAM_MD5) {
-						this.command(encode_cram_md5(msg), response$$1, [235, 503]);
-					} else if (method === AUTH_METHODS.LOGIN) {
-						this.command(
-							Buffer.from(login.password()).toString('base64'),
-							response$$1,
-							[235, 503]
-						);
-					}
-				}
-			};
-
-			/**
-			 * @param {Error} err err
-			 * @param {*} data data
-			 * @param {string} msg msg
-			 * @returns {void}
-			 */
-			const attempt_user = (err, data, msg) => {
-				if (err) {
-					failed(err, data);
-				} else {
-					if (method === AUTH_METHODS.LOGIN) {
-						this.command(
-							Buffer.from(login.user()).toString('base64'),
-							attempt,
-							[334]
-						);
-					}
-				}
-			};
-
-			switch (method) {
-				case AUTH_METHODS.CRAM_MD5:
-					this.command(`AUTH  ${AUTH_METHODS.CRAM_MD5}`, attempt, [334]);
-					break;
-				case AUTH_METHODS.LOGIN:
-					this.command(`AUTH ${AUTH_METHODS.LOGIN}`, attempt_user, [334]);
-					break;
-				case AUTH_METHODS.PLAIN:
-					this.command(
-						`AUTH ${AUTH_METHODS.PLAIN} ${encode_plain()}`,
-						response$$1,
-						[235, 503]
-					);
-					break;
-				case AUTH_METHODS.XOAUTH2:
-					this.command(
-						`AUTH ${AUTH_METHODS.XOAUTH2} ${encode_xoauth2()}`,
-						response$$1,
-						[235, 503]
-					);
-					break;
-				default:
-					const msg = 'no form of authorization supported';
-					const err = error(msg, error.AUTHNOTSUPPORTED, null, data);
-					caller(callback, err);
-					break;
-			}
-		};
-
-		this.ehlo_or_helo_if_needed(initiate, domain);
-	}
-
-	/**
-	 * @param {boolean} [force=false] whether or not to force destroy the connection
-	 * @returns {void}
-	 */
-	close(force = false) {
-		if (this.sock) {
-			if (force) {
-				this.log('smtp connection destroyed!');
-				this.sock.destroy();
-			} else {
-				this.log('smtp connection closed.');
-				this.sock.end();
-			}
-		}
-
-		if (this.monitor) {
-			this.monitor.stop();
-			this.monitor = null;
-		}
-
-		this._state = SMTPState.NOTCONNECTED;
-		this._secure = false;
-		this.sock = null;
-		this.features = null;
-		this.loggedin = !(this.user() && this.password());
-	}
-
-	/**
-	 * @param {function(...*): void} [callback] function to call after response
-	 * @returns {void}
-	 */
-	quit(callback) {
-		this.command(
-			'quit',
-			(err, data) => {
-				caller(callback, err, data);
-				this.close();
-			},
-			[221, 250]
-		);
-	}
-}
-
-var SMTP_1 = SMTP;
-var state = SMTPState;
-var authentication = AUTH_METHODS;
-var DEFAULT_TIMEOUT = TIMEOUT;
-
-var smtp = {
-	SMTP: SMTP_1,
-	state: state,
-	authentication: authentication,
-	DEFAULT_TIMEOUT: DEFAULT_TIMEOUT
-};
-
-var smtp$1 = ({
-	default: smtp,
-	__moduleExports: smtp,
-	SMTP: SMTP_1,
-	state: state,
-	authentication: authentication,
-	DEFAULT_TIMEOUT: DEFAULT_TIMEOUT
-});
 
 // expose to the world
 var addressparser_1 = addressparser;
@@ -1188,14 +28,14 @@ var addressparser_1 = addressparser;
  * @return {Array} An array of address objects
  */
 function addressparser(str) {
-    var tokenizer = new Tokenizer(str),
-        tokens = tokenizer.tokenize();
+    var tokenizer = new Tokenizer(str);
+    var tokens = tokenizer.tokenize();
 
-    var addresses = [],
-        address = [],
-        parsedAddresses = [];
+    var addresses = [];
+    var address = [];
+    var parsedAddresses = [];
 
-    tokens.forEach(function(token) {
+    tokens.forEach(function (token) {
         if (token.type === 'operator' && (token.value === ',' || token.value === ';')) {
             if (address.length) {
                 addresses.push(address);
@@ -1210,7 +50,7 @@ function addressparser(str) {
         addresses.push(address);
     }
 
-    addresses.forEach(function(address) {
+    addresses.forEach(function (address) {
         address = _handleAddress(address);
         if (address.length) {
             parsedAddresses = parsedAddresses.concat(address);
@@ -1227,23 +67,23 @@ function addressparser(str) {
  * @return {Object} Address object
  */
 function _handleAddress(tokens) {
-    var token,
-        isGroup = false,
-        state = 'text',
-        address,
-        addresses = [],
-        data = {
-            address: [],
-            comment: [],
-            group: [],
-            text: []
-        },
-        i, len;
+    var token;
+    var isGroup = false;
+    var state = 'text';
+    var address;
+    var addresses = [];
+    var data = {
+        address: [],
+        comment: [],
+        group: [],
+        text: []
+    };
+    var i;
+    var len;
 
     // Filter out <addresses>, (comments) and regular text
     for (i = 0, len = tokens.length; i < len; i++) {
         token = tokens[i];
-
         if (token.type === 'operator') {
             switch (token.value) {
                 case '<':
@@ -1259,10 +99,14 @@ function _handleAddress(tokens) {
                 default:
                     state = 'text';
             }
-        } else {
-            if (token.value) {
-                data[state].push(token.value);
+        } else if (token.value) {
+            if (state === 'address') {
+                // handle use case where unquoted name includes a "<"
+                // Apple Mail truncates everything between an unexpected < and an address
+                // and so will we
+                token.value = token.value.replace(/^[^<]*<\s*/, '');
             }
+            data[state].push(token.value);
         }
     }
 
@@ -1289,7 +133,7 @@ function _handleAddress(tokens) {
                 }
             }
 
-            var _regexHandler = function(address) {
+            var _regexHandler = function (address) {
                 if (!data.address.length) {
                     data.address = [address.trim()];
                     return ' ';
@@ -1301,7 +145,8 @@ function _handleAddress(tokens) {
             // still no address
             if (!data.address.length) {
                 for (i = data.text.length - 1; i >= 0; i--) {
-                    data.text[i] = data.text[i].replace(/\s*\b[^@\s]+@[^@\s]+\b\s*/, _regexHandler).trim();
+                    // fixed the regex to parse email address correctly when email address has more than one @
+                    data.text[i] = data.text[i].replace(/\s*\b[^@\s]+@[^\s]+\b\s*/, _regexHandler).trim();
                     if (data.address.length) {
                         break;
                     }
@@ -1387,14 +232,14 @@ Tokenizer.prototype.operators = {
  *
  * @return {Array} An array of operator|text tokens
  */
-Tokenizer.prototype.tokenize = function() {
+Tokenizer.prototype.tokenize = function () {
     var chr, list = [];
     for (var i = 0, len = this.str.length; i < len; i++) {
         chr = this.str.charAt(i);
         this.checkChar(chr);
     }
 
-    this.list.forEach(function(node) {
+    this.list.forEach(function (node) {
         node.value = (node.value || '').toString().trim();
         if (node.value) {
             list.push(node);
@@ -1409,7 +254,7 @@ Tokenizer.prototype.tokenize = function() {
  *
  * @param {String} chr Character from the address field
  */
-Tokenizer.prototype.checkChar = function(chr) {
+Tokenizer.prototype.checkChar = function (chr) {
     if ((chr in this.operators || chr === '\\') && this.escaped) {
         this.escaped = false;
     } else if (this.operatorExpecting && chr === this.operatorExpecting) {
@@ -1455,14 +300,24 @@ Tokenizer.prototype.checkChar = function(chr) {
     this.escaped = false;
 };
 
-var commonjsGlobal = typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
+var commonjsGlobal = typeof globalThis !== 'undefined' ? globalThis : typeof window !== 'undefined' ? window : typeof global !== 'undefined' ? global : typeof self !== 'undefined' ? self : {};
 
 function unwrapExports (x) {
 	return x && x.__esModule && Object.prototype.hasOwnProperty.call(x, 'default') ? x['default'] : x;
 }
 
-function createCommonjsModule(fn, module) {
-	return module = { exports: {} }, fn(module, module.exports), module.exports;
+function createCommonjsModule(fn, basedir, module) {
+	return module = {
+	  path: basedir,
+	  exports: {},
+	  require: function (path, base) {
+      return commonjsRequire(path, (base === undefined || base === null) ? module.path : base);
+    }
+	}, fn(module, module.exports), module.exports;
+}
+
+function commonjsRequire () {
+	throw new Error('Dynamic requires are not currently supported by @rollup/plugin-commonjs');
 }
 
 var base64Decode = createCommonjsModule(function (module, exports) {
@@ -1636,11 +491,15 @@ function _interopRequireDefault(obj) { return obj && obj.__esModule ? obj : { de
 });
 
 unwrapExports(base64);
+var base64_1 = base64.OUTPUT_STRING;
+var base64_2 = base64.OUTPUT_TYPED_ARRAY;
+var base64_3 = base64.encode;
+var base64_4 = base64.decode;
 
 var encodingIndexes = createCommonjsModule(function (module) {
 (function(global) {
 
-  if (module.exports) {
+  if ( module.exports) {
     module.exports = global;
   }
 
@@ -1697,7 +556,7 @@ var encoding = createCommonjsModule(function (module) {
 (function(global) {
 
   // If we're in node require encoding-indexes and attach it to the global.
-  if (module.exports &&
+  if ( module.exports &&
     !global["encoding-indexes"]) {
     global["encoding-indexes"] =
       encodingIndexes["encoding-indexes"];
@@ -2831,7 +1690,7 @@ var encoding = createCommonjsModule(function (module) {
      * @return {string}
      * @this {TextDecoder}
      */
-    function serializeStream(stream$$1) {
+    function serializeStream(stream) {
       // 1. Let token be the result of reading from stream.
       // (Done in-place on array, rather than as a stream)
 
@@ -2839,18 +1698,18 @@ var encoding = createCommonjsModule(function (module) {
       // BOM flag and BOM seen flag are unset, run these subsubsteps:
       if (includes(['UTF-8', 'UTF-16LE', 'UTF-16BE'], this._encoding.name) &&
           !this._ignoreBOM && !this._BOMseen) {
-        if (stream$$1.length > 0 && stream$$1[0] === 0xFEFF) {
+        if (stream.length > 0 && stream[0] === 0xFEFF) {
           // 1. If token is U+FEFF, set BOM seen flag.
           this._BOMseen = true;
-          stream$$1.shift();
-        } else if (stream$$1.length > 0) {
+          stream.shift();
+        } else if (stream.length > 0) {
           // 2. Otherwise, if token is not end-of-stream, set BOM seen
           // flag and append token to stream.
           this._BOMseen = true;
         }
       }
       // 4. Otherwise, return output.
-      return codePointsToString(stream$$1);
+      return codePointsToString(stream);
     }
 
     return serializeStream.call(this, output);
@@ -3016,7 +1875,7 @@ var encoding = createCommonjsModule(function (module) {
      *     decoded, or null if not enough data exists in the input
      *     stream to decode a complete code point.
      */
-    this.handler = function(stream$$1, bite) {
+    this.handler = function(stream, bite) {
       // 1. If byte is end-of-stream and utf-8 bytes needed is not 0,
       // set utf-8 bytes needed to 0 and return error.
       if (bite === end_of_stream && utf8_bytes_needed !== 0) {
@@ -3096,7 +1955,7 @@ var encoding = createCommonjsModule(function (module) {
         utf8_upper_boundary = 0xBF;
 
         // 2. Prepend byte to stream.
-        stream$$1.prepend(bite);
+        stream.prepend(bite);
 
         // 3. Return error.
         return decoderError(fatal);
@@ -3144,7 +2003,7 @@ var encoding = createCommonjsModule(function (module) {
      * @param {number} code_point Next code point read from the stream.
      * @return {(number|!Array.<number>)} Byte(s) to emit.
      */
-    this.handler = function(stream$$1, code_point) {
+    this.handler = function(stream, code_point) {
       // 1. If code point is end-of-stream, return finished.
       if (code_point === end_of_stream)
         return finished;
@@ -3226,7 +2085,7 @@ var encoding = createCommonjsModule(function (module) {
      *     decoded, or null if not enough data exists in the input
      *     stream to decode a complete code point.
      */
-    this.handler = function(stream$$1, bite) {
+    this.handler = function(stream, bite) {
       // 1. If byte is end-of-stream, return finished.
       if (bite === end_of_stream)
         return finished;
@@ -3263,7 +2122,7 @@ var encoding = createCommonjsModule(function (module) {
      * @param {number} code_point Next code point read from the stream.
      * @return {(number|!Array.<number>)} Byte(s) to emit.
      */
-    this.handler = function(stream$$1, code_point) {
+    this.handler = function(stream, code_point) {
       // 1. If code point is end-of-stream, return finished.
       if (code_point === end_of_stream)
         return finished;
@@ -3349,7 +2208,7 @@ var encoding = createCommonjsModule(function (module) {
      *     decoded, or null if not enough data exists in the input
      *     stream to decode a complete code point.
      */
-    this.handler = function(stream$$1, bite) {
+    this.handler = function(stream, bite) {
       // 1. If byte is end-of-stream and gb18030 first, gb18030
       // second, and gb18030 third are 0x00, return finished.
       if (bite === end_of_stream && gb18030_first === 0x00 &&
@@ -3395,7 +2254,7 @@ var encoding = createCommonjsModule(function (module) {
         // 5. If code point is null, prepend buffer to stream and
         // return error.
         if (code_point === null) {
-          stream$$1.prepend(buffer);
+          stream.prepend(buffer);
           return decoderError(fatal);
         }
 
@@ -3415,7 +2274,7 @@ var encoding = createCommonjsModule(function (module) {
 
         // 2. Prepend gb18030 second followed by byte to stream, set
         // gb18030 first and gb18030 second to 0x00, and return error.
-        stream$$1.prepend([gb18030_second, bite]);
+        stream.prepend([gb18030_second, bite]);
         gb18030_first = 0x00;
         gb18030_second = 0x00;
         return decoderError(fatal);
@@ -3455,7 +2314,7 @@ var encoding = createCommonjsModule(function (module) {
         // 6. If code point is null and byte is an ASCII byte, prepend
         // byte to stream.
         if (code_point === null && isASCIIByte(bite))
-          stream$$1.prepend(bite);
+          stream.prepend(bite);
 
         // 7. If code point is null, return error.
         if (code_point === null)
@@ -3501,7 +2360,7 @@ var encoding = createCommonjsModule(function (module) {
      * @param {number} code_point Next code point read from the stream.
      * @return {(number|!Array.<number>)} Byte(s) to emit.
      */
-    this.handler = function(stream$$1, code_point) {
+    this.handler = function(stream, code_point) {
       // 1. If code point is end-of-stream, return finished.
       if (code_point === end_of_stream)
         return finished;
@@ -3609,7 +2468,7 @@ var encoding = createCommonjsModule(function (module) {
      *     decoded, or null if not enough data exists in the input
      *     stream to decode a complete code point.
      */
-    this.handler = function(stream$$1, bite) {
+    this.handler = function(stream, bite) {
       // 1. If byte is end-of-stream and Big5 lead is not 0x00, set
       // Big5 lead to 0x00 and return error.
       if (bite === end_of_stream && Big5_lead !== 0x00) {
@@ -3664,7 +2523,7 @@ var encoding = createCommonjsModule(function (module) {
         // 5. If code point is null and byte is an ASCII byte, prepend
         // byte to stream.
         if (code_point === null && isASCIIByte(bite))
-          stream$$1.prepend(bite);
+          stream.prepend(bite);
 
         // 6. If code point is null, return error.
         if (code_point === null)
@@ -3704,7 +2563,7 @@ var encoding = createCommonjsModule(function (module) {
      * @param {number} code_point Next code point read from the stream.
      * @return {(number|!Array.<number>)} Byte(s) to emit.
      */
-    this.handler = function(stream$$1, code_point) {
+    this.handler = function(stream, code_point) {
       // 1. If code point is end-of-stream, return finished.
       if (code_point === end_of_stream)
         return finished;
@@ -3777,7 +2636,7 @@ var encoding = createCommonjsModule(function (module) {
      *     decoded, or null if not enough data exists in the input
      *     stream to decode a complete code point.
      */
-    this.handler = function(stream$$1, bite) {
+    this.handler = function(stream, bite) {
       // 1. If byte is end-of-stream and euc-jp lead is not 0x00, set
       // euc-jp lead to 0x00, and return error.
       if (bite === end_of_stream && eucjp_lead !== 0x00) {
@@ -3832,7 +2691,7 @@ var encoding = createCommonjsModule(function (module) {
         // 4. If byte is not in the range 0xA1 to 0xFE, inclusive,
         // prepend byte to stream.
         if (!inRange(bite, 0xA1, 0xFE))
-          stream$$1.prepend(bite);
+          stream.prepend(bite);
 
         // 5. If code point is null, return error.
         if (code_point === null)
@@ -3872,7 +2731,7 @@ var encoding = createCommonjsModule(function (module) {
      * @param {number} code_point Next code point read from the stream.
      * @return {(number|!Array.<number>)} Byte(s) to emit.
      */
-    this.handler = function(stream$$1, code_point) {
+    this.handler = function(stream, code_point) {
       // 1. If code point is end-of-stream, return finished.
       if (code_point === end_of_stream)
         return finished;
@@ -3963,7 +2822,7 @@ var encoding = createCommonjsModule(function (module) {
      *     decoded, or null if not enough data exists in the input
      *     stream to decode a complete code point.
      */
-    this.handler = function(stream$$1, bite) {
+    this.handler = function(stream, bite) {
       // switching on iso-2022-jp decoder state:
       switch (iso2022jp_decoder_state) {
       default:
@@ -4149,7 +3008,7 @@ var encoding = createCommonjsModule(function (module) {
           // Set the iso-2022-jp decoder state to lead byte, prepend
           // byte to stream, and return error.
           iso2022jp_decoder_state = states.LeadByte;
-          stream$$1.prepend(bite);
+          stream.prepend(bite);
           return decoderError(fatal);
         }
 
@@ -4172,7 +3031,7 @@ var encoding = createCommonjsModule(function (module) {
         }
 
         // 2. Prepend byte to stream.
-        stream$$1.prepend(bite);
+        stream.prepend(bite);
 
         // 3. Unset the iso-2022-jp output flag, set iso-2022-jp
         // decoder state to iso-2022-jp decoder output state, and
@@ -4227,7 +3086,7 @@ var encoding = createCommonjsModule(function (module) {
         }
 
         // 8. Prepend lead and byte to stream.
-        stream$$1.prepend([lead, bite]);
+        stream.prepend([lead, bite]);
 
         // 9. Unset the iso-2022-jp output flag, set iso-2022-jp
         // decoder state to iso-2022-jp decoder output state and
@@ -4262,14 +3121,14 @@ var encoding = createCommonjsModule(function (module) {
      * @param {number} code_point Next code point read from the stream.
      * @return {(number|!Array.<number>)} Byte(s) to emit.
      */
-    this.handler = function(stream$$1, code_point) {
+    this.handler = function(stream, code_point) {
       // 1. If code point is end-of-stream and iso-2022-jp encoder
       // state is not ASCII, prepend code point to stream, set
       // iso-2022-jp encoder state to ASCII, and return three bytes
       // 0x1B 0x28 0x42.
       if (code_point === end_of_stream &&
           iso2022jp_state !== states.ASCII) {
-        stream$$1.prepend(code_point);
+        stream.prepend(code_point);
         iso2022jp_state = states.ASCII;
         return [0x1B, 0x28, 0x42];
       }
@@ -4322,7 +3181,7 @@ var encoding = createCommonjsModule(function (module) {
       // 0x1B 0x28 0x42.
       if (isASCIICodePoint(code_point) &&
           iso2022jp_state !== states.ASCII) {
-        stream$$1.prepend(code_point);
+        stream.prepend(code_point);
         iso2022jp_state = states.ASCII;
         return [0x1B, 0x28, 0x42];
       }
@@ -4333,7 +3192,7 @@ var encoding = createCommonjsModule(function (module) {
       // 0x1B 0x28 0x4A.
       if ((code_point === 0x00A5 || code_point === 0x203E) &&
           iso2022jp_state !== states.Roman) {
-        stream$$1.prepend(code_point);
+        stream.prepend(code_point);
         iso2022jp_state = states.Roman;
         return [0x1B, 0x28, 0x4A];
       }
@@ -4354,7 +3213,7 @@ var encoding = createCommonjsModule(function (module) {
       // point to stream, set iso-2022-jp encoder state to jis0208,
       // and return three bytes 0x1B 0x24 0x42.
       if (iso2022jp_state !== states.jis0208) {
-        stream$$1.prepend(code_point);
+        stream.prepend(code_point);
         iso2022jp_state = states.jis0208;
         return [0x1B, 0x24, 0x42];
       }
@@ -4399,7 +3258,7 @@ var encoding = createCommonjsModule(function (module) {
      *     decoded, or null if not enough data exists in the input
      *     stream to decode a complete code point.
      */
-    this.handler = function(stream$$1, bite) {
+    this.handler = function(stream, bite) {
       // 1. If byte is end-of-stream and Shift_JIS lead is not 0x00,
       // set Shift_JIS lead to 0x00 and return error.
       if (bite === end_of_stream && Shift_JIS_lead !== 0x00) {
@@ -4447,7 +3306,7 @@ var encoding = createCommonjsModule(function (module) {
         // 6. If code point is null and byte is an ASCII byte, prepend
         // byte to stream.
         if (code_point === null && isASCIIByte(bite))
-          stream$$1.prepend(bite);
+          stream.prepend(bite);
 
         // 7. If code point is null, return error.
         if (code_point === null)
@@ -4493,7 +3352,7 @@ var encoding = createCommonjsModule(function (module) {
      * @param {number} code_point Next code point read from the stream.
      * @return {(number|!Array.<number>)} Byte(s) to emit.
      */
-    this.handler = function(stream$$1, code_point) {
+    this.handler = function(stream, code_point) {
       // 1. If code point is end-of-stream, return finished.
       if (code_point === end_of_stream)
         return finished;
@@ -4580,7 +3439,7 @@ var encoding = createCommonjsModule(function (module) {
      *     decoded, or null if not enough data exists in the input
      *     stream to decode a complete code point.
      */
-    this.handler = function(stream$$1, bite) {
+    this.handler = function(stream, bite) {
       // 1. If byte is end-of-stream and euc-kr lead is not 0x00, set
       // euc-kr lead to 0x00 and return error.
       if (bite === end_of_stream && euckr_lead !== 0) {
@@ -4614,7 +3473,7 @@ var encoding = createCommonjsModule(function (module) {
         // 3. If code point is null and byte is an ASCII byte, prepend
         // byte to stream.
         if (pointer === null && isASCIIByte(bite))
-          stream$$1.prepend(bite);
+          stream.prepend(bite);
 
         // 4. If code point is null, return error.
         if (code_point === null)
@@ -4654,7 +3513,7 @@ var encoding = createCommonjsModule(function (module) {
      * @param {number} code_point Next code point read from the stream.
      * @return {(number|!Array.<number>)} Byte(s) to emit.
      */
-    this.handler = function(stream$$1, code_point) {
+    this.handler = function(stream, code_point) {
       // 1. If code point is end-of-stream, return finished.
       if (code_point === end_of_stream)
         return finished;
@@ -4741,7 +3600,7 @@ var encoding = createCommonjsModule(function (module) {
      *     decoded, or null if not enough data exists in the input
      *     stream to decode a complete code point.
      */
-    this.handler = function(stream$$1, bite) {
+    this.handler = function(stream, bite) {
       // 1. If byte is end-of-stream and either utf-16 lead byte or
       // utf-16 lead surrogate is not null, set utf-16 lead byte and
       // utf-16 lead surrogate to null, and return error.
@@ -4796,7 +3655,7 @@ var encoding = createCommonjsModule(function (module) {
         // 2. Prepend the sequence resulting of converting code unit
         // to bytes using utf-16be decoder flag to stream and return
         // error.
-        stream$$1.prepend(convertCodeUnitToBytes(code_unit, utf16_be));
+        stream.prepend(convertCodeUnitToBytes(code_unit, utf16_be));
         return decoderError(fatal);
       }
 
@@ -4831,7 +3690,7 @@ var encoding = createCommonjsModule(function (module) {
      * @param {number} code_point Next code point read from the stream.
      * @return {(number|!Array.<number>)} Byte(s) to emit.
      */
-    this.handler = function(stream$$1, code_point) {
+    this.handler = function(stream, code_point) {
       // 1. If code point is end-of-stream, return finished.
       if (code_point === end_of_stream)
         return finished;
@@ -4898,7 +3757,7 @@ var encoding = createCommonjsModule(function (module) {
      *     decoded, or null if not enough data exists in the input
      *     stream to decode a complete code point.
      */
-    this.handler = function(stream$$1, bite) {
+    this.handler = function(stream, bite) {
       // 1. If byte is end-of-stream, return finished.
       if (bite === end_of_stream)
         return finished;
@@ -4926,7 +3785,7 @@ var encoding = createCommonjsModule(function (module) {
      * @param {number} code_point Next code point read from the stream.
      * @return {(number|!Array.<number>)} Byte(s) to emit.
      */
-    this.handler = function(stream$$1, code_point) {
+    this.handler = function(stream, code_point) {
       // 1.If code point is end-of-stream, return finished.
       if (code_point === end_of_stream)
         return finished;
@@ -4960,7 +3819,7 @@ var encoding = createCommonjsModule(function (module) {
   if (!global['TextDecoder'])
     global['TextDecoder'] = TextDecoder;
 
-  if (module.exports) {
+  if ( module.exports) {
     module.exports = {
       TextEncoder: global['TextEncoder'],
       TextDecoder: global['TextDecoder'],
@@ -5007,7 +3866,14 @@ var encode = exports.encode = function encode(str) {
 };
 
 var arr2str = exports.arr2str = function arr2str(arr) {
-  return String.fromCharCode.apply(null, arr);
+  var CHUNK_SZ = 0x8000;
+  var strs = [];
+
+  for (var i = 0; i < arr.length; i += CHUNK_SZ) {
+    strs.push(String.fromCharCode.apply(null, arr.subarray(i, i + CHUNK_SZ)));
+  }
+
+  return strs.join('');
 };
 
 /**
@@ -5093,6 +3959,73 @@ var charset_2 = charset.arr2str;
 var charset_3 = charset.encode;
 var charset_4 = charset.decode;
 
+/**
+ * A function that always returns `false`. Any passed in parameters are ignored.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.9.0
+ * @category Function
+ * @sig * -> Boolean
+ * @param {*}
+ * @return {Boolean}
+ * @see R.T
+ * @example
+ *
+ *      R.F(); //=> false
+ */
+var F = function () {
+  return false;
+};
+
+/**
+ * A function that always returns `true`. Any passed in parameters are ignored.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.9.0
+ * @category Function
+ * @sig * -> Boolean
+ * @param {*}
+ * @return {Boolean}
+ * @see R.F
+ * @example
+ *
+ *      R.T(); //=> true
+ */
+var T = function () {
+  return true;
+};
+
+/**
+ * A special placeholder value used to specify "gaps" within curried functions,
+ * allowing partial application of any combination of arguments, regardless of
+ * their positions.
+ *
+ * If `g` is a curried ternary function and `_` is `R.__`, the following are
+ * equivalent:
+ *
+ *   - `g(1, 2, 3)`
+ *   - `g(_, 2, 3)(1)`
+ *   - `g(_, _, 3)(1)(2)`
+ *   - `g(_, _, 3)(1, 2)`
+ *   - `g(_, 2, _)(1, 3)`
+ *   - `g(_, 2)(1)(3)`
+ *   - `g(_, 2)(1, 3)`
+ *   - `g(_, 2)(_, 3)(1)`
+ *
+ * @name __
+ * @constant
+ * @memberOf R
+ * @since v0.6.0
+ * @category Function
+ * @example
+ *
+ *      const greet = R.replace('{name}', R.__, 'Hello, {name}!');
+ *      greet('Alice'); //=> 'Hello, Alice!'
+ */
+var __ = { '@@functional/placeholder': true };
+
 function _isPlaceholder(a) {
        return a != null && typeof a === 'object' && a['@@functional/placeholder'] === true;
 }
@@ -5114,93 +4047,6 @@ function _curry1(fn) {
     }
   };
 }
-
-/**
- * Returns a function that always returns the given value. Note that for
- * non-primitives the value returned is a reference to the original value.
- *
- * This function is known as `const`, `constant`, or `K` (for K combinator) in
- * other languages and libraries.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Function
- * @sig a -> (* -> a)
- * @param {*} val The value to wrap in a function
- * @return {Function} A Function :: * -> val.
- * @example
- *
- *      var t = R.always('Tee');
- *      t(); //=> 'Tee'
- */
-var always = /*#__PURE__*/_curry1(function always(val) {
-  return function () {
-    return val;
-  };
-});
-
-/**
- * A function that always returns `false`. Any passed in parameters are ignored.
- *
- * @func
- * @memberOf R
- * @since v0.9.0
- * @category Function
- * @sig * -> Boolean
- * @param {*}
- * @return {Boolean}
- * @see R.always, R.T
- * @example
- *
- *      R.F(); //=> false
- */
-var F = /*#__PURE__*/always(false);
-
-/**
- * A function that always returns `true`. Any passed in parameters are ignored.
- *
- * @func
- * @memberOf R
- * @since v0.9.0
- * @category Function
- * @sig * -> Boolean
- * @param {*}
- * @return {Boolean}
- * @see R.always, R.F
- * @example
- *
- *      R.T(); //=> true
- */
-var T = /*#__PURE__*/always(true);
-
-/**
- * A special placeholder value used to specify "gaps" within curried functions,
- * allowing partial application of any combination of arguments, regardless of
- * their positions.
- *
- * If `g` is a curried ternary function and `_` is `R.__`, the following are
- * equivalent:
- *
- *   - `g(1, 2, 3)`
- *   - `g(_, 2, 3)(1)`
- *   - `g(_, _, 3)(1)(2)`
- *   - `g(_, _, 3)(1, 2)`
- *   - `g(_, 2, _)(1, 3)`
- *   - `g(_, 2)(1)(3)`
- *   - `g(_, 2)(1, 3)`
- *   - `g(_, 2)(_, 3)(1)`
- *
- * @constant
- * @memberOf R
- * @since v0.6.0
- * @category Function
- * @example
- *
- *      var greet = R.replace('{name}', R.__, 'Hello, {name}!');
- *      greet('Alice'); //=> 'Hello, Alice!'
- */
-var __ = { '@@functional/placeholder': true };
 
 /**
  * Optimized internal two-arity curry function.
@@ -5403,11 +4249,11 @@ function _curryN(length, received, fn) {
  * @see R.curry
  * @example
  *
- *      var sumArgs = (...args) => R.sum(args);
+ *      const sumArgs = (...args) => R.sum(args);
  *
- *      var curriedAddFourNumbers = R.curryN(4, sumArgs);
- *      var f = curriedAddFourNumbers(1, 2);
- *      var g = f(3);
+ *      const curriedAddFourNumbers = R.curryN(4, sumArgs);
+ *      const f = curriedAddFourNumbers(1, 2);
+ *      const g = f(3);
  *      g(4); //=> 10
  */
 var curryN = /*#__PURE__*/_curry2(function curryN(length, fn) {
@@ -5432,12 +4278,12 @@ var curryN = /*#__PURE__*/_curry2(function curryN(length, fn) {
  * @since v0.15.0
  * @category Function
  * @category List
- * @sig ((a ... -> b) ... -> [a] -> *) -> (a ..., Int, [a] -> b) ... -> [a] -> *)
+ * @sig ((a ... -> b) ... -> [a] -> *) -> ((a ..., Int, [a] -> b) ... -> [a] -> *)
  * @param {Function} fn A list iteration function that does not pass index or list to its callback
  * @return {Function} An altered list iteration function that passes (item, index, list) to its callback
  * @example
  *
- *      var mapIndexed = R.addIndex(R.map);
+ *      const mapIndexed = R.addIndex(R.map);
  *      mapIndexed((val, idx) => idx + '-' + val, ['f', 'o', 'o', 'b', 'a', 'r']);
  *      //=> ['0-f', '1-o', '2-o', '3-b', '4-a', '5-r']
  */
@@ -5508,9 +4354,9 @@ function _curry3(fn) {
  * @memberOf R
  * @since v0.14.0
  * @category List
- * @sig (a -> a) -> Number -> [a] -> [a]
- * @param {Function} fn The function to apply.
+ * @sig Number -> (a -> a) -> [a] -> [a]
  * @param {Number} idx The index.
+ * @param {Function} fn The function to apply.
  * @param {Array|Arguments} list An array-like object whose value
  *        at the supplied index will be replaced.
  * @return {Array} A copy of the supplied array-like object with
@@ -5519,12 +4365,12 @@ function _curry3(fn) {
  * @see R.update
  * @example
  *
- *      R.adjust(R.add(10), 1, [1, 2, 3]);     //=> [1, 12, 3]
- *      R.adjust(R.add(10))(1)([1, 2, 3]);     //=> [1, 12, 3]
- * @symb R.adjust(f, -1, [a, b]) = [a, f(b)]
- * @symb R.adjust(f, 0, [a, b]) = [f(a), b]
+ *      R.adjust(1, R.toUpper, ['a', 'b', 'c', 'd']);      //=> ['a', 'B', 'c', 'd']
+ *      R.adjust(-1, R.toUpper, ['a', 'b', 'c', 'd']);     //=> ['a', 'b', 'c', 'D']
+ * @symb R.adjust(-1, f, [a, b]) = [a, f(b)]
+ * @symb R.adjust(0, f, [a, b]) = [f(a), b]
  */
-var adjust = /*#__PURE__*/_curry3(function adjust(fn, idx, list) {
+var adjust = /*#__PURE__*/_curry3(function adjust(idx, fn, list) {
   if (idx >= list.length || idx < -list.length) {
     return list;
   }
@@ -5552,7 +4398,7 @@ var _isArray = Array.isArray || function _isArray(val) {
 };
 
 function _isTransformer(obj) {
-  return typeof obj['@@transducer/step'] === 'function';
+  return obj != null && typeof obj['@@transducer/step'] === 'function';
 }
 
 /**
@@ -5657,7 +4503,7 @@ var _xall = /*#__PURE__*/_curry2(function _xall(f, xf) {
  * @see R.any, R.none, R.transduce
  * @example
  *
- *      var equals3 = R.equals(3);
+ *      const equals3 = R.equals(3);
  *      R.all(equals3)([3, 3, 3, 3]); //=> true
  *      R.all(equals3)([3, 3, 1, 3]); //=> false
  */
@@ -5788,7 +4634,7 @@ function _xwrap(fn) {
  * @see R.partial
  * @example
  *
- *      var log = R.bind(console.log, console);
+ *      const log = R.bind(console.log, console);
  *      R.pipe(R.assoc('a', 2), R.tap(log), R.assoc('a', 3))({a: 1}); //=> {a: 3}
  *      // logs {a: 2}
  * @symb R.bind(f, o)(a, b) = f.call(o, a, b)
@@ -5878,13 +4724,13 @@ function _has(prop, obj) {
 }
 
 var toString = Object.prototype.toString;
-var _isArguments = function () {
+var _isArguments = /*#__PURE__*/function () {
   return toString.call(arguments) === '[object Arguments]' ? function _isArguments(x) {
     return toString.call(x) === '[object Arguments]';
   } : function _isArguments(x) {
     return _has('callee', x);
   };
-};
+}();
 
 // cover IE < 9 keys issues
 var hasEnumBug = ! /*#__PURE__*/{ toString: null }.propertyIsEnumerable('toString');
@@ -5924,9 +4770,9 @@ var contains = function contains(list, item) {
  *
  *      R.keys({a: 1, b: 2, c: 3}); //=> ['a', 'b', 'c']
  */
-var _keys = typeof Object.keys === 'function' && !hasArgsEnumBug ? function keys(obj) {
+var keys = typeof Object.keys === 'function' && !hasArgsEnumBug ? /*#__PURE__*/_curry1(function keys(obj) {
   return Object(obj) !== obj ? [] : Object.keys(obj);
-} : function keys(obj) {
+}) : /*#__PURE__*/_curry1(function keys(obj) {
   if (Object(obj) !== obj) {
     return [];
   }
@@ -5949,8 +4795,7 @@ var _keys = typeof Object.keys === 'function' && !hasArgsEnumBug ? function keys
     }
   }
   return ks;
-};
-var keys = /*#__PURE__*/_curry1(_keys);
+});
 
 /**
  * Takes a function and
@@ -5978,7 +4823,7 @@ var keys = /*#__PURE__*/_curry1(_keys);
  * @see R.transduce, R.addIndex
  * @example
  *
- *      var double = x => x * 2;
+ *      const double = x => x * 2;
  *
  *      R.map(double, [1, 2, 3]); //=> [2, 4, 6]
  *
@@ -6051,6 +4896,7 @@ var path = /*#__PURE__*/_curry2(function path(paths, obj) {
  *
  *      R.prop('x', {x: 100}); //=> 100
  *      R.prop('x', {}); //=> undefined
+ *      R.compose(R.inc, R.prop('x'))({ x: 3 }) //=> 4
  */
 
 var prop = /*#__PURE__*/_curry2(function prop(p, obj) {
@@ -6076,8 +4922,10 @@ var prop = /*#__PURE__*/_curry2(function prop(p, obj) {
  * @see R.props
  * @example
  *
- *      R.pluck('a')([{a: 1}, {a: 2}]); //=> [1, 2]
- *      R.pluck(0)([[1, 2], [3, 4]]);   //=> [1, 3]
+ *      var getAges = R.pluck('age');
+ *      getAges([{name: 'fred', age: 29}, {name: 'wilma', age: 27}]); //=> [29, 27]
+ *
+ *      R.pluck(0, [[1, 2], [3, 4]]);               //=> [1, 3]
  *      R.pluck('val', {a: {val: 3}, b: {val: 5}}); //=> {a: 3, b: 5}
  * @symb R.pluck('x', [{x: 1, y: 2}, {x: 3, y: 4}, {x: 5, y: 6}]) = [1, 3, 5]
  * @symb R.pluck(0, [[1, 2], [3, 4], [5, 6]]) = [1, 3, 5]
@@ -6152,9 +5000,9 @@ var reduce = /*#__PURE__*/_curry3(_reduce);
  * @see R.anyPass
  * @example
  *
- *      var isQueen = R.propEq('rank', 'Q');
- *      var isSpade = R.propEq('suit', '♠︎');
- *      var isQueenOfSpades = R.allPass([isQueen, isSpade]);
+ *      const isQueen = R.propEq('rank', 'Q');
+ *      const isSpade = R.propEq('suit', '♠︎');
+ *      const isQueenOfSpades = R.allPass([isQueen, isSpade]);
  *
  *      isQueenOfSpades({rank: 'Q', suit: '♣︎'}); //=> false
  *      isQueenOfSpades({rank: 'Q', suit: '♠︎'}); //=> true
@@ -6171,6 +5019,31 @@ var allPass = /*#__PURE__*/_curry1(function allPass(preds) {
     }
     return true;
   });
+});
+
+/**
+ * Returns a function that always returns the given value. Note that for
+ * non-primitives the value returned is a reference to the original value.
+ *
+ * This function is known as `const`, `constant`, or `K` (for K combinator) in
+ * other languages and libraries.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Function
+ * @sig a -> (* -> a)
+ * @param {*} val The value to wrap in a function
+ * @return {Function} A Function :: * -> val.
+ * @example
+ *
+ *      const t = R.always('Tee');
+ *      t(); //=> 'Tee'
+ */
+var always = /*#__PURE__*/_curry1(function always(val) {
+  return function () {
+    return val;
+  };
 });
 
 /**
@@ -6225,7 +5098,7 @@ var _xany = /*#__PURE__*/_curry2(function _xany(f, xf) {
 });
 
 /**
- * Returns `true` if at least one of elements of the list match the predicate,
+ * Returns `true` if at least one of the elements of the list match the predicate,
  * `false` otherwise.
  *
  * Dispatches to the `any` method of the second argument, if present.
@@ -6244,8 +5117,8 @@ var _xany = /*#__PURE__*/_curry2(function _xany(f, xf) {
  * @see R.all, R.none, R.transduce
  * @example
  *
- *      var lessThan0 = R.flip(R.lt)(0);
- *      var lessThan2 = R.flip(R.lt)(2);
+ *      const lessThan0 = R.flip(R.lt)(0);
+ *      const lessThan2 = R.flip(R.lt)(2);
  *      R.any(lessThan0)([1, 2]); //=> false
  *      R.any(lessThan2)([1, 2]); //=> true
  */
@@ -6278,9 +5151,9 @@ var any = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable(['any'], _xany, funct
  * @see R.allPass
  * @example
  *
- *      var isClub = R.propEq('suit', '♣');
- *      var isSpade = R.propEq('suit', '♠');
- *      var isBlackCard = R.anyPass([isClub, isSpade]);
+ *      const isClub = R.propEq('suit', '♣');
+ *      const isSpade = R.propEq('suit', '♠');
+ *      const isBlackCard = R.anyPass([isClub, isSpade]);
  *
  *      isBlackCard({rank: '10', suit: '♣'}); //=> true
  *      isBlackCard({rank: 'Q', suit: '♠'}); //=> true
@@ -6312,7 +5185,7 @@ var anyPass = /*#__PURE__*/_curry1(function anyPass(preds) {
  * @category Function
  * @sig [a -> b] -> [a] -> [b]
  * @sig Apply f => f (a -> b) -> f a -> f b
- * @sig (a -> b -> c) -> (a -> b) -> (a -> c)
+ * @sig (r -> a -> b) -> (r -> a) -> (r -> b)
  * @param {*} applyF
  * @param {*} applyX
  * @return {*}
@@ -6329,9 +5202,7 @@ var anyPass = /*#__PURE__*/_curry1(function anyPass(preds) {
 var ap = /*#__PURE__*/_curry2(function ap(applyF, applyX) {
   return typeof applyX['fantasy-land/ap'] === 'function' ? applyX['fantasy-land/ap'](applyF) : typeof applyF.ap === 'function' ? applyF.ap(applyX) : typeof applyF === 'function' ? function (x) {
     return applyF(x)(applyX(x));
-  } :
-  // else
-  _reduce(function (acc, f) {
+  } : _reduce(function (acc, f) {
     return _concat(acc, map(f, applyX));
   }, [], applyF);
 });
@@ -6445,7 +5316,7 @@ var append = /*#__PURE__*/_curry2(function append(el, list) {
  * @see R.call, R.unapply
  * @example
  *
- *      var nums = [1, 2, 3, -99, 42, 6, 7];
+ *      const nums = [1, 2, 3, -99, 42, 6, 7];
  *      R.apply(Math.max, nums); //=> 42
  * @symb R.apply(f, [a, b, c]) = f(a, b, c)
  */
@@ -6482,6 +5353,15 @@ var values = /*#__PURE__*/_curry1(function values(obj) {
   return vals;
 });
 
+// Use custom mapValues function to avoid issues with specs that include a "map" key and R.map
+// delegating calls to .map
+function mapValues(fn, obj) {
+  return keys(obj).reduce(function (acc, key) {
+    acc[key] = fn(obj[key]);
+    return acc;
+  }, {});
+}
+
 /**
  * Given a spec object recursively mapping properties to functions, creates a
  * function producing an object of the same structure, by mapping each property
@@ -6500,7 +5380,7 @@ var values = /*#__PURE__*/_curry1(function values(obj) {
  * @see R.converge, R.juxt
  * @example
  *
- *      var getMetrics = R.applySpec({
+ *      const getMetrics = R.applySpec({
  *        sum: R.add,
  *        nested: { mul: R.multiply }
  *      });
@@ -6508,36 +5388,37 @@ var values = /*#__PURE__*/_curry1(function values(obj) {
  * @symb R.applySpec({ x: f, y: { z: g } })(a, b) = { x: f(a, b), y: { z: g(a, b) } }
  */
 var applySpec = /*#__PURE__*/_curry1(function applySpec(spec) {
-  spec = map(function (v) {
+  spec = mapValues(function (v) {
     return typeof v == 'function' ? v : applySpec(v);
   }, spec);
+
   return curryN(reduce(max, 0, pluck('length', values(spec))), function () {
     var args = arguments;
-    return map(function (f) {
+    return mapValues(function (f) {
       return apply(f, args);
     }, spec);
   });
 });
 
 /**
-* Takes a value and applies a function to it.
-*
-* This function is also known as the `thrush` combinator.
-*
-* @func
-* @memberOf R
+ * Takes a value and applies a function to it.
+ *
+ * This function is also known as the `thrush` combinator.
+ *
+ * @func
+ * @memberOf R
  * @since v0.25.0
-* @category Function
-* @sig a -> (a -> b) -> b
-* @param {*} x The value
-* @param {Function} f The function to apply
-* @return {*} The result of applying `f` to `x`
-* @example
-*
-*      var t42 = R.applyTo(42);
-*      t42(R.identity); //=> 42
-*      t42(R.add(1)); //=> 43
-*/
+ * @category Function
+ * @sig a -> (a -> b) -> b
+ * @param {*} x The value
+ * @param {Function} f The function to apply
+ * @return {*} The result of applying `f` to `x`
+ * @example
+ *
+ *      const t42 = R.applyTo(42);
+ *      t42(R.identity); //=> 42
+ *      t42(R.add(1)); //=> 43
+ */
 var applyTo = /*#__PURE__*/_curry2(function applyTo(x, f) {
   return f(x);
 });
@@ -6558,11 +5439,14 @@ var applyTo = /*#__PURE__*/_curry2(function applyTo(x, f) {
  * @see R.descend
  * @example
  *
- *      var byAge = R.ascend(R.prop('age'));
- *      var people = [
- *        // ...
+ *      const byAge = R.ascend(R.prop('age'));
+ *      const people = [
+ *        { name: 'Emma', age: 70 },
+ *        { name: 'Peter', age: 78 },
+ *        { name: 'Mikhail', age: 62 },
  *      ];
- *      var peopleByYoungestFirst = R.sort(byAge, people);
+ *      const peopleByYoungestFirst = R.sort(byAge, people);
+ *        //=> [{ name: 'Mikhail', age: 62 },{ name: 'Emma', age: 70 }, { name: 'Peter', age: 78 }]
  */
 var ascend = /*#__PURE__*/_curry3(function ascend(fn, a, b) {
   var aa = fn(a);
@@ -6585,7 +5469,7 @@ var ascend = /*#__PURE__*/_curry3(function ascend(fn, a, b) {
  * @param {*} val The new value
  * @param {Object} obj The object to clone
  * @return {Object} A new object equivalent to the original except for the changed property.
- * @see R.dissoc
+ * @see R.dissoc, R.pick
  * @example
  *
  *      R.assoc('c', 3, {a: 1, b: 2}); //=> {a: 1, b: 2, c: 3}
@@ -6691,12 +5575,12 @@ var assocPath = /*#__PURE__*/_curry3(function assocPath(path, val, obj) {
  * @see R.binary, R.unary
  * @example
  *
- *      var takesTwoArgs = (a, b) => [a, b];
+ *      const takesTwoArgs = (a, b) => [a, b];
  *
  *      takesTwoArgs.length; //=> 2
  *      takesTwoArgs(1, 2); //=> [1, 2]
  *
- *      var takesOneArg = R.nAry(1, takesTwoArgs);
+ *      const takesOneArg = R.nAry(1, takesTwoArgs);
  *      takesOneArg.length; //=> 1
  *      // Only `n` arguments are passed to the wrapped function
  *      takesOneArg(1, 2); //=> [1, undefined]
@@ -6771,13 +5655,13 @@ var nAry = /*#__PURE__*/_curry2(function nAry(n, fn) {
  * @see R.nAry, R.unary
  * @example
  *
- *      var takesThreeArgs = function(a, b, c) {
+ *      const takesThreeArgs = function(a, b, c) {
  *        return [a, b, c];
  *      };
  *      takesThreeArgs.length; //=> 3
  *      takesThreeArgs(1, 2, 3); //=> [1, 2, 3]
  *
- *      var takesTwoArgs = R.binary(takesThreeArgs);
+ *      const takesTwoArgs = R.binary(takesThreeArgs);
  *      takesTwoArgs.length; //=> 2
  *      // Only 2 arguments are passed to the wrapped function
  *      takesTwoArgs(1, 2, 3); //=> [1, 2, undefined]
@@ -6805,7 +5689,7 @@ function _isFunction(x) {
  * @see R.lift, R.ap
  * @example
  *
- *      var madd3 = R.liftN(3, (...args) => R.sum(args));
+ *      const madd3 = R.liftN(3, (...args) => R.sum(args));
  *      madd3([1,2,3], [1,2,3], [1]); //=> [3, 4, 5, 4, 5, 6, 5, 6, 7]
  */
 var liftN = /*#__PURE__*/_curry2(function liftN(arity, fn) {
@@ -6829,11 +5713,11 @@ var liftN = /*#__PURE__*/_curry2(function liftN(arity, fn) {
  * @see R.liftN
  * @example
  *
- *      var madd3 = R.lift((a, b, c) => a + b + c);
+ *      const madd3 = R.lift((a, b, c) => a + b + c);
  *
  *      madd3([1,2,3], [1,2,3], [1]); //=> [3, 4, 5, 4, 5, 6, 5, 6, 7]
  *
- *      var madd5 = R.lift((a, b, c, d, e) => a + b + c + d + e);
+ *      const madd5 = R.lift((a, b, c, d, e) => a + b + c + d + e);
  *
  *      madd5([1,2], [3], [4, 5], [6], [7, 8]); //=> [21, 22, 22, 23, 22, 23, 23, 24]
  */
@@ -6863,11 +5747,14 @@ var lift = /*#__PURE__*/_curry1(function lift(fn) {
  * @see R.and
  * @example
  *
- *      var gt10 = R.gt(R.__, 10)
- *      var lt20 = R.lt(R.__, 20)
- *      var f = R.both(gt10, lt20);
+ *      const gt10 = R.gt(R.__, 10)
+ *      const lt20 = R.lt(R.__, 20)
+ *      const f = R.both(gt10, lt20);
  *      f(15); //=> true
  *      f(30); //=> false
+ *
+ *      R.both(Maybe.Just(false), Maybe.Just(55)); // => Maybe.Just(false)
+ *      R.both([false, false, 'a'], [11]); //=> [false, false, 11]
  */
 var both = /*#__PURE__*/_curry2(function both(f, g) {
   return _isFunction(f) ? function _both() {
@@ -6906,14 +5793,14 @@ var both = /*#__PURE__*/_curry2(function both(f, g) {
  * @sig (* -> a) -> (* -> a)
  * @param {Function} fn The function to curry.
  * @return {Function} A new, curried function.
- * @see R.curryN
+ * @see R.curryN, R.partial
  * @example
  *
- *      var addFourNumbers = (a, b, c, d) => a + b + c + d;
+ *      const addFourNumbers = (a, b, c, d) => a + b + c + d;
  *
- *      var curriedAddFourNumbers = R.curry(addFourNumbers);
- *      var f = curriedAddFourNumbers(1, 2);
- *      var g = f(3);
+ *      const curriedAddFourNumbers = R.curry(addFourNumbers);
+ *      const f = curriedAddFourNumbers(1, 2);
+ *      const g = f(3);
  *      g(4); //=> 10
  */
 var curry = /*#__PURE__*/_curry1(function curry(fn) {
@@ -6940,11 +5827,11 @@ var curry = /*#__PURE__*/_curry1(function curry(fn) {
  *
  *      R.call(R.add, 1, 2); //=> 3
  *
- *      var indentN = R.pipe(R.repeat(' '),
+ *      const indentN = R.pipe(R.repeat(' '),
  *                           R.join(''),
  *                           R.replace(/^(?!$)/gm));
  *
- *      var format = R.converge(R.call, [
+ *      const format = R.converge(R.call, [
  *                                  R.pipe(R.prop('indent'), indentN),
  *                                  R.prop('value')
  *                              ]);
@@ -7026,10 +5913,14 @@ var _xchain = /*#__PURE__*/_curry2(function _xchain(f, xf) {
 
 /**
  * `chain` maps a function over a list and concatenates the results. `chain`
- * is also known as `flatMap` in some libraries
+ * is also known as `flatMap` in some libraries.
  *
  * Dispatches to the `chain` method of the second argument, if present,
  * according to the [FantasyLand Chain spec](https://github.com/fantasyland/fantasy-land#chain).
+ *
+ * If second argument is a function, `chain(f, g)(x)` is equivalent to `f(g(x), x)`.
+ *
+ * Acts as a transducer if a transformer is given in list position.
  *
  * @func
  * @memberOf R
@@ -7041,7 +5932,7 @@ var _xchain = /*#__PURE__*/_curry2(function _xchain(f, xf) {
  * @return {Array} The result of flat-mapping `list` with `fn`
  * @example
  *
- *      var duplicate = n => [n, n];
+ *      const duplicate = n => [n, n];
  *      R.chain(duplicate, [1, 2, 3]); //=> [1, 1, 2, 2, 3, 3]
  *
  *      R.chain(R.append, R.head)([1, 2, 3]); //=> [1, 2, 3, 1]
@@ -7172,8 +6063,8 @@ function _clone(value, refFrom, refTo, deep) {
  * @return {*} A deeply cloned copy of `val`
  * @example
  *
- *      var objects = [{}, {}, {}];
- *      var objectsClone = R.clone(objects);
+ *      const objects = [{}, {}, {}];
+ *      const objectsClone = R.clone(objects);
  *      objects === objectsClone; //=> false
  *      objects[0] === objectsClone[0]; //=> false
  */
@@ -7195,11 +6086,14 @@ var clone = /*#__PURE__*/_curry1(function clone(value) {
  * @return {Function} A Function :: a -> b -> Int that returns `-1` if a < b, `1` if b < a, otherwise `0`
  * @example
  *
- *      var byAge = R.comparator((a, b) => a.age < b.age);
- *      var people = [
- *        // ...
+ *      const byAge = R.comparator((a, b) => a.age < b.age);
+ *      const people = [
+ *        { name: 'Emma', age: 70 },
+ *        { name: 'Peter', age: 78 },
+ *        { name: 'Mikhail', age: 62 },
  *      ];
- *      var peopleByIncreasingAge = R.sort(byAge, people);
+ *      const peopleByIncreasingAge = R.sort(byAge, people);
+ *        //=> [{ name: 'Mikhail', age: 62 },{ name: 'Emma', age: 70 }, { name: 'Peter', age: 78 }]
  */
 var comparator = /*#__PURE__*/_curry1(function comparator(pred) {
   return function (a, b) {
@@ -7246,7 +6140,7 @@ var not = /*#__PURE__*/_curry1(function not(a) {
  * @see R.not
  * @example
  *
- *      var isNotNil = R.complement(R.isNil);
+ *      const isNotNil = R.complement(R.isNil);
  *      isNil(null); //=> true
  *      isNotNil(null); //=> false
  *      isNil(7); //=> false
@@ -7356,7 +6250,7 @@ var tail = /*#__PURE__*/_curry1( /*#__PURE__*/_checkForMethod('tail', /*#__PURE_
  * @see R.compose
  * @example
  *
- *      var f = R.pipe(Math.pow, R.negate, R.inc);
+ *      const f = R.pipe(Math.pow, R.negate, R.inc);
  *
  *      f(3, 4); // -(3^4) + 1
  * @symb R.pipe(f, g, h)(a, b) = h(g(f(a, b)))
@@ -7412,8 +6306,8 @@ var reverse = /*#__PURE__*/_curry1(function reverse(list) {
  * @see R.pipe
  * @example
  *
- *      var classyGreeting = (firstName, lastName) => "The name's " + lastName + ", " + firstName + " " + lastName
- *      var yellGreeting = R.compose(R.toUpper, classyGreeting);
+ *      const classyGreeting = (firstName, lastName) => "The name's " + lastName + ", " + firstName + " " + lastName
+ *      const yellGreeting = R.compose(R.toUpper, classyGreeting);
  *      yellGreeting('James', 'Bond'); //=> "THE NAME'S BOND, JAMES BOND"
  *
  *      R.compose(Math.abs, R.add(1), R.multiply(2))(-4) //=> 7
@@ -7441,13 +6335,14 @@ function compose() {
  * @param {...Function} ...functions The functions to compose
  * @return {Function}
  * @see R.pipeK
+ * @deprecated since v0.26.0
  * @example
  *
  *       //  get :: String -> Object -> Maybe *
- *       var get = R.curry((propName, obj) => Maybe(obj[propName]))
+ *       const get = R.curry((propName, obj) => Maybe(obj[propName]))
  *
  *       //  getStateCode :: Maybe String -> Maybe String
- *       var getStateCode = R.composeK(
+ *       const getStateCode = R.composeK(
  *         R.compose(Maybe.of, R.toUpper),
  *         get('state'),
  *         get('address'),
@@ -7488,10 +6383,11 @@ function _pipeP(f, g) {
  * @param {...Function} functions
  * @return {Function}
  * @see R.composeP
+ * @deprecated since v0.26.0
  * @example
  *
  *      //  followersForUser :: String -> Promise [User]
- *      var followersForUser = R.pipeP(db.getUserById, db.getFollowers);
+ *      const followersForUser = R.pipeP(db.getUserById, db.getFollowers);
  */
 function pipeP() {
   if (arguments.length === 0) {
@@ -7513,9 +6409,10 @@ function pipeP() {
  * @param {...Function} functions The functions to compose
  * @return {Function}
  * @see R.pipeP
+ * @deprecated since v0.26.0
  * @example
  *
- *      var db = {
+ *      const db = {
  *        users: {
  *          JOE: {
  *            name: 'Joe',
@@ -7525,12 +6422,12 @@ function pipeP() {
  *      }
  *
  *      // We'll pretend to do a db lookup which returns a promise
- *      var lookupUser = (userId) => Promise.resolve(db.users[userId])
- *      var lookupFollowers = (user) => Promise.resolve(user.followers)
+ *      const lookupUser = (userId) => Promise.resolve(db.users[userId])
+ *      const lookupFollowers = (user) => Promise.resolve(user.followers)
  *      lookupUser('JOE').then(lookupFollowers)
  *
  *      //  followersForUser :: String -> Promise [UserId]
- *      var followersForUser = R.composeP(lookupFollowers, lookupUser);
+ *      const followersForUser = R.composeP(lookupFollowers, lookupUser);
  *      followersForUser('JOE').then(followers => console.log('Followers:', followers))
  *      // Followers: ["STEVE","SUZY"]
  */
@@ -7541,6 +6438,147 @@ function composeP() {
   return pipeP.apply(this, reverse(arguments));
 }
 
+/**
+ * Returns the nth element of the given list or string. If n is negative the
+ * element at index length + n is returned.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig Number -> [a] -> a | Undefined
+ * @sig Number -> String -> String
+ * @param {Number} offset
+ * @param {*} list
+ * @return {*}
+ * @example
+ *
+ *      const list = ['foo', 'bar', 'baz', 'quux'];
+ *      R.nth(1, list); //=> 'bar'
+ *      R.nth(-1, list); //=> 'quux'
+ *      R.nth(-99, list); //=> undefined
+ *
+ *      R.nth(2, 'abc'); //=> 'c'
+ *      R.nth(3, 'abc'); //=> ''
+ * @symb R.nth(-1, [a, b, c]) = c
+ * @symb R.nth(0, [a, b, c]) = a
+ * @symb R.nth(1, [a, b, c]) = b
+ */
+var nth = /*#__PURE__*/_curry2(function nth(offset, list) {
+  var idx = offset < 0 ? list.length + offset : offset;
+  return _isString(list) ? list.charAt(idx) : list[idx];
+});
+
+/**
+ * Returns the first element of the given list or string. In some libraries
+ * this function is named `first`.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig [a] -> a | Undefined
+ * @sig String -> String
+ * @param {Array|String} list
+ * @return {*}
+ * @see R.tail, R.init, R.last
+ * @example
+ *
+ *      R.head(['fi', 'fo', 'fum']); //=> 'fi'
+ *      R.head([]); //=> undefined
+ *
+ *      R.head('abc'); //=> 'a'
+ *      R.head(''); //=> ''
+ */
+var head = /*#__PURE__*/nth(0);
+
+function _identity(x) {
+  return x;
+}
+
+/**
+ * A function that does nothing but return the parameter supplied to it. Good
+ * as a default or placeholder function.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Function
+ * @sig a -> a
+ * @param {*} x The value to return.
+ * @return {*} The input value, `x`.
+ * @example
+ *
+ *      R.identity(1); //=> 1
+ *
+ *      const obj = {};
+ *      R.identity(obj) === obj; //=> true
+ * @symb R.identity(a) = a
+ */
+var identity = /*#__PURE__*/_curry1(_identity);
+
+/**
+ * Performs left-to-right function composition using transforming function. The leftmost function may have
+ * any arity; the remaining functions must be unary.
+ *
+ * **Note:** The result of pipeWith is not automatically curried.
+ *
+ * @func
+ * @memberOf R
+ * @category Function
+ * @sig ((* -> *), [((a, b, ..., n) -> o), (o -> p), ..., (x -> y), (y -> z)]) -> ((a, b, ..., n) -> z)
+ * @param {...Function} functions
+ * @return {Function}
+ * @see R.composeWith, R.pipe
+ * @example
+ *
+ *      const pipeWhileNotNil = R.pipeWith((f, res) => R.isNil(res) ? res : f(res));
+ *      const f = pipeWhileNotNil([Math.pow, R.negate, R.inc])
+ *
+ *      f(3, 4); // -(3^4) + 1
+ * @symb R.pipeWith(f)([g, h, i])(...args) = f(i, f(h, f(g, ...args)))
+ */
+var pipeWith = /*#__PURE__*/_curry2(function pipeWith(xf, list) {
+  if (list.length <= 0) {
+    return identity;
+  }
+
+  var headList = head(list);
+  var tailList = tail(list);
+
+  return _arity(headList.length, function () {
+    return _reduce(function (result, f) {
+      return xf.call(this, f, result);
+    }, headList.apply(this, arguments), tailList);
+  });
+});
+
+/**
+ * Performs right-to-left function composition using transforming function. The rightmost function may have
+ * any arity; the remaining functions must be unary.
+ *
+ * **Note:** The result of compose is not automatically curried.
+ *
+ * @func
+ * @memberOf R
+ * @category Function
+ * @sig ((* -> *), [(y -> z), (x -> y), ..., (o -> p), ((a, b, ..., n) -> o)]) -> ((a, b, ..., n) -> z)
+ * @param {...Function} ...functions The functions to compose
+ * @return {Function}
+ * @see R.compose, R.pipeWith
+ * @example
+ *
+ *      const composeWhileNotNil = R.composeWith((f, res) => R.isNil(res) ? res : f(res));
+ *
+ *      composeWhileNotNil([R.inc, R.prop('age')])({age: 1}) //=> 2
+ *      composeWhileNotNil([R.inc, R.prop('age')])({}) //=> undefined
+ *
+ * @symb R.composeWith(f)([g, h, i])(...args) = f(g, f(h, f(i, ...args)))
+ */
+var composeWith = /*#__PURE__*/_curry2(function composeWith(xf, list) {
+  return pipeWith.apply(this, [xf, reverse(list)]);
+});
+
 function _arrayFromIterator(iter) {
   var list = [];
   var next;
@@ -7550,7 +6588,7 @@ function _arrayFromIterator(iter) {
   return list;
 }
 
-function _containsWith(pred, x, list) {
+function _includesWith(pred, x, list) {
   var idx = 0;
   var len = list.length;
 
@@ -7569,30 +6607,8 @@ function _functionName(f) {
   return match == null ? '' : match[1];
 }
 
-/**
- * Returns true if its arguments are identical, false otherwise. Values are
- * identical if they reference the same memory. `NaN` is identical to `NaN`;
- * `0` and `-0` are not identical.
- *
- * @func
- * @memberOf R
- * @since v0.15.0
- * @category Relation
- * @sig a -> a -> Boolean
- * @param {*} a
- * @param {*} b
- * @return {Boolean}
- * @example
- *
- *      var o = {};
- *      R.identical(o, o); //=> true
- *      R.identical(1, 1); //=> true
- *      R.identical(1, '1'); //=> false
- *      R.identical([], []); //=> false
- *      R.identical(0, -0); //=> false
- *      R.identical(NaN, NaN); //=> true
- */
-var identical = /*#__PURE__*/_curry2(function identical(a, b) {
+// Based on https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Object/is
+function _objectIs(a, b) {
   // SameValue algorithm
   if (a === b) {
     // Steps 1-5, 7-10
@@ -7602,7 +6618,9 @@ var identical = /*#__PURE__*/_curry2(function identical(a, b) {
     // Step 6.a: NaN == NaN
     return a !== a && b !== b;
   }
-});
+}
+
+var _objectIs$1 = typeof Object.is === 'function' ? Object.is : _objectIs;
 
 /**
  * private _uniqContentEquals function.
@@ -7624,13 +6642,13 @@ function _uniqContentEquals(aIterator, bIterator, stackA, stackB) {
   }
 
   // if *a* array contains any element that is not included in *b*
-  return !_containsWith(function (b, aItem) {
-    return !_containsWith(eq, aItem, b);
+  return !_includesWith(function (b, aItem) {
+    return !_includesWith(eq, aItem, b);
   }, b, a);
 }
 
 function _equals(a, b, stackA, stackB) {
-  if (identical(a, b)) {
+  if (_objectIs$1(a, b)) {
     return true;
   }
 
@@ -7663,12 +6681,12 @@ function _equals(a, b, stackA, stackB) {
     case 'Boolean':
     case 'Number':
     case 'String':
-      if (!(typeof a === typeof b && identical(a.valueOf(), b.valueOf()))) {
+      if (!(typeof a === typeof b && _objectIs$1(a.valueOf(), b.valueOf()))) {
         return false;
       }
       break;
     case 'Date':
-      if (!identical(a.valueOf(), b.valueOf())) {
+      if (!_objectIs$1(a.valueOf(), b.valueOf())) {
         return false;
       }
       break;
@@ -7767,8 +6785,8 @@ function _equals(a, b, stackA, stackB) {
  *      R.equals(1, '1'); //=> false
  *      R.equals([1, 2, 3], [1, 2, 3]); //=> true
  *
- *      var a = {}; a.v = a;
- *      var b = {}; b.v = b;
+ *      const a = {}; a.v = a;
+ *      const b = {}; b.v = b;
  *      R.equals(a, b); //=> true
  */
 var equals = /*#__PURE__*/_curry2(function equals(a, b) {
@@ -7830,7 +6848,7 @@ function _indexOf(list, a, idx) {
   return -1;
 }
 
-function _contains(a, list) {
+function _includes(a, list) {
   return _indexOf(list, a, 0) >= 0;
 }
 
@@ -7917,7 +6935,7 @@ var _xfilter = /*#__PURE__*/_curry2(function _xfilter(f, xf) {
  * @see R.reject, R.transduce, R.addIndex
  * @example
  *
- *      var isEven = n => n % 2 === 0;
+ *      const isEven = n => n % 2 === 0;
  *
  *      R.filter(isEven, [1, 2, 3, 4]); //=> [2, 4]
  *
@@ -7952,7 +6970,7 @@ var filter = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable(['filter'], _xfilt
  * @see R.filter, R.transduce, R.addIndex
  * @example
  *
- *      var isOdd = (n) => n % 2 === 1;
+ *      const isOdd = (n) => n % 2 === 1;
  *
  *      R.reject(isOdd, [1, 2, 3, 4]); //=> [2, 4]
  *
@@ -7965,14 +6983,14 @@ var reject = /*#__PURE__*/_curry2(function reject(pred, filterable) {
 function _toString(x, seen) {
   var recur = function recur(y) {
     var xs = seen.concat([x]);
-    return _contains(y, xs) ? '<Circular>' : _toString(y, xs);
+    return _includes(y, xs) ? '<Circular>' : _toString(y, xs);
   };
 
   //  mapPairs :: (Object, [String]) -> [String]
-  var mapPairs = function (obj, keys$$1) {
+  var mapPairs = function (obj, keys) {
     return _map(function (k) {
       return _quote(k) + ': ' + recur(obj[k]);
-    }, keys$$1.slice().sort());
+    }, keys.slice().sort());
   };
 
   switch (Object.prototype.toString.call(x)) {
@@ -8111,9 +7129,10 @@ var concat = /*#__PURE__*/_curry2(function concat(a, b) {
  * @sig [[(*... -> Boolean),(*... -> *)]] -> (*... -> *)
  * @param {Array} pairs A list of [predicate, transformer]
  * @return {Function}
+ * @see R.ifElse, R.unless, R.when
  * @example
  *
- *      var fn = R.cond([
+ *      const fn = R.cond([
  *        [R.equals(0),   R.always('water freezes at 0°C')],
  *        [R.equals(100), R.always('water boils at 100°C')],
  *        [R.T,           temp => 'nothing special happens at ' + temp + '°C']
@@ -8158,14 +7177,14 @@ var cond = /*#__PURE__*/_curry1(function cond(pairs) {
  *      }
  *
  *      Salad.prototype.recipe = function() {
- *        var instructions = R.map(ingredient => 'Add a dollop of ' + ingredient, this.ingredients);
+ *        const instructions = R.map(ingredient => 'Add a dollop of ' + ingredient, this.ingredients);
  *        return R.join('\n', instructions);
  *      };
  *
- *      var ThreeLayerSalad = R.constructN(3, Salad);
+ *      const ThreeLayerSalad = R.constructN(3, Salad);
  *
  *      // Notice we no longer need the 'new' keyword, and the constructor is curried for 3 arguments.
- *      var salad = ThreeLayerSalad('Mayonnaise')('Potato Chips')('Ketchup');
+ *      const salad = ThreeLayerSalad('Mayonnaise')('Potato Chips')('Ketchup');
  *
  *      console.log(salad.recipe());
  *      // Add a dollop of Mayonnaise
@@ -8229,14 +7248,14 @@ var constructN = /*#__PURE__*/_curry2(function constructN(n, Fn) {
  *        return "It's a " + this.kind + "!";
  *      }
  *
- *      var AnimalConstructor = R.construct(Animal)
+ *      const AnimalConstructor = R.construct(Animal)
  *
  *      // Notice we no longer need the 'new' keyword:
  *      AnimalConstructor('Pig'); //=> {"kind": "Pig", "sighting": function (){...}};
  *
- *      var animalTypes = ["Lion", "Tiger", "Bear"];
- *      var animalSighting = R.invoker(0, 'sighting');
- *      var sightNewAnimal = R.compose(animalSighting, AnimalConstructor);
+ *      const animalTypes = ["Lion", "Tiger", "Bear"];
+ *      const animalSighting = R.invoker(0, 'sighting');
+ *      const sightNewAnimal = R.compose(animalSighting, AnimalConstructor);
  *      R.map(sightNewAnimal, animalTypes); //=> ["It's a Lion!", "It's a Tiger!", "It's a Bear!"]
  */
 var construct = /*#__PURE__*/_curry1(function construct(Fn) {
@@ -8246,6 +7265,7 @@ var construct = /*#__PURE__*/_curry1(function construct(Fn) {
 /**
  * Returns `true` if the specified value is equal, in [`R.equals`](#equals)
  * terms, to at least one element of the given list; `false` otherwise.
+ * Works also with strings.
  *
  * @func
  * @memberOf R
@@ -8255,22 +7275,25 @@ var construct = /*#__PURE__*/_curry1(function construct(Fn) {
  * @param {Object} a The item to compare against.
  * @param {Array} list The array to consider.
  * @return {Boolean} `true` if an equivalent item is in the list, `false` otherwise.
- * @see R.any
+ * @see R.includes
+ * @deprecated since v0.26.0
  * @example
  *
  *      R.contains(3, [1, 2, 3]); //=> true
  *      R.contains(4, [1, 2, 3]); //=> false
  *      R.contains({ name: 'Fred' }, [{ name: 'Fred' }]); //=> true
  *      R.contains([42], [[42]]); //=> true
+ *      R.contains('ba', 'banana'); //=>true
  */
-var contains$1 = /*#__PURE__*/_curry2(_contains);
+var contains$1 = /*#__PURE__*/_curry2(_includes);
 
 /**
  * Accepts a converging function and a list of branching functions and returns
- * a new function. When invoked, this new function is applied to some
- * arguments, each branching function is applied to those same arguments. The
- * results of each branching function are passed as arguments to the converging
- * function to produce the return value.
+ * a new function. The arity of the new function is the same as the arity of
+ * the longest branching function. When invoked, this new function is applied
+ * to some arguments, and each branching function is applied to those same
+ * arguments. The results of each branching function are passed as arguments
+ * to the converging function to produce the return value.
  *
  * @func
  * @memberOf R
@@ -8284,10 +7307,10 @@ var contains$1 = /*#__PURE__*/_curry2(_contains);
  * @see R.useWith
  * @example
  *
- *      var average = R.converge(R.divide, [R.sum, R.length])
+ *      const average = R.converge(R.divide, [R.sum, R.length])
  *      average([1, 2, 3, 4, 5, 6, 7]) //=> 4
  *
- *      var strangeConcat = R.converge(R.concat, [R.toUpper, R.toLower])
+ *      const strangeConcat = R.converge(R.concat, [R.toUpper, R.toLower])
  *      strangeConcat("Yodel") //=> "YODELyodel"
  *
  * @symb R.converge(f, [g, h])(a, b) = f(g(a, b), h(a, b))
@@ -8363,25 +7386,22 @@ var _xreduceBy = /*#__PURE__*/_curryN(4, [], function _xreduceBy(valueFn, valueA
  * @see R.groupBy, R.reduce
  * @example
  *
- *      var reduceToNamesBy = R.reduceBy((acc, student) => acc.concat(student.name), []);
- *      var namesByGrade = reduceToNamesBy(function(student) {
- *        var score = student.score;
- *        return score < 65 ? 'F' :
- *               score < 70 ? 'D' :
- *               score < 80 ? 'C' :
- *               score < 90 ? 'B' : 'A';
- *      });
- *      var students = [{name: 'Lucy', score: 92},
- *                      {name: 'Drew', score: 85},
- *                      // ...
- *                      {name: 'Bart', score: 62}];
- *      namesByGrade(students);
- *      // {
- *      //   'A': ['Lucy'],
- *      //   'B': ['Drew']
- *      //   // ...,
- *      //   'F': ['Bart']
- *      // }
+ *      const groupNames = (acc, {name}) => acc.concat(name)
+ *      const toGrade = ({score}) =>
+ *        score < 65 ? 'F' :
+ *        score < 70 ? 'D' :
+ *        score < 80 ? 'C' :
+ *        score < 90 ? 'B' : 'A'
+ *
+ *      var students = [
+ *        {name: 'Abby', score: 83},
+ *        {name: 'Bart', score: 62},
+ *        {name: 'Curt', score: 88},
+ *        {name: 'Dora', score: 92},
+ *      ]
+ *
+ *      reduceBy(groupNames, [], toGrade, students)
+ *      //=> {"A": ["Dora"], "B": ["Abby", "Curt"], "F": ["Bart"]}
  */
 var reduceBy = /*#__PURE__*/_curryN(4, [], /*#__PURE__*/_dispatchable([], _xreduceBy, function reduceBy(valueFn, valueAcc, keyFn, list) {
   return _reduce(function (acc, elt) {
@@ -8409,10 +7429,10 @@ var reduceBy = /*#__PURE__*/_curryN(4, [], /*#__PURE__*/_dispatchable([], _xredu
  * @return {Object} An object mapping keys to number of occurrences in the list.
  * @example
  *
- *      var numbers = [1.0, 1.1, 1.2, 2.0, 3.0, 2.2];
+ *      const numbers = [1.0, 1.1, 1.2, 2.0, 3.0, 2.2];
  *      R.countBy(Math.floor)(numbers);    //=> {'1': 3, '2': 2, '3': 1}
  *
- *      var letters = ['a', 'b', 'A', 'a', 'B', 'c'];
+ *      const letters = ['a', 'b', 'A', 'a', 'B', 'c'];
  *      R.countBy(R.toLower)(letters);   //=> {'a': 3, 'b': 2, 'c': 1}
  */
 var countBy = /*#__PURE__*/reduceBy(function (acc, elem) {
@@ -8450,10 +7470,11 @@ var dec = /*#__PURE__*/add(-1);
  * @return {*} The second value if it is not `null`, `undefined` or `NaN`, otherwise the default value
  * @example
  *
- *      var defaultTo42 = R.defaultTo(42);
+ *      const defaultTo42 = R.defaultTo(42);
  *
  *      defaultTo42(null);  //=> 42
  *      defaultTo42(undefined);  //=> 42
+ *      defaultTo42(false);  //=> false
  *      defaultTo42('Ramda');  //=> 'Ramda'
  *      // parseInt('string') results in NaN
  *      defaultTo42(parseInt('string')); //=> 42
@@ -8478,1742 +7499,19 @@ var defaultTo = /*#__PURE__*/_curry2(function defaultTo(d, v) {
  * @see R.ascend
  * @example
  *
- *      var byAge = R.descend(R.prop('age'));
- *      var people = [
- *        // ...
+ *      const byAge = R.descend(R.prop('age'));
+ *      const people = [
+ *        { name: 'Emma', age: 70 },
+ *        { name: 'Peter', age: 78 },
+ *        { name: 'Mikhail', age: 62 },
  *      ];
- *      var peopleByOldestFirst = R.sort(byAge, people);
+ *      const peopleByOldestFirst = R.sort(byAge, people);
+ *        //=> [{ name: 'Peter', age: 78 }, { name: 'Emma', age: 70 }, { name: 'Mikhail', age: 62 }]
  */
 var descend = /*#__PURE__*/_curry3(function descend(fn, a, b) {
   var aa = fn(a);
   var bb = fn(b);
   return aa > bb ? -1 : aa < bb ? 1 : 0;
-});
-
-/**
- * Finds the set (i.e. no duplicates) of all elements in the first list not
- * contained in the second list. Objects and Arrays are compared in terms of
- * value equality, not reference equality.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Relation
- * @sig [*] -> [*] -> [*]
- * @param {Array} list1 The first list.
- * @param {Array} list2 The second list.
- * @return {Array} The elements in `list1` that are not in `list2`.
- * @see R.differenceWith, R.symmetricDifference, R.symmetricDifferenceWith, R.without
- * @example
- *
- *      R.difference([1,2,3,4], [7,6,5,4,3]); //=> [1,2]
- *      R.difference([7,6,5,4,3], [1,2,3,4]); //=> [7,6,5]
- *      R.difference([{a: 1}, {b: 2}], [{a: 1}, {c: 3}]) //=> [{b: 2}]
- */
-var difference = /*#__PURE__*/_curry2(function difference(first, second) {
-  var out = [];
-  var idx = 0;
-  var firstLen = first.length;
-  while (idx < firstLen) {
-    if (!_contains(first[idx], second) && !_contains(first[idx], out)) {
-      out[out.length] = first[idx];
-    }
-    idx += 1;
-  }
-  return out;
-});
-
-/**
- * Finds the set (i.e. no duplicates) of all elements in the first list not
- * contained in the second list. Duplication is determined according to the
- * value returned by applying the supplied predicate to two list elements.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Relation
- * @sig ((a, a) -> Boolean) -> [a] -> [a] -> [a]
- * @param {Function} pred A predicate used to test whether two items are equal.
- * @param {Array} list1 The first list.
- * @param {Array} list2 The second list.
- * @return {Array} The elements in `list1` that are not in `list2`.
- * @see R.difference, R.symmetricDifference, R.symmetricDifferenceWith
- * @example
- *
- *      var cmp = (x, y) => x.a === y.a;
- *      var l1 = [{a: 1}, {a: 2}, {a: 3}];
- *      var l2 = [{a: 3}, {a: 4}];
- *      R.differenceWith(cmp, l1, l2); //=> [{a: 1}, {a: 2}]
- */
-var differenceWith = /*#__PURE__*/_curry3(function differenceWith(pred, first, second) {
-  var out = [];
-  var idx = 0;
-  var firstLen = first.length;
-  while (idx < firstLen) {
-    if (!_containsWith(pred, first[idx], second) && !_containsWith(pred, first[idx], out)) {
-      out.push(first[idx]);
-    }
-    idx += 1;
-  }
-  return out;
-});
-
-/**
- * Returns a new object that does not contain a `prop` property.
- *
- * @func
- * @memberOf R
- * @since v0.10.0
- * @category Object
- * @sig String -> {k: v} -> {k: v}
- * @param {String} prop The name of the property to dissociate
- * @param {Object} obj The object to clone
- * @return {Object} A new object equivalent to the original but without the specified property
- * @see R.assoc
- * @example
- *
- *      R.dissoc('b', {a: 1, b: 2, c: 3}); //=> {a: 1, c: 3}
- */
-var dissoc = /*#__PURE__*/_curry2(function dissoc(prop, obj) {
-  var result = {};
-  for (var p in obj) {
-    result[p] = obj[p];
-  }
-  delete result[prop];
-  return result;
-});
-
-/**
- * Removes the sub-list of `list` starting at index `start` and containing
- * `count` elements. _Note that this is not destructive_: it returns a copy of
- * the list with the changes.
- * <small>No lists have been harmed in the application of this function.</small>
- *
- * @func
- * @memberOf R
- * @since v0.2.2
- * @category List
- * @sig Number -> Number -> [a] -> [a]
- * @param {Number} start The position to start removing elements
- * @param {Number} count The number of elements to remove
- * @param {Array} list The list to remove from
- * @return {Array} A new Array with `count` elements from `start` removed.
- * @example
- *
- *      R.remove(2, 3, [1,2,3,4,5,6,7,8]); //=> [1,2,6,7,8]
- */
-var remove = /*#__PURE__*/_curry3(function remove(start, count, list) {
-  var result = Array.prototype.slice.call(list, 0);
-  result.splice(start, count);
-  return result;
-});
-
-/**
- * Returns a new copy of the array with the element at the provided index
- * replaced with the given value.
- *
- * @func
- * @memberOf R
- * @since v0.14.0
- * @category List
- * @sig Number -> a -> [a] -> [a]
- * @param {Number} idx The index to update.
- * @param {*} x The value to exist at the given index of the returned array.
- * @param {Array|Arguments} list The source array-like object to be updated.
- * @return {Array} A copy of `list` with the value at index `idx` replaced with `x`.
- * @see R.adjust
- * @example
- *
- *      R.update(1, 11, [0, 1, 2]);     //=> [0, 11, 2]
- *      R.update(1)(11)([0, 1, 2]);     //=> [0, 11, 2]
- * @symb R.update(-1, a, [b, c]) = [b, a]
- * @symb R.update(0, a, [b, c]) = [a, c]
- * @symb R.update(1, a, [b, c]) = [b, a]
- */
-var update = /*#__PURE__*/_curry3(function update(idx, x, list) {
-  return adjust(always(x), idx, list);
-});
-
-/**
- * Makes a shallow clone of an object, omitting the property at the given path.
- * Note that this copies and flattens prototype properties onto the new object
- * as well. All non-primitive properties are copied by reference.
- *
- * @func
- * @memberOf R
- * @since v0.11.0
- * @category Object
- * @typedefn Idx = String | Int
- * @sig [Idx] -> {k: v} -> {k: v}
- * @param {Array} path The path to the value to omit
- * @param {Object} obj The object to clone
- * @return {Object} A new object without the property at path
- * @see R.assocPath
- * @example
- *
- *      R.dissocPath(['a', 'b', 'c'], {a: {b: {c: 42}}}); //=> {a: {b: {}}}
- */
-var dissocPath = /*#__PURE__*/_curry2(function dissocPath(path, obj) {
-  switch (path.length) {
-    case 0:
-      return obj;
-    case 1:
-      return _isInteger(path[0]) ? remove(path[0], 1, obj) : dissoc(path[0], obj);
-    default:
-      var head = path[0];
-      var tail = Array.prototype.slice.call(path, 1);
-      if (obj[head] == null) {
-        return obj;
-      } else if (_isInteger(path[0])) {
-        return update(head, dissocPath(tail, obj[head]), obj);
-      } else {
-        return assoc(head, dissocPath(tail, obj[head]), obj);
-      }
-  }
-});
-
-/**
- * Divides two numbers. Equivalent to `a / b`.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Math
- * @sig Number -> Number -> Number
- * @param {Number} a The first value.
- * @param {Number} b The second value.
- * @return {Number} The result of `a / b`.
- * @see R.multiply
- * @example
- *
- *      R.divide(71, 100); //=> 0.71
- *
- *      var half = R.divide(R.__, 2);
- *      half(42); //=> 21
- *
- *      var reciprocal = R.divide(1);
- *      reciprocal(4);   //=> 0.25
- */
-var divide = /*#__PURE__*/_curry2(function divide(a, b) {
-  return a / b;
-});
-
-var XDrop = /*#__PURE__*/function () {
-  function XDrop(n, xf) {
-    this.xf = xf;
-    this.n = n;
-  }
-  XDrop.prototype['@@transducer/init'] = _xfBase.init;
-  XDrop.prototype['@@transducer/result'] = _xfBase.result;
-  XDrop.prototype['@@transducer/step'] = function (result, input) {
-    if (this.n > 0) {
-      this.n -= 1;
-      return result;
-    }
-    return this.xf['@@transducer/step'](result, input);
-  };
-
-  return XDrop;
-}();
-
-var _xdrop = /*#__PURE__*/_curry2(function _xdrop(n, xf) {
-  return new XDrop(n, xf);
-});
-
-/**
- * Returns all but the first `n` elements of the given list, string, or
- * transducer/transformer (or object with a `drop` method).
- *
- * Dispatches to the `drop` method of the second argument, if present.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category List
- * @sig Number -> [a] -> [a]
- * @sig Number -> String -> String
- * @param {Number} n
- * @param {*} list
- * @return {*} A copy of list without the first `n` elements
- * @see R.take, R.transduce, R.dropLast, R.dropWhile
- * @example
- *
- *      R.drop(1, ['foo', 'bar', 'baz']); //=> ['bar', 'baz']
- *      R.drop(2, ['foo', 'bar', 'baz']); //=> ['baz']
- *      R.drop(3, ['foo', 'bar', 'baz']); //=> []
- *      R.drop(4, ['foo', 'bar', 'baz']); //=> []
- *      R.drop(3, 'ramda');               //=> 'da'
- */
-var drop = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable(['drop'], _xdrop, function drop(n, xs) {
-  return slice(Math.max(0, n), Infinity, xs);
-}));
-
-var XTake = /*#__PURE__*/function () {
-  function XTake(n, xf) {
-    this.xf = xf;
-    this.n = n;
-    this.i = 0;
-  }
-  XTake.prototype['@@transducer/init'] = _xfBase.init;
-  XTake.prototype['@@transducer/result'] = _xfBase.result;
-  XTake.prototype['@@transducer/step'] = function (result, input) {
-    this.i += 1;
-    var ret = this.n === 0 ? result : this.xf['@@transducer/step'](result, input);
-    return this.n >= 0 && this.i >= this.n ? _reduced(ret) : ret;
-  };
-
-  return XTake;
-}();
-
-var _xtake = /*#__PURE__*/_curry2(function _xtake(n, xf) {
-  return new XTake(n, xf);
-});
-
-/**
- * Returns the first `n` elements of the given list, string, or
- * transducer/transformer (or object with a `take` method).
- *
- * Dispatches to the `take` method of the second argument, if present.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category List
- * @sig Number -> [a] -> [a]
- * @sig Number -> String -> String
- * @param {Number} n
- * @param {*} list
- * @return {*}
- * @see R.drop
- * @example
- *
- *      R.take(1, ['foo', 'bar', 'baz']); //=> ['foo']
- *      R.take(2, ['foo', 'bar', 'baz']); //=> ['foo', 'bar']
- *      R.take(3, ['foo', 'bar', 'baz']); //=> ['foo', 'bar', 'baz']
- *      R.take(4, ['foo', 'bar', 'baz']); //=> ['foo', 'bar', 'baz']
- *      R.take(3, 'ramda');               //=> 'ram'
- *
- *      var personnel = [
- *        'Dave Brubeck',
- *        'Paul Desmond',
- *        'Eugene Wright',
- *        'Joe Morello',
- *        'Gerry Mulligan',
- *        'Bob Bates',
- *        'Joe Dodge',
- *        'Ron Crotty'
- *      ];
- *
- *      var takeFive = R.take(5);
- *      takeFive(personnel);
- *      //=> ['Dave Brubeck', 'Paul Desmond', 'Eugene Wright', 'Joe Morello', 'Gerry Mulligan']
- * @symb R.take(-1, [a, b]) = [a, b]
- * @symb R.take(0, [a, b]) = []
- * @symb R.take(1, [a, b]) = [a]
- * @symb R.take(2, [a, b]) = [a, b]
- */
-var take = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable(['take'], _xtake, function take(n, xs) {
-  return slice(0, n < 0 ? Infinity : n, xs);
-}));
-
-function dropLast(n, xs) {
-  return take(n < xs.length ? xs.length - n : 0, xs);
-}
-
-var XDropLast = /*#__PURE__*/function () {
-  function XDropLast(n, xf) {
-    this.xf = xf;
-    this.pos = 0;
-    this.full = false;
-    this.acc = new Array(n);
-  }
-  XDropLast.prototype['@@transducer/init'] = _xfBase.init;
-  XDropLast.prototype['@@transducer/result'] = function (result) {
-    this.acc = null;
-    return this.xf['@@transducer/result'](result);
-  };
-  XDropLast.prototype['@@transducer/step'] = function (result, input) {
-    if (this.full) {
-      result = this.xf['@@transducer/step'](result, this.acc[this.pos]);
-    }
-    this.store(input);
-    return result;
-  };
-  XDropLast.prototype.store = function (input) {
-    this.acc[this.pos] = input;
-    this.pos += 1;
-    if (this.pos === this.acc.length) {
-      this.pos = 0;
-      this.full = true;
-    }
-  };
-
-  return XDropLast;
-}();
-
-var _xdropLast = /*#__PURE__*/_curry2(function _xdropLast(n, xf) {
-  return new XDropLast(n, xf);
-});
-
-/**
- * Returns a list containing all but the last `n` elements of the given `list`.
- *
- * @func
- * @memberOf R
- * @since v0.16.0
- * @category List
- * @sig Number -> [a] -> [a]
- * @sig Number -> String -> String
- * @param {Number} n The number of elements of `list` to skip.
- * @param {Array} list The list of elements to consider.
- * @return {Array} A copy of the list with only the first `list.length - n` elements
- * @see R.takeLast, R.drop, R.dropWhile, R.dropLastWhile
- * @example
- *
- *      R.dropLast(1, ['foo', 'bar', 'baz']); //=> ['foo', 'bar']
- *      R.dropLast(2, ['foo', 'bar', 'baz']); //=> ['foo']
- *      R.dropLast(3, ['foo', 'bar', 'baz']); //=> []
- *      R.dropLast(4, ['foo', 'bar', 'baz']); //=> []
- *      R.dropLast(3, 'ramda');               //=> 'ra'
- */
-var dropLast$1 = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xdropLast, dropLast));
-
-function dropLastWhile(pred, xs) {
-  var idx = xs.length - 1;
-  while (idx >= 0 && pred(xs[idx])) {
-    idx -= 1;
-  }
-  return slice(0, idx + 1, xs);
-}
-
-var XDropLastWhile = /*#__PURE__*/function () {
-  function XDropLastWhile(fn, xf) {
-    this.f = fn;
-    this.retained = [];
-    this.xf = xf;
-  }
-  XDropLastWhile.prototype['@@transducer/init'] = _xfBase.init;
-  XDropLastWhile.prototype['@@transducer/result'] = function (result) {
-    this.retained = null;
-    return this.xf['@@transducer/result'](result);
-  };
-  XDropLastWhile.prototype['@@transducer/step'] = function (result, input) {
-    return this.f(input) ? this.retain(result, input) : this.flush(result, input);
-  };
-  XDropLastWhile.prototype.flush = function (result, input) {
-    result = _reduce(this.xf['@@transducer/step'], result, this.retained);
-    this.retained = [];
-    return this.xf['@@transducer/step'](result, input);
-  };
-  XDropLastWhile.prototype.retain = function (result, input) {
-    this.retained.push(input);
-    return result;
-  };
-
-  return XDropLastWhile;
-}();
-
-var _xdropLastWhile = /*#__PURE__*/_curry2(function _xdropLastWhile(fn, xf) {
-  return new XDropLastWhile(fn, xf);
-});
-
-/**
- * Returns a new list excluding all the tailing elements of a given list which
- * satisfy the supplied predicate function. It passes each value from the right
- * to the supplied predicate function, skipping elements until the predicate
- * function returns a `falsy` value. The predicate function is applied to one argument:
- * *(value)*.
- *
- * @func
- * @memberOf R
- * @since v0.16.0
- * @category List
- * @sig (a -> Boolean) -> [a] -> [a]
- * @sig (a -> Boolean) -> String -> String
- * @param {Function} predicate The function to be called on each element
- * @param {Array} xs The collection to iterate over.
- * @return {Array} A new array without any trailing elements that return `falsy` values from the `predicate`.
- * @see R.takeLastWhile, R.addIndex, R.drop, R.dropWhile
- * @example
- *
- *      var lteThree = x => x <= 3;
- *
- *      R.dropLastWhile(lteThree, [1, 2, 3, 4, 3, 2, 1]); //=> [1, 2, 3, 4]
- *
- *      R.dropLastWhile(x => x !== 'd' , 'Ramda'); //=> 'Ramd'
- */
-var dropLastWhile$1 = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xdropLastWhile, dropLastWhile));
-
-var XDropRepeatsWith = /*#__PURE__*/function () {
-  function XDropRepeatsWith(pred, xf) {
-    this.xf = xf;
-    this.pred = pred;
-    this.lastValue = undefined;
-    this.seenFirstValue = false;
-  }
-
-  XDropRepeatsWith.prototype['@@transducer/init'] = _xfBase.init;
-  XDropRepeatsWith.prototype['@@transducer/result'] = _xfBase.result;
-  XDropRepeatsWith.prototype['@@transducer/step'] = function (result, input) {
-    var sameAsLast = false;
-    if (!this.seenFirstValue) {
-      this.seenFirstValue = true;
-    } else if (this.pred(this.lastValue, input)) {
-      sameAsLast = true;
-    }
-    this.lastValue = input;
-    return sameAsLast ? result : this.xf['@@transducer/step'](result, input);
-  };
-
-  return XDropRepeatsWith;
-}();
-
-var _xdropRepeatsWith = /*#__PURE__*/_curry2(function _xdropRepeatsWith(pred, xf) {
-  return new XDropRepeatsWith(pred, xf);
-});
-
-/**
- * Returns the nth element of the given list or string. If n is negative the
- * element at index length + n is returned.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category List
- * @sig Number -> [a] -> a | Undefined
- * @sig Number -> String -> String
- * @param {Number} offset
- * @param {*} list
- * @return {*}
- * @example
- *
- *      var list = ['foo', 'bar', 'baz', 'quux'];
- *      R.nth(1, list); //=> 'bar'
- *      R.nth(-1, list); //=> 'quux'
- *      R.nth(-99, list); //=> undefined
- *
- *      R.nth(2, 'abc'); //=> 'c'
- *      R.nth(3, 'abc'); //=> ''
- * @symb R.nth(-1, [a, b, c]) = c
- * @symb R.nth(0, [a, b, c]) = a
- * @symb R.nth(1, [a, b, c]) = b
- */
-var nth = /*#__PURE__*/_curry2(function nth(offset, list) {
-  var idx = offset < 0 ? list.length + offset : offset;
-  return _isString(list) ? list.charAt(idx) : list[idx];
-});
-
-/**
- * Returns the last element of the given list or string.
- *
- * @func
- * @memberOf R
- * @since v0.1.4
- * @category List
- * @sig [a] -> a | Undefined
- * @sig String -> String
- * @param {*} list
- * @return {*}
- * @see R.init, R.head, R.tail
- * @example
- *
- *      R.last(['fi', 'fo', 'fum']); //=> 'fum'
- *      R.last([]); //=> undefined
- *
- *      R.last('abc'); //=> 'c'
- *      R.last(''); //=> ''
- */
-var last = /*#__PURE__*/nth(-1);
-
-/**
- * Returns a new list without any consecutively repeating elements. Equality is
- * determined by applying the supplied predicate to each pair of consecutive elements. The
- * first element in a series of equal elements will be preserved.
- *
- * Acts as a transducer if a transformer is given in list position.
- *
- * @func
- * @memberOf R
- * @since v0.14.0
- * @category List
- * @sig ((a, a) -> Boolean) -> [a] -> [a]
- * @param {Function} pred A predicate used to test whether two items are equal.
- * @param {Array} list The array to consider.
- * @return {Array} `list` without repeating elements.
- * @see R.transduce
- * @example
- *
- *      var l = [1, -1, 1, 3, 4, -4, -4, -5, 5, 3, 3];
- *      R.dropRepeatsWith(R.eqBy(Math.abs), l); //=> [1, 3, 4, -5, 3]
- */
-var dropRepeatsWith = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xdropRepeatsWith, function dropRepeatsWith(pred, list) {
-  var result = [];
-  var idx = 1;
-  var len = list.length;
-  if (len !== 0) {
-    result[0] = list[0];
-    while (idx < len) {
-      if (!pred(last(result), list[idx])) {
-        result[result.length] = list[idx];
-      }
-      idx += 1;
-    }
-  }
-  return result;
-}));
-
-/**
- * Returns a new list without any consecutively repeating elements.
- * [`R.equals`](#equals) is used to determine equality.
- *
- * Acts as a transducer if a transformer is given in list position.
- *
- * @func
- * @memberOf R
- * @since v0.14.0
- * @category List
- * @sig [a] -> [a]
- * @param {Array} list The array to consider.
- * @return {Array} `list` without repeating elements.
- * @see R.transduce
- * @example
- *
- *     R.dropRepeats([1, 1, 1, 2, 3, 4, 4, 2, 2]); //=> [1, 2, 3, 4, 2]
- */
-var dropRepeats = /*#__PURE__*/_curry1( /*#__PURE__*/_dispatchable([], /*#__PURE__*/_xdropRepeatsWith(equals), /*#__PURE__*/dropRepeatsWith(equals)));
-
-var XDropWhile = /*#__PURE__*/function () {
-  function XDropWhile(f, xf) {
-    this.xf = xf;
-    this.f = f;
-  }
-  XDropWhile.prototype['@@transducer/init'] = _xfBase.init;
-  XDropWhile.prototype['@@transducer/result'] = _xfBase.result;
-  XDropWhile.prototype['@@transducer/step'] = function (result, input) {
-    if (this.f) {
-      if (this.f(input)) {
-        return result;
-      }
-      this.f = null;
-    }
-    return this.xf['@@transducer/step'](result, input);
-  };
-
-  return XDropWhile;
-}();
-
-var _xdropWhile = /*#__PURE__*/_curry2(function _xdropWhile(f, xf) {
-  return new XDropWhile(f, xf);
-});
-
-/**
- * Returns a new list excluding the leading elements of a given list which
- * satisfy the supplied predicate function. It passes each value to the supplied
- * predicate function, skipping elements while the predicate function returns
- * `true`. The predicate function is applied to one argument: *(value)*.
- *
- * Dispatches to the `dropWhile` method of the second argument, if present.
- *
- * Acts as a transducer if a transformer is given in list position.
- *
- * @func
- * @memberOf R
- * @since v0.9.0
- * @category List
- * @sig (a -> Boolean) -> [a] -> [a]
- * @sig (a -> Boolean) -> String -> String
- * @param {Function} fn The function called per iteration.
- * @param {Array} xs The collection to iterate over.
- * @return {Array} A new array.
- * @see R.takeWhile, R.transduce, R.addIndex
- * @example
- *
- *      var lteTwo = x => x <= 2;
- *
- *      R.dropWhile(lteTwo, [1, 2, 3, 4, 3, 2, 1]); //=> [3, 4, 3, 2, 1]
- *
- *      R.dropWhile(x => x !== 'd' , 'Ramda'); //=> 'da'
- */
-var dropWhile = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable(['dropWhile'], _xdropWhile, function dropWhile(pred, xs) {
-  var idx = 0;
-  var len = xs.length;
-  while (idx < len && pred(xs[idx])) {
-    idx += 1;
-  }
-  return slice(idx, Infinity, xs);
-}));
-
-/**
- * Returns `true` if one or both of its arguments are `true`. Returns `false`
- * if both arguments are `false`.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Logic
- * @sig a -> b -> a | b
- * @param {Any} a
- * @param {Any} b
- * @return {Any} the first argument if truthy, otherwise the second argument.
- * @see R.either
- * @example
- *
- *      R.or(true, true); //=> true
- *      R.or(true, false); //=> true
- *      R.or(false, true); //=> true
- *      R.or(false, false); //=> false
- */
-var or = /*#__PURE__*/_curry2(function or(a, b) {
-  return a || b;
-});
-
-/**
- * A function wrapping calls to the two functions in an `||` operation,
- * returning the result of the first function if it is truth-y and the result
- * of the second function otherwise. Note that this is short-circuited,
- * meaning that the second function will not be invoked if the first returns a
- * truth-y value.
- *
- * In addition to functions, `R.either` also accepts any fantasy-land compatible
- * applicative functor.
- *
- * @func
- * @memberOf R
- * @since v0.12.0
- * @category Logic
- * @sig (*... -> Boolean) -> (*... -> Boolean) -> (*... -> Boolean)
- * @param {Function} f a predicate
- * @param {Function} g another predicate
- * @return {Function} a function that applies its arguments to `f` and `g` and `||`s their outputs together.
- * @see R.or
- * @example
- *
- *      var gt10 = x => x > 10;
- *      var even = x => x % 2 === 0;
- *      var f = R.either(gt10, even);
- *      f(101); //=> true
- *      f(8); //=> true
- */
-var either = /*#__PURE__*/_curry2(function either(f, g) {
-  return _isFunction(f) ? function _either() {
-    return f.apply(this, arguments) || g.apply(this, arguments);
-  } : lift(or)(f, g);
-});
-
-/**
- * Returns the empty value of its argument's type. Ramda defines the empty
- * value of Array (`[]`), Object (`{}`), String (`''`), and Arguments. Other
- * types are supported if they define `<Type>.empty`,
- * `<Type>.prototype.empty` or implement the
- * [FantasyLand Monoid spec](https://github.com/fantasyland/fantasy-land#monoid).
- *
- * Dispatches to the `empty` method of the first argument, if present.
- *
- * @func
- * @memberOf R
- * @since v0.3.0
- * @category Function
- * @sig a -> a
- * @param {*} x
- * @return {*}
- * @example
- *
- *      R.empty(Just(42));      //=> Nothing()
- *      R.empty([1, 2, 3]);     //=> []
- *      R.empty('unicorns');    //=> ''
- *      R.empty({x: 1, y: 2});  //=> {}
- */
-var empty = /*#__PURE__*/_curry1(function empty(x) {
-  return x != null && typeof x['fantasy-land/empty'] === 'function' ? x['fantasy-land/empty']() : x != null && x.constructor != null && typeof x.constructor['fantasy-land/empty'] === 'function' ? x.constructor['fantasy-land/empty']() : x != null && typeof x.empty === 'function' ? x.empty() : x != null && x.constructor != null && typeof x.constructor.empty === 'function' ? x.constructor.empty() : _isArray(x) ? [] : _isString(x) ? '' : _isObject(x) ? {} : _isArguments(x) ? function () {
-    return arguments;
-  }() :
-  // else
-  void 0;
-});
-
-/**
- * Returns a new list containing the last `n` elements of the given list.
- * If `n > list.length`, returns a list of `list.length` elements.
- *
- * @func
- * @memberOf R
- * @since v0.16.0
- * @category List
- * @sig Number -> [a] -> [a]
- * @sig Number -> String -> String
- * @param {Number} n The number of elements to return.
- * @param {Array} xs The collection to consider.
- * @return {Array}
- * @see R.dropLast
- * @example
- *
- *      R.takeLast(1, ['foo', 'bar', 'baz']); //=> ['baz']
- *      R.takeLast(2, ['foo', 'bar', 'baz']); //=> ['bar', 'baz']
- *      R.takeLast(3, ['foo', 'bar', 'baz']); //=> ['foo', 'bar', 'baz']
- *      R.takeLast(4, ['foo', 'bar', 'baz']); //=> ['foo', 'bar', 'baz']
- *      R.takeLast(3, 'ramda');               //=> 'mda'
- */
-var takeLast = /*#__PURE__*/_curry2(function takeLast(n, xs) {
-  return drop(n >= 0 ? xs.length - n : 0, xs);
-});
-
-/**
- * Checks if a list ends with the provided values
- *
- * @func
- * @memberOf R
- * @since v0.24.0
- * @category List
- * @sig [a] -> Boolean
- * @sig String -> Boolean
- * @param {*} suffix
- * @param {*} list
- * @return {Boolean}
- * @example
- *
- *      R.endsWith('c', 'abc')                //=> true
- *      R.endsWith('b', 'abc')                //=> false
- *      R.endsWith(['c'], ['a', 'b', 'c'])    //=> true
- *      R.endsWith(['b'], ['a', 'b', 'c'])    //=> false
- */
-var endsWith = /*#__PURE__*/_curry2(function (suffix, list) {
-  return equals(takeLast(suffix.length, list), suffix);
-});
-
-/**
- * Takes a function and two values in its domain and returns `true` if the
- * values map to the same value in the codomain; `false` otherwise.
- *
- * @func
- * @memberOf R
- * @since v0.18.0
- * @category Relation
- * @sig (a -> b) -> a -> a -> Boolean
- * @param {Function} f
- * @param {*} x
- * @param {*} y
- * @return {Boolean}
- * @example
- *
- *      R.eqBy(Math.abs, 5, -5); //=> true
- */
-var eqBy = /*#__PURE__*/_curry3(function eqBy(f, x, y) {
-  return equals(f(x), f(y));
-});
-
-/**
- * Reports whether two objects have the same value, in [`R.equals`](#equals)
- * terms, for the specified property. Useful as a curried predicate.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Object
- * @sig k -> {k: v} -> {k: v} -> Boolean
- * @param {String} prop The name of the property to compare
- * @param {Object} obj1
- * @param {Object} obj2
- * @return {Boolean}
- *
- * @example
- *
- *      var o1 = { a: 1, b: 2, c: 3, d: 4 };
- *      var o2 = { a: 10, b: 20, c: 3, d: 40 };
- *      R.eqProps('a', o1, o2); //=> false
- *      R.eqProps('c', o1, o2); //=> true
- */
-var eqProps = /*#__PURE__*/_curry3(function eqProps(prop, obj1, obj2) {
-  return equals(obj1[prop], obj2[prop]);
-});
-
-/**
- * Creates a new object by recursively evolving a shallow copy of `object`,
- * according to the `transformation` functions. All non-primitive properties
- * are copied by reference.
- *
- * A `transformation` function will not be invoked if its corresponding key
- * does not exist in the evolved object.
- *
- * @func
- * @memberOf R
- * @since v0.9.0
- * @category Object
- * @sig {k: (v -> v)} -> {k: v} -> {k: v}
- * @param {Object} transformations The object specifying transformation functions to apply
- *        to the object.
- * @param {Object} object The object to be transformed.
- * @return {Object} The transformed object.
- * @example
- *
- *      var tomato  = {firstName: '  Tomato ', data: {elapsed: 100, remaining: 1400}, id:123};
- *      var transformations = {
- *        firstName: R.trim,
- *        lastName: R.trim, // Will not get invoked.
- *        data: {elapsed: R.add(1), remaining: R.add(-1)}
- *      };
- *      R.evolve(transformations, tomato); //=> {firstName: 'Tomato', data: {elapsed: 101, remaining: 1399}, id:123}
- */
-var evolve = /*#__PURE__*/_curry2(function evolve(transformations, object) {
-  var result = {};
-  var transformation, key, type;
-  for (key in object) {
-    transformation = transformations[key];
-    type = typeof transformation;
-    result[key] = type === 'function' ? transformation(object[key]) : transformation && type === 'object' ? evolve(transformation, object[key]) : object[key];
-  }
-  return result;
-});
-
-var XFind = /*#__PURE__*/function () {
-  function XFind(f, xf) {
-    this.xf = xf;
-    this.f = f;
-    this.found = false;
-  }
-  XFind.prototype['@@transducer/init'] = _xfBase.init;
-  XFind.prototype['@@transducer/result'] = function (result) {
-    if (!this.found) {
-      result = this.xf['@@transducer/step'](result, void 0);
-    }
-    return this.xf['@@transducer/result'](result);
-  };
-  XFind.prototype['@@transducer/step'] = function (result, input) {
-    if (this.f(input)) {
-      this.found = true;
-      result = _reduced(this.xf['@@transducer/step'](result, input));
-    }
-    return result;
-  };
-
-  return XFind;
-}();
-
-var _xfind = /*#__PURE__*/_curry2(function _xfind(f, xf) {
-  return new XFind(f, xf);
-});
-
-/**
- * Returns the first element of the list which matches the predicate, or
- * `undefined` if no element matches.
- *
- * Dispatches to the `find` method of the second argument, if present.
- *
- * Acts as a transducer if a transformer is given in list position.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category List
- * @sig (a -> Boolean) -> [a] -> a | undefined
- * @param {Function} fn The predicate function used to determine if the element is the
- *        desired one.
- * @param {Array} list The array to consider.
- * @return {Object} The element found, or `undefined`.
- * @see R.transduce
- * @example
- *
- *      var xs = [{a: 1}, {a: 2}, {a: 3}];
- *      R.find(R.propEq('a', 2))(xs); //=> {a: 2}
- *      R.find(R.propEq('a', 4))(xs); //=> undefined
- */
-var find = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable(['find'], _xfind, function find(fn, list) {
-  var idx = 0;
-  var len = list.length;
-  while (idx < len) {
-    if (fn(list[idx])) {
-      return list[idx];
-    }
-    idx += 1;
-  }
-}));
-
-var XFindIndex = /*#__PURE__*/function () {
-  function XFindIndex(f, xf) {
-    this.xf = xf;
-    this.f = f;
-    this.idx = -1;
-    this.found = false;
-  }
-  XFindIndex.prototype['@@transducer/init'] = _xfBase.init;
-  XFindIndex.prototype['@@transducer/result'] = function (result) {
-    if (!this.found) {
-      result = this.xf['@@transducer/step'](result, -1);
-    }
-    return this.xf['@@transducer/result'](result);
-  };
-  XFindIndex.prototype['@@transducer/step'] = function (result, input) {
-    this.idx += 1;
-    if (this.f(input)) {
-      this.found = true;
-      result = _reduced(this.xf['@@transducer/step'](result, this.idx));
-    }
-    return result;
-  };
-
-  return XFindIndex;
-}();
-
-var _xfindIndex = /*#__PURE__*/_curry2(function _xfindIndex(f, xf) {
-  return new XFindIndex(f, xf);
-});
-
-/**
- * Returns the index of the first element of the list which matches the
- * predicate, or `-1` if no element matches.
- *
- * Acts as a transducer if a transformer is given in list position.
- *
- * @func
- * @memberOf R
- * @since v0.1.1
- * @category List
- * @sig (a -> Boolean) -> [a] -> Number
- * @param {Function} fn The predicate function used to determine if the element is the
- * desired one.
- * @param {Array} list The array to consider.
- * @return {Number} The index of the element found, or `-1`.
- * @see R.transduce
- * @example
- *
- *      var xs = [{a: 1}, {a: 2}, {a: 3}];
- *      R.findIndex(R.propEq('a', 2))(xs); //=> 1
- *      R.findIndex(R.propEq('a', 4))(xs); //=> -1
- */
-var findIndex = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xfindIndex, function findIndex(fn, list) {
-  var idx = 0;
-  var len = list.length;
-  while (idx < len) {
-    if (fn(list[idx])) {
-      return idx;
-    }
-    idx += 1;
-  }
-  return -1;
-}));
-
-var XFindLast = /*#__PURE__*/function () {
-  function XFindLast(f, xf) {
-    this.xf = xf;
-    this.f = f;
-  }
-  XFindLast.prototype['@@transducer/init'] = _xfBase.init;
-  XFindLast.prototype['@@transducer/result'] = function (result) {
-    return this.xf['@@transducer/result'](this.xf['@@transducer/step'](result, this.last));
-  };
-  XFindLast.prototype['@@transducer/step'] = function (result, input) {
-    if (this.f(input)) {
-      this.last = input;
-    }
-    return result;
-  };
-
-  return XFindLast;
-}();
-
-var _xfindLast = /*#__PURE__*/_curry2(function _xfindLast(f, xf) {
-  return new XFindLast(f, xf);
-});
-
-/**
- * Returns the last element of the list which matches the predicate, or
- * `undefined` if no element matches.
- *
- * Acts as a transducer if a transformer is given in list position.
- *
- * @func
- * @memberOf R
- * @since v0.1.1
- * @category List
- * @sig (a -> Boolean) -> [a] -> a | undefined
- * @param {Function} fn The predicate function used to determine if the element is the
- * desired one.
- * @param {Array} list The array to consider.
- * @return {Object} The element found, or `undefined`.
- * @see R.transduce
- * @example
- *
- *      var xs = [{a: 1, b: 0}, {a:1, b: 1}];
- *      R.findLast(R.propEq('a', 1))(xs); //=> {a: 1, b: 1}
- *      R.findLast(R.propEq('a', 4))(xs); //=> undefined
- */
-var findLast = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xfindLast, function findLast(fn, list) {
-  var idx = list.length - 1;
-  while (idx >= 0) {
-    if (fn(list[idx])) {
-      return list[idx];
-    }
-    idx -= 1;
-  }
-}));
-
-var XFindLastIndex = /*#__PURE__*/function () {
-  function XFindLastIndex(f, xf) {
-    this.xf = xf;
-    this.f = f;
-    this.idx = -1;
-    this.lastIdx = -1;
-  }
-  XFindLastIndex.prototype['@@transducer/init'] = _xfBase.init;
-  XFindLastIndex.prototype['@@transducer/result'] = function (result) {
-    return this.xf['@@transducer/result'](this.xf['@@transducer/step'](result, this.lastIdx));
-  };
-  XFindLastIndex.prototype['@@transducer/step'] = function (result, input) {
-    this.idx += 1;
-    if (this.f(input)) {
-      this.lastIdx = this.idx;
-    }
-    return result;
-  };
-
-  return XFindLastIndex;
-}();
-
-var _xfindLastIndex = /*#__PURE__*/_curry2(function _xfindLastIndex(f, xf) {
-  return new XFindLastIndex(f, xf);
-});
-
-/**
- * Returns the index of the last element of the list which matches the
- * predicate, or `-1` if no element matches.
- *
- * Acts as a transducer if a transformer is given in list position.
- *
- * @func
- * @memberOf R
- * @since v0.1.1
- * @category List
- * @sig (a -> Boolean) -> [a] -> Number
- * @param {Function} fn The predicate function used to determine if the element is the
- * desired one.
- * @param {Array} list The array to consider.
- * @return {Number} The index of the element found, or `-1`.
- * @see R.transduce
- * @example
- *
- *      var xs = [{a: 1, b: 0}, {a:1, b: 1}];
- *      R.findLastIndex(R.propEq('a', 1))(xs); //=> 1
- *      R.findLastIndex(R.propEq('a', 4))(xs); //=> -1
- */
-var findLastIndex = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xfindLastIndex, function findLastIndex(fn, list) {
-  var idx = list.length - 1;
-  while (idx >= 0) {
-    if (fn(list[idx])) {
-      return idx;
-    }
-    idx -= 1;
-  }
-  return -1;
-}));
-
-/**
- * Returns a new list by pulling every item out of it (and all its sub-arrays)
- * and putting them in a new array, depth-first.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category List
- * @sig [a] -> [b]
- * @param {Array} list The array to consider.
- * @return {Array} The flattened list.
- * @see R.unnest
- * @example
- *
- *      R.flatten([1, 2, [3, 4], 5, [6, [7, 8, [9, [10, 11], 12]]]]);
- *      //=> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
- */
-var flatten = /*#__PURE__*/_curry1( /*#__PURE__*/_makeFlat(true));
-
-/**
- * Returns a new function much like the supplied one, except that the first two
- * arguments' order is reversed.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Function
- * @sig ((a, b, c, ...) -> z) -> (b -> a -> c -> ... -> z)
- * @param {Function} fn The function to invoke with its first two parameters reversed.
- * @return {*} The result of invoking `fn` with its first two parameters' order reversed.
- * @example
- *
- *      var mergeThree = (a, b, c) => [].concat(a, b, c);
- *
- *      mergeThree(1, 2, 3); //=> [1, 2, 3]
- *
- *      R.flip(mergeThree)(1, 2, 3); //=> [2, 1, 3]
- * @symb R.flip(f)(a, b, c) = f(b, a, c)
- */
-var flip = /*#__PURE__*/_curry1(function flip(fn) {
-  return curryN(fn.length, function (a, b) {
-    var args = Array.prototype.slice.call(arguments, 0);
-    args[0] = b;
-    args[1] = a;
-    return fn.apply(this, args);
-  });
-});
-
-/**
- * Iterate over an input `list`, calling a provided function `fn` for each
- * element in the list.
- *
- * `fn` receives one argument: *(value)*.
- *
- * Note: `R.forEach` does not skip deleted or unassigned indices (sparse
- * arrays), unlike the native `Array.prototype.forEach` method. For more
- * details on this behavior, see:
- * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
- *
- * Also note that, unlike `Array.prototype.forEach`, Ramda's `forEach` returns
- * the original array. In some libraries this function is named `each`.
- *
- * Dispatches to the `forEach` method of the second argument, if present.
- *
- * @func
- * @memberOf R
- * @since v0.1.1
- * @category List
- * @sig (a -> *) -> [a] -> [a]
- * @param {Function} fn The function to invoke. Receives one argument, `value`.
- * @param {Array} list The list to iterate over.
- * @return {Array} The original list.
- * @see R.addIndex
- * @example
- *
- *      var printXPlusFive = x => console.log(x + 5);
- *      R.forEach(printXPlusFive, [1, 2, 3]); //=> [1, 2, 3]
- *      // logs 6
- *      // logs 7
- *      // logs 8
- * @symb R.forEach(f, [a, b, c]) = [a, b, c]
- */
-var forEach = /*#__PURE__*/_curry2( /*#__PURE__*/_checkForMethod('forEach', function forEach(fn, list) {
-  var len = list.length;
-  var idx = 0;
-  while (idx < len) {
-    fn(list[idx]);
-    idx += 1;
-  }
-  return list;
-}));
-
-/**
- * Iterate over an input `object`, calling a provided function `fn` for each
- * key and value in the object.
- *
- * `fn` receives three argument: *(value, key, obj)*.
- *
- * @func
- * @memberOf R
- * @since v0.23.0
- * @category Object
- * @sig ((a, String, StrMap a) -> Any) -> StrMap a -> StrMap a
- * @param {Function} fn The function to invoke. Receives three argument, `value`, `key`, `obj`.
- * @param {Object} obj The object to iterate over.
- * @return {Object} The original object.
- * @example
- *
- *      var printKeyConcatValue = (value, key) => console.log(key + ':' + value);
- *      R.forEachObjIndexed(printKeyConcatValue, {x: 1, y: 2}); //=> {x: 1, y: 2}
- *      // logs x:1
- *      // logs y:2
- * @symb R.forEachObjIndexed(f, {x: a, y: b}) = {x: a, y: b}
- */
-var forEachObjIndexed = /*#__PURE__*/_curry2(function forEachObjIndexed(fn, obj) {
-  var keyList = keys(obj);
-  var idx = 0;
-  while (idx < keyList.length) {
-    var key = keyList[idx];
-    fn(obj[key], key, obj);
-    idx += 1;
-  }
-  return obj;
-});
-
-/**
- * Creates a new object from a list key-value pairs. If a key appears in
- * multiple pairs, the rightmost pair is included in the object.
- *
- * @func
- * @memberOf R
- * @since v0.3.0
- * @category List
- * @sig [[k,v]] -> {k: v}
- * @param {Array} pairs An array of two-element arrays that will be the keys and values of the output object.
- * @return {Object} The object made by pairing up `keys` and `values`.
- * @see R.toPairs, R.pair
- * @example
- *
- *      R.fromPairs([['a', 1], ['b', 2], ['c', 3]]); //=> {a: 1, b: 2, c: 3}
- */
-var fromPairs = /*#__PURE__*/_curry1(function fromPairs(pairs) {
-  var result = {};
-  var idx = 0;
-  while (idx < pairs.length) {
-    result[pairs[idx][0]] = pairs[idx][1];
-    idx += 1;
-  }
-  return result;
-});
-
-/**
- * Splits a list into sub-lists stored in an object, based on the result of
- * calling a String-returning function on each element, and grouping the
- * results according to values returned.
- *
- * Dispatches to the `groupBy` method of the second argument, if present.
- *
- * Acts as a transducer if a transformer is given in list position.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category List
- * @sig (a -> String) -> [a] -> {String: [a]}
- * @param {Function} fn Function :: a -> String
- * @param {Array} list The array to group
- * @return {Object} An object with the output of `fn` for keys, mapped to arrays of elements
- *         that produced that key when passed to `fn`.
- * @see R.transduce
- * @example
- *
- *      var byGrade = R.groupBy(function(student) {
- *        var score = student.score;
- *        return score < 65 ? 'F' :
- *               score < 70 ? 'D' :
- *               score < 80 ? 'C' :
- *               score < 90 ? 'B' : 'A';
- *      });
- *      var students = [{name: 'Abby', score: 84},
- *                      {name: 'Eddy', score: 58},
- *                      // ...
- *                      {name: 'Jack', score: 69}];
- *      byGrade(students);
- *      // {
- *      //   'A': [{name: 'Dianne', score: 99}],
- *      //   'B': [{name: 'Abby', score: 84}]
- *      //   // ...,
- *      //   'F': [{name: 'Eddy', score: 58}]
- *      // }
- */
-var groupBy = /*#__PURE__*/_curry2( /*#__PURE__*/_checkForMethod('groupBy', /*#__PURE__*/reduceBy(function (acc, item) {
-  if (acc == null) {
-    acc = [];
-  }
-  acc.push(item);
-  return acc;
-}, null)));
-
-/**
- * Takes a list and returns a list of lists where each sublist's elements are
- * all satisfied pairwise comparison according to the provided function.
- * Only adjacent elements are passed to the comparison function.
- *
- * @func
- * @memberOf R
- * @since v0.21.0
- * @category List
- * @sig ((a, a) → Boolean) → [a] → [[a]]
- * @param {Function} fn Function for determining whether two given (adjacent)
- *        elements should be in the same group
- * @param {Array} list The array to group. Also accepts a string, which will be
- *        treated as a list of characters.
- * @return {List} A list that contains sublists of elements,
- *         whose concatenations are equal to the original list.
- * @example
- *
- * R.groupWith(R.equals, [0, 1, 1, 2, 3, 5, 8, 13, 21])
- * //=> [[0], [1, 1], [2], [3], [5], [8], [13], [21]]
- *
- * R.groupWith((a, b) => a + 1 === b, [0, 1, 1, 2, 3, 5, 8, 13, 21])
- * //=> [[0, 1], [1, 2, 3], [5], [8], [13], [21]]
- *
- * R.groupWith((a, b) => a % 2 === b % 2, [0, 1, 1, 2, 3, 5, 8, 13, 21])
- * //=> [[0], [1, 1], [2], [3, 5], [8], [13, 21]]
- *
- * R.groupWith(R.eqBy(isVowel), 'aestiou')
- * //=> ['ae', 'st', 'iou']
- */
-var groupWith = /*#__PURE__*/_curry2(function (fn, list) {
-  var res = [];
-  var idx = 0;
-  var len = list.length;
-  while (idx < len) {
-    var nextidx = idx + 1;
-    while (nextidx < len && fn(list[nextidx - 1], list[nextidx])) {
-      nextidx += 1;
-    }
-    res.push(list.slice(idx, nextidx));
-    idx = nextidx;
-  }
-  return res;
-});
-
-/**
- * Returns `true` if the first argument is greater than the second; `false`
- * otherwise.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Relation
- * @sig Ord a => a -> a -> Boolean
- * @param {*} a
- * @param {*} b
- * @return {Boolean}
- * @see R.lt
- * @example
- *
- *      R.gt(2, 1); //=> true
- *      R.gt(2, 2); //=> false
- *      R.gt(2, 3); //=> false
- *      R.gt('a', 'z'); //=> false
- *      R.gt('z', 'a'); //=> true
- */
-var gt = /*#__PURE__*/_curry2(function gt(a, b) {
-  return a > b;
-});
-
-/**
- * Returns `true` if the first argument is greater than or equal to the second;
- * `false` otherwise.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Relation
- * @sig Ord a => a -> a -> Boolean
- * @param {Number} a
- * @param {Number} b
- * @return {Boolean}
- * @see R.lte
- * @example
- *
- *      R.gte(2, 1); //=> true
- *      R.gte(2, 2); //=> true
- *      R.gte(2, 3); //=> false
- *      R.gte('a', 'z'); //=> false
- *      R.gte('z', 'a'); //=> true
- */
-var gte = /*#__PURE__*/_curry2(function gte(a, b) {
-  return a >= b;
-});
-
-/**
- * Returns whether or not an object has an own property with the specified name
- *
- * @func
- * @memberOf R
- * @since v0.7.0
- * @category Object
- * @sig s -> {s: x} -> Boolean
- * @param {String} prop The name of the property to check for.
- * @param {Object} obj The object to query.
- * @return {Boolean} Whether the property exists.
- * @example
- *
- *      var hasName = R.has('name');
- *      hasName({name: 'alice'});   //=> true
- *      hasName({name: 'bob'});     //=> true
- *      hasName({});                //=> false
- *
- *      var point = {x: 0, y: 0};
- *      var pointHas = R.has(R.__, point);
- *      pointHas('x');  //=> true
- *      pointHas('y');  //=> true
- *      pointHas('z');  //=> false
- */
-var has = /*#__PURE__*/_curry2(_has);
-
-/**
- * Returns whether or not an object or its prototype chain has a property with
- * the specified name
- *
- * @func
- * @memberOf R
- * @since v0.7.0
- * @category Object
- * @sig s -> {s: x} -> Boolean
- * @param {String} prop The name of the property to check for.
- * @param {Object} obj The object to query.
- * @return {Boolean} Whether the property exists.
- * @example
- *
- *      function Rectangle(width, height) {
- *        this.width = width;
- *        this.height = height;
- *      }
- *      Rectangle.prototype.area = function() {
- *        return this.width * this.height;
- *      };
- *
- *      var square = new Rectangle(2, 2);
- *      R.hasIn('width', square);  //=> true
- *      R.hasIn('area', square);  //=> true
- */
-var hasIn = /*#__PURE__*/_curry2(function hasIn(prop, obj) {
-  return prop in obj;
-});
-
-/**
- * Returns the first element of the given list or string. In some libraries
- * this function is named `first`.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category List
- * @sig [a] -> a | Undefined
- * @sig String -> String
- * @param {Array|String} list
- * @return {*}
- * @see R.tail, R.init, R.last
- * @example
- *
- *      R.head(['fi', 'fo', 'fum']); //=> 'fi'
- *      R.head([]); //=> undefined
- *
- *      R.head('abc'); //=> 'a'
- *      R.head(''); //=> ''
- */
-var head = /*#__PURE__*/nth(0);
-
-function _identity(x) {
-  return x;
-}
-
-/**
- * A function that does nothing but return the parameter supplied to it. Good
- * as a default or placeholder function.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Function
- * @sig a -> a
- * @param {*} x The value to return.
- * @return {*} The input value, `x`.
- * @example
- *
- *      R.identity(1); //=> 1
- *
- *      var obj = {};
- *      R.identity(obj) === obj; //=> true
- * @symb R.identity(a) = a
- */
-var identity = /*#__PURE__*/_curry1(_identity);
-
-/**
- * Creates a function that will process either the `onTrue` or the `onFalse`
- * function depending upon the result of the `condition` predicate.
- *
- * @func
- * @memberOf R
- * @since v0.8.0
- * @category Logic
- * @sig (*... -> Boolean) -> (*... -> *) -> (*... -> *) -> (*... -> *)
- * @param {Function} condition A predicate function
- * @param {Function} onTrue A function to invoke when the `condition` evaluates to a truthy value.
- * @param {Function} onFalse A function to invoke when the `condition` evaluates to a falsy value.
- * @return {Function} A new unary function that will process either the `onTrue` or the `onFalse`
- *                    function depending upon the result of the `condition` predicate.
- * @see R.unless, R.when
- * @example
- *
- *      var incCount = R.ifElse(
- *        R.has('count'),
- *        R.over(R.lensProp('count'), R.inc),
- *        R.assoc('count', 1)
- *      );
- *      incCount({});           //=> { count: 1 }
- *      incCount({ count: 1 }); //=> { count: 2 }
- */
-var ifElse = /*#__PURE__*/_curry3(function ifElse(condition, onTrue, onFalse) {
-  return curryN(Math.max(condition.length, onTrue.length, onFalse.length), function _ifElse() {
-    return condition.apply(this, arguments) ? onTrue.apply(this, arguments) : onFalse.apply(this, arguments);
-  });
-});
-
-/**
- * Increments its argument.
- *
- * @func
- * @memberOf R
- * @since v0.9.0
- * @category Math
- * @sig Number -> Number
- * @param {Number} n
- * @return {Number} n + 1
- * @see R.dec
- * @example
- *
- *      R.inc(42); //=> 43
- */
-var inc = /*#__PURE__*/add(1);
-
-/**
- * Given a function that generates a key, turns a list of objects into an
- * object indexing the objects by the given key. Note that if multiple
- * objects generate the same value for the indexing key only the last value
- * will be included in the generated object.
- *
- * Acts as a transducer if a transformer is given in list position.
- *
- * @func
- * @memberOf R
- * @since v0.19.0
- * @category List
- * @sig (a -> String) -> [{k: v}] -> {k: {k: v}}
- * @param {Function} fn Function :: a -> String
- * @param {Array} array The array of objects to index
- * @return {Object} An object indexing each array element by the given property.
- * @example
- *
- *      var list = [{id: 'xyz', title: 'A'}, {id: 'abc', title: 'B'}];
- *      R.indexBy(R.prop('id'), list);
- *      //=> {abc: {id: 'abc', title: 'B'}, xyz: {id: 'xyz', title: 'A'}}
- */
-var indexBy = /*#__PURE__*/reduceBy(function (acc, elem) {
-  return elem;
-}, null);
-
-/**
- * Returns the position of the first occurrence of an item in an array, or -1
- * if the item is not included in the array. [`R.equals`](#equals) is used to
- * determine equality.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category List
- * @sig a -> [a] -> Number
- * @param {*} target The item to find.
- * @param {Array} xs The array to search in.
- * @return {Number} the index of the target, or -1 if the target is not found.
- * @see R.lastIndexOf
- * @example
- *
- *      R.indexOf(3, [1,2,3,4]); //=> 2
- *      R.indexOf(10, [1,2,3,4]); //=> -1
- */
-var indexOf = /*#__PURE__*/_curry2(function indexOf(target, xs) {
-  return typeof xs.indexOf === 'function' && !_isArray(xs) ? xs.indexOf(target) : _indexOf(xs, target, 0);
-});
-
-/**
- * Returns all but the last element of the given list or string.
- *
- * @func
- * @memberOf R
- * @since v0.9.0
- * @category List
- * @sig [a] -> [a]
- * @sig String -> String
- * @param {*} list
- * @return {*}
- * @see R.last, R.head, R.tail
- * @example
- *
- *      R.init([1, 2, 3]);  //=> [1, 2]
- *      R.init([1, 2]);     //=> [1]
- *      R.init([1]);        //=> []
- *      R.init([]);         //=> []
- *
- *      R.init('abc');  //=> 'ab'
- *      R.init('ab');   //=> 'a'
- *      R.init('a');    //=> ''
- *      R.init('');     //=> ''
- */
-var init = /*#__PURE__*/slice(0, -1);
-
-/**
- * Takes a predicate `pred`, a list `xs`, and a list `ys`, and returns a list
- * `xs'` comprising each of the elements of `xs` which is equal to one or more
- * elements of `ys` according to `pred`.
- *
- * `pred` must be a binary function expecting an element from each list.
- *
- * `xs`, `ys`, and `xs'` are treated as sets, semantically, so ordering should
- * not be significant, but since `xs'` is ordered the implementation guarantees
- * that its values are in the same order as they appear in `xs`. Duplicates are
- * not removed, so `xs'` may contain duplicates if `xs` contains duplicates.
- *
- * @func
- * @memberOf R
- * @since v0.24.0
- * @category Relation
- * @sig ((a, b) -> Boolean) -> [a] -> [b] -> [a]
- * @param {Function} pred
- * @param {Array} xs
- * @param {Array} ys
- * @return {Array}
- * @see R.intersection
- * @example
- *
- *      R.innerJoin(
- *        (record, id) => record.id === id,
- *        [{id: 824, name: 'Richie Furay'},
- *         {id: 956, name: 'Dewey Martin'},
- *         {id: 313, name: 'Bruce Palmer'},
- *         {id: 456, name: 'Stephen Stills'},
- *         {id: 177, name: 'Neil Young'}],
- *        [177, 456, 999]
- *      );
- *      //=> [{id: 456, name: 'Stephen Stills'}, {id: 177, name: 'Neil Young'}]
- */
-var innerJoin = /*#__PURE__*/_curry3(function innerJoin(pred, xs, ys) {
-  return _filter(function (x) {
-    return _containsWith(pred, x, ys);
-  }, xs);
-});
-
-/**
- * Inserts the supplied element into the list, at the specified `index`. _Note that
-
- * this is not destructive_: it returns a copy of the list with the changes.
- * <small>No lists have been harmed in the application of this function.</small>
- *
- * @func
- * @memberOf R
- * @since v0.2.2
- * @category List
- * @sig Number -> a -> [a] -> [a]
- * @param {Number} index The position to insert the element
- * @param {*} elt The element to insert into the Array
- * @param {Array} list The list to insert into
- * @return {Array} A new Array with `elt` inserted at `index`.
- * @example
- *
- *      R.insert(2, 'x', [1,2,3,4]); //=> [1,2,'x',3,4]
- */
-var insert = /*#__PURE__*/_curry3(function insert(idx, elt, list) {
-  idx = idx < list.length && idx >= 0 ? idx : list.length;
-  var result = Array.prototype.slice.call(list, 0);
-  result.splice(idx, 0, elt);
-  return result;
-});
-
-/**
- * Inserts the sub-list into the list, at the specified `index`. _Note that this is not
- * destructive_: it returns a copy of the list with the changes.
- * <small>No lists have been harmed in the application of this function.</small>
- *
- * @func
- * @memberOf R
- * @since v0.9.0
- * @category List
- * @sig Number -> [a] -> [a] -> [a]
- * @param {Number} index The position to insert the sub-list
- * @param {Array} elts The sub-list to insert into the Array
- * @param {Array} list The list to insert the sub-list into
- * @return {Array} A new Array with `elts` inserted starting at `index`.
- * @example
- *
- *      R.insertAll(2, ['x','y','z'], [1,2,3,4]); //=> [1,2,'x','y','z',3,4]
- */
-var insertAll = /*#__PURE__*/_curry3(function insertAll(idx, elts, list) {
-  idx = idx < list.length && idx >= 0 ? idx : list.length;
-  return [].concat(Array.prototype.slice.call(list, 0, idx), elts, Array.prototype.slice.call(list, idx));
 });
 
 var _Set = /*#__PURE__*/function () {
@@ -10334,7 +7632,7 @@ function hasOrAdd(item, shouldAdd, set) {
           }
           return false;
         }
-        if (!_contains(item, set._items[type])) {
+        if (!_includes(item, set._items[type])) {
           if (shouldAdd) {
             set._items[type].push(item);
           }
@@ -10375,7 +7673,7 @@ function hasOrAdd(item, shouldAdd, set) {
         return false;
       }
       // scan through all previously applied items
-      if (!_contains(item, set._items[type])) {
+      if (!_includes(item, set._items[type])) {
         if (shouldAdd) {
           set._items[type].push(item);
         }
@@ -10384,6 +7682,1761 @@ function hasOrAdd(item, shouldAdd, set) {
       return true;
   }
 }
+
+/**
+ * Finds the set (i.e. no duplicates) of all elements in the first list not
+ * contained in the second list. Objects and Arrays are compared in terms of
+ * value equality, not reference equality.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Relation
+ * @sig [*] -> [*] -> [*]
+ * @param {Array} list1 The first list.
+ * @param {Array} list2 The second list.
+ * @return {Array} The elements in `list1` that are not in `list2`.
+ * @see R.differenceWith, R.symmetricDifference, R.symmetricDifferenceWith, R.without
+ * @example
+ *
+ *      R.difference([1,2,3,4], [7,6,5,4,3]); //=> [1,2]
+ *      R.difference([7,6,5,4,3], [1,2,3,4]); //=> [7,6,5]
+ *      R.difference([{a: 1}, {b: 2}], [{a: 1}, {c: 3}]) //=> [{b: 2}]
+ */
+var difference = /*#__PURE__*/_curry2(function difference(first, second) {
+  var out = [];
+  var idx = 0;
+  var firstLen = first.length;
+  var secondLen = second.length;
+  var toFilterOut = new _Set();
+
+  for (var i = 0; i < secondLen; i += 1) {
+    toFilterOut.add(second[i]);
+  }
+
+  while (idx < firstLen) {
+    if (toFilterOut.add(first[idx])) {
+      out[out.length] = first[idx];
+    }
+    idx += 1;
+  }
+  return out;
+});
+
+/**
+ * Finds the set (i.e. no duplicates) of all elements in the first list not
+ * contained in the second list. Duplication is determined according to the
+ * value returned by applying the supplied predicate to two list elements.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Relation
+ * @sig ((a, a) -> Boolean) -> [a] -> [a] -> [a]
+ * @param {Function} pred A predicate used to test whether two items are equal.
+ * @param {Array} list1 The first list.
+ * @param {Array} list2 The second list.
+ * @return {Array} The elements in `list1` that are not in `list2`.
+ * @see R.difference, R.symmetricDifference, R.symmetricDifferenceWith
+ * @example
+ *
+ *      const cmp = (x, y) => x.a === y.a;
+ *      const l1 = [{a: 1}, {a: 2}, {a: 3}];
+ *      const l2 = [{a: 3}, {a: 4}];
+ *      R.differenceWith(cmp, l1, l2); //=> [{a: 1}, {a: 2}]
+ */
+var differenceWith = /*#__PURE__*/_curry3(function differenceWith(pred, first, second) {
+  var out = [];
+  var idx = 0;
+  var firstLen = first.length;
+  while (idx < firstLen) {
+    if (!_includesWith(pred, first[idx], second) && !_includesWith(pred, first[idx], out)) {
+      out.push(first[idx]);
+    }
+    idx += 1;
+  }
+  return out;
+});
+
+/**
+ * Returns a new object that does not contain a `prop` property.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.10.0
+ * @category Object
+ * @sig String -> {k: v} -> {k: v}
+ * @param {String} prop The name of the property to dissociate
+ * @param {Object} obj The object to clone
+ * @return {Object} A new object equivalent to the original but without the specified property
+ * @see R.assoc, R.omit
+ * @example
+ *
+ *      R.dissoc('b', {a: 1, b: 2, c: 3}); //=> {a: 1, c: 3}
+ */
+var dissoc = /*#__PURE__*/_curry2(function dissoc(prop, obj) {
+  var result = {};
+  for (var p in obj) {
+    result[p] = obj[p];
+  }
+  delete result[prop];
+  return result;
+});
+
+/**
+ * Removes the sub-list of `list` starting at index `start` and containing
+ * `count` elements. _Note that this is not destructive_: it returns a copy of
+ * the list with the changes.
+ * <small>No lists have been harmed in the application of this function.</small>
+ *
+ * @func
+ * @memberOf R
+ * @since v0.2.2
+ * @category List
+ * @sig Number -> Number -> [a] -> [a]
+ * @param {Number} start The position to start removing elements
+ * @param {Number} count The number of elements to remove
+ * @param {Array} list The list to remove from
+ * @return {Array} A new Array with `count` elements from `start` removed.
+ * @see R.without
+ * @example
+ *
+ *      R.remove(2, 3, [1,2,3,4,5,6,7,8]); //=> [1,2,6,7,8]
+ */
+var remove = /*#__PURE__*/_curry3(function remove(start, count, list) {
+  var result = Array.prototype.slice.call(list, 0);
+  result.splice(start, count);
+  return result;
+});
+
+/**
+ * Returns a new copy of the array with the element at the provided index
+ * replaced with the given value.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.14.0
+ * @category List
+ * @sig Number -> a -> [a] -> [a]
+ * @param {Number} idx The index to update.
+ * @param {*} x The value to exist at the given index of the returned array.
+ * @param {Array|Arguments} list The source array-like object to be updated.
+ * @return {Array} A copy of `list` with the value at index `idx` replaced with `x`.
+ * @see R.adjust
+ * @example
+ *
+ *      R.update(1, '_', ['a', 'b', 'c']);      //=> ['a', '_', 'c']
+ *      R.update(-1, '_', ['a', 'b', 'c']);     //=> ['a', 'b', '_']
+ * @symb R.update(-1, a, [b, c]) = [b, a]
+ * @symb R.update(0, a, [b, c]) = [a, c]
+ * @symb R.update(1, a, [b, c]) = [b, a]
+ */
+var update = /*#__PURE__*/_curry3(function update(idx, x, list) {
+  return adjust(idx, always(x), list);
+});
+
+/**
+ * Makes a shallow clone of an object, omitting the property at the given path.
+ * Note that this copies and flattens prototype properties onto the new object
+ * as well. All non-primitive properties are copied by reference.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.11.0
+ * @category Object
+ * @typedefn Idx = String | Int
+ * @sig [Idx] -> {k: v} -> {k: v}
+ * @param {Array} path The path to the value to omit
+ * @param {Object} obj The object to clone
+ * @return {Object} A new object without the property at path
+ * @see R.assocPath
+ * @example
+ *
+ *      R.dissocPath(['a', 'b', 'c'], {a: {b: {c: 42}}}); //=> {a: {b: {}}}
+ */
+var dissocPath = /*#__PURE__*/_curry2(function dissocPath(path, obj) {
+  switch (path.length) {
+    case 0:
+      return obj;
+    case 1:
+      return _isInteger(path[0]) && _isArray(obj) ? remove(path[0], 1, obj) : dissoc(path[0], obj);
+    default:
+      var head = path[0];
+      var tail = Array.prototype.slice.call(path, 1);
+      if (obj[head] == null) {
+        return obj;
+      } else if (_isInteger(head) && _isArray(obj)) {
+        return update(head, dissocPath(tail, obj[head]), obj);
+      } else {
+        return assoc(head, dissocPath(tail, obj[head]), obj);
+      }
+  }
+});
+
+/**
+ * Divides two numbers. Equivalent to `a / b`.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Math
+ * @sig Number -> Number -> Number
+ * @param {Number} a The first value.
+ * @param {Number} b The second value.
+ * @return {Number} The result of `a / b`.
+ * @see R.multiply
+ * @example
+ *
+ *      R.divide(71, 100); //=> 0.71
+ *
+ *      const half = R.divide(R.__, 2);
+ *      half(42); //=> 21
+ *
+ *      const reciprocal = R.divide(1);
+ *      reciprocal(4);   //=> 0.25
+ */
+var divide = /*#__PURE__*/_curry2(function divide(a, b) {
+  return a / b;
+});
+
+var XDrop = /*#__PURE__*/function () {
+  function XDrop(n, xf) {
+    this.xf = xf;
+    this.n = n;
+  }
+  XDrop.prototype['@@transducer/init'] = _xfBase.init;
+  XDrop.prototype['@@transducer/result'] = _xfBase.result;
+  XDrop.prototype['@@transducer/step'] = function (result, input) {
+    if (this.n > 0) {
+      this.n -= 1;
+      return result;
+    }
+    return this.xf['@@transducer/step'](result, input);
+  };
+
+  return XDrop;
+}();
+
+var _xdrop = /*#__PURE__*/_curry2(function _xdrop(n, xf) {
+  return new XDrop(n, xf);
+});
+
+/**
+ * Returns all but the first `n` elements of the given list, string, or
+ * transducer/transformer (or object with a `drop` method).
+ *
+ * Dispatches to the `drop` method of the second argument, if present.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig Number -> [a] -> [a]
+ * @sig Number -> String -> String
+ * @param {Number} n
+ * @param {*} list
+ * @return {*} A copy of list without the first `n` elements
+ * @see R.take, R.transduce, R.dropLast, R.dropWhile
+ * @example
+ *
+ *      R.drop(1, ['foo', 'bar', 'baz']); //=> ['bar', 'baz']
+ *      R.drop(2, ['foo', 'bar', 'baz']); //=> ['baz']
+ *      R.drop(3, ['foo', 'bar', 'baz']); //=> []
+ *      R.drop(4, ['foo', 'bar', 'baz']); //=> []
+ *      R.drop(3, 'ramda');               //=> 'da'
+ */
+var drop = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable(['drop'], _xdrop, function drop(n, xs) {
+  return slice(Math.max(0, n), Infinity, xs);
+}));
+
+var XTake = /*#__PURE__*/function () {
+  function XTake(n, xf) {
+    this.xf = xf;
+    this.n = n;
+    this.i = 0;
+  }
+  XTake.prototype['@@transducer/init'] = _xfBase.init;
+  XTake.prototype['@@transducer/result'] = _xfBase.result;
+  XTake.prototype['@@transducer/step'] = function (result, input) {
+    this.i += 1;
+    var ret = this.n === 0 ? result : this.xf['@@transducer/step'](result, input);
+    return this.n >= 0 && this.i >= this.n ? _reduced(ret) : ret;
+  };
+
+  return XTake;
+}();
+
+var _xtake = /*#__PURE__*/_curry2(function _xtake(n, xf) {
+  return new XTake(n, xf);
+});
+
+/**
+ * Returns the first `n` elements of the given list, string, or
+ * transducer/transformer (or object with a `take` method).
+ *
+ * Dispatches to the `take` method of the second argument, if present.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig Number -> [a] -> [a]
+ * @sig Number -> String -> String
+ * @param {Number} n
+ * @param {*} list
+ * @return {*}
+ * @see R.drop
+ * @example
+ *
+ *      R.take(1, ['foo', 'bar', 'baz']); //=> ['foo']
+ *      R.take(2, ['foo', 'bar', 'baz']); //=> ['foo', 'bar']
+ *      R.take(3, ['foo', 'bar', 'baz']); //=> ['foo', 'bar', 'baz']
+ *      R.take(4, ['foo', 'bar', 'baz']); //=> ['foo', 'bar', 'baz']
+ *      R.take(3, 'ramda');               //=> 'ram'
+ *
+ *      const personnel = [
+ *        'Dave Brubeck',
+ *        'Paul Desmond',
+ *        'Eugene Wright',
+ *        'Joe Morello',
+ *        'Gerry Mulligan',
+ *        'Bob Bates',
+ *        'Joe Dodge',
+ *        'Ron Crotty'
+ *      ];
+ *
+ *      const takeFive = R.take(5);
+ *      takeFive(personnel);
+ *      //=> ['Dave Brubeck', 'Paul Desmond', 'Eugene Wright', 'Joe Morello', 'Gerry Mulligan']
+ * @symb R.take(-1, [a, b]) = [a, b]
+ * @symb R.take(0, [a, b]) = []
+ * @symb R.take(1, [a, b]) = [a]
+ * @symb R.take(2, [a, b]) = [a, b]
+ */
+var take = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable(['take'], _xtake, function take(n, xs) {
+  return slice(0, n < 0 ? Infinity : n, xs);
+}));
+
+function dropLast(n, xs) {
+  return take(n < xs.length ? xs.length - n : 0, xs);
+}
+
+var XDropLast = /*#__PURE__*/function () {
+  function XDropLast(n, xf) {
+    this.xf = xf;
+    this.pos = 0;
+    this.full = false;
+    this.acc = new Array(n);
+  }
+  XDropLast.prototype['@@transducer/init'] = _xfBase.init;
+  XDropLast.prototype['@@transducer/result'] = function (result) {
+    this.acc = null;
+    return this.xf['@@transducer/result'](result);
+  };
+  XDropLast.prototype['@@transducer/step'] = function (result, input) {
+    if (this.full) {
+      result = this.xf['@@transducer/step'](result, this.acc[this.pos]);
+    }
+    this.store(input);
+    return result;
+  };
+  XDropLast.prototype.store = function (input) {
+    this.acc[this.pos] = input;
+    this.pos += 1;
+    if (this.pos === this.acc.length) {
+      this.pos = 0;
+      this.full = true;
+    }
+  };
+
+  return XDropLast;
+}();
+
+var _xdropLast = /*#__PURE__*/_curry2(function _xdropLast(n, xf) {
+  return new XDropLast(n, xf);
+});
+
+/**
+ * Returns a list containing all but the last `n` elements of the given `list`.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.16.0
+ * @category List
+ * @sig Number -> [a] -> [a]
+ * @sig Number -> String -> String
+ * @param {Number} n The number of elements of `list` to skip.
+ * @param {Array} list The list of elements to consider.
+ * @return {Array} A copy of the list with only the first `list.length - n` elements
+ * @see R.takeLast, R.drop, R.dropWhile, R.dropLastWhile
+ * @example
+ *
+ *      R.dropLast(1, ['foo', 'bar', 'baz']); //=> ['foo', 'bar']
+ *      R.dropLast(2, ['foo', 'bar', 'baz']); //=> ['foo']
+ *      R.dropLast(3, ['foo', 'bar', 'baz']); //=> []
+ *      R.dropLast(4, ['foo', 'bar', 'baz']); //=> []
+ *      R.dropLast(3, 'ramda');               //=> 'ra'
+ */
+var dropLast$1 = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xdropLast, dropLast));
+
+function dropLastWhile(pred, xs) {
+  var idx = xs.length - 1;
+  while (idx >= 0 && pred(xs[idx])) {
+    idx -= 1;
+  }
+  return slice(0, idx + 1, xs);
+}
+
+var XDropLastWhile = /*#__PURE__*/function () {
+  function XDropLastWhile(fn, xf) {
+    this.f = fn;
+    this.retained = [];
+    this.xf = xf;
+  }
+  XDropLastWhile.prototype['@@transducer/init'] = _xfBase.init;
+  XDropLastWhile.prototype['@@transducer/result'] = function (result) {
+    this.retained = null;
+    return this.xf['@@transducer/result'](result);
+  };
+  XDropLastWhile.prototype['@@transducer/step'] = function (result, input) {
+    return this.f(input) ? this.retain(result, input) : this.flush(result, input);
+  };
+  XDropLastWhile.prototype.flush = function (result, input) {
+    result = _reduce(this.xf['@@transducer/step'], result, this.retained);
+    this.retained = [];
+    return this.xf['@@transducer/step'](result, input);
+  };
+  XDropLastWhile.prototype.retain = function (result, input) {
+    this.retained.push(input);
+    return result;
+  };
+
+  return XDropLastWhile;
+}();
+
+var _xdropLastWhile = /*#__PURE__*/_curry2(function _xdropLastWhile(fn, xf) {
+  return new XDropLastWhile(fn, xf);
+});
+
+/**
+ * Returns a new list excluding all the tailing elements of a given list which
+ * satisfy the supplied predicate function. It passes each value from the right
+ * to the supplied predicate function, skipping elements until the predicate
+ * function returns a `falsy` value. The predicate function is applied to one argument:
+ * *(value)*.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.16.0
+ * @category List
+ * @sig (a -> Boolean) -> [a] -> [a]
+ * @sig (a -> Boolean) -> String -> String
+ * @param {Function} predicate The function to be called on each element
+ * @param {Array} xs The collection to iterate over.
+ * @return {Array} A new array without any trailing elements that return `falsy` values from the `predicate`.
+ * @see R.takeLastWhile, R.addIndex, R.drop, R.dropWhile
+ * @example
+ *
+ *      const lteThree = x => x <= 3;
+ *
+ *      R.dropLastWhile(lteThree, [1, 2, 3, 4, 3, 2, 1]); //=> [1, 2, 3, 4]
+ *
+ *      R.dropLastWhile(x => x !== 'd' , 'Ramda'); //=> 'Ramd'
+ */
+var dropLastWhile$1 = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xdropLastWhile, dropLastWhile));
+
+var XDropRepeatsWith = /*#__PURE__*/function () {
+  function XDropRepeatsWith(pred, xf) {
+    this.xf = xf;
+    this.pred = pred;
+    this.lastValue = undefined;
+    this.seenFirstValue = false;
+  }
+
+  XDropRepeatsWith.prototype['@@transducer/init'] = _xfBase.init;
+  XDropRepeatsWith.prototype['@@transducer/result'] = _xfBase.result;
+  XDropRepeatsWith.prototype['@@transducer/step'] = function (result, input) {
+    var sameAsLast = false;
+    if (!this.seenFirstValue) {
+      this.seenFirstValue = true;
+    } else if (this.pred(this.lastValue, input)) {
+      sameAsLast = true;
+    }
+    this.lastValue = input;
+    return sameAsLast ? result : this.xf['@@transducer/step'](result, input);
+  };
+
+  return XDropRepeatsWith;
+}();
+
+var _xdropRepeatsWith = /*#__PURE__*/_curry2(function _xdropRepeatsWith(pred, xf) {
+  return new XDropRepeatsWith(pred, xf);
+});
+
+/**
+ * Returns the last element of the given list or string.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.4
+ * @category List
+ * @sig [a] -> a | Undefined
+ * @sig String -> String
+ * @param {*} list
+ * @return {*}
+ * @see R.init, R.head, R.tail
+ * @example
+ *
+ *      R.last(['fi', 'fo', 'fum']); //=> 'fum'
+ *      R.last([]); //=> undefined
+ *
+ *      R.last('abc'); //=> 'c'
+ *      R.last(''); //=> ''
+ */
+var last = /*#__PURE__*/nth(-1);
+
+/**
+ * Returns a new list without any consecutively repeating elements. Equality is
+ * determined by applying the supplied predicate to each pair of consecutive elements. The
+ * first element in a series of equal elements will be preserved.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.14.0
+ * @category List
+ * @sig ((a, a) -> Boolean) -> [a] -> [a]
+ * @param {Function} pred A predicate used to test whether two items are equal.
+ * @param {Array} list The array to consider.
+ * @return {Array} `list` without repeating elements.
+ * @see R.transduce
+ * @example
+ *
+ *      const l = [1, -1, 1, 3, 4, -4, -4, -5, 5, 3, 3];
+ *      R.dropRepeatsWith(R.eqBy(Math.abs), l); //=> [1, 3, 4, -5, 3]
+ */
+var dropRepeatsWith = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xdropRepeatsWith, function dropRepeatsWith(pred, list) {
+  var result = [];
+  var idx = 1;
+  var len = list.length;
+  if (len !== 0) {
+    result[0] = list[0];
+    while (idx < len) {
+      if (!pred(last(result), list[idx])) {
+        result[result.length] = list[idx];
+      }
+      idx += 1;
+    }
+  }
+  return result;
+}));
+
+/**
+ * Returns a new list without any consecutively repeating elements.
+ * [`R.equals`](#equals) is used to determine equality.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.14.0
+ * @category List
+ * @sig [a] -> [a]
+ * @param {Array} list The array to consider.
+ * @return {Array} `list` without repeating elements.
+ * @see R.transduce
+ * @example
+ *
+ *     R.dropRepeats([1, 1, 1, 2, 3, 4, 4, 2, 2]); //=> [1, 2, 3, 4, 2]
+ */
+var dropRepeats = /*#__PURE__*/_curry1( /*#__PURE__*/_dispatchable([], /*#__PURE__*/_xdropRepeatsWith(equals), /*#__PURE__*/dropRepeatsWith(equals)));
+
+var XDropWhile = /*#__PURE__*/function () {
+  function XDropWhile(f, xf) {
+    this.xf = xf;
+    this.f = f;
+  }
+  XDropWhile.prototype['@@transducer/init'] = _xfBase.init;
+  XDropWhile.prototype['@@transducer/result'] = _xfBase.result;
+  XDropWhile.prototype['@@transducer/step'] = function (result, input) {
+    if (this.f) {
+      if (this.f(input)) {
+        return result;
+      }
+      this.f = null;
+    }
+    return this.xf['@@transducer/step'](result, input);
+  };
+
+  return XDropWhile;
+}();
+
+var _xdropWhile = /*#__PURE__*/_curry2(function _xdropWhile(f, xf) {
+  return new XDropWhile(f, xf);
+});
+
+/**
+ * Returns a new list excluding the leading elements of a given list which
+ * satisfy the supplied predicate function. It passes each value to the supplied
+ * predicate function, skipping elements while the predicate function returns
+ * `true`. The predicate function is applied to one argument: *(value)*.
+ *
+ * Dispatches to the `dropWhile` method of the second argument, if present.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.9.0
+ * @category List
+ * @sig (a -> Boolean) -> [a] -> [a]
+ * @sig (a -> Boolean) -> String -> String
+ * @param {Function} fn The function called per iteration.
+ * @param {Array} xs The collection to iterate over.
+ * @return {Array} A new array.
+ * @see R.takeWhile, R.transduce, R.addIndex
+ * @example
+ *
+ *      const lteTwo = x => x <= 2;
+ *
+ *      R.dropWhile(lteTwo, [1, 2, 3, 4, 3, 2, 1]); //=> [3, 4, 3, 2, 1]
+ *
+ *      R.dropWhile(x => x !== 'd' , 'Ramda'); //=> 'da'
+ */
+var dropWhile = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable(['dropWhile'], _xdropWhile, function dropWhile(pred, xs) {
+  var idx = 0;
+  var len = xs.length;
+  while (idx < len && pred(xs[idx])) {
+    idx += 1;
+  }
+  return slice(idx, Infinity, xs);
+}));
+
+/**
+ * Returns `true` if one or both of its arguments are `true`. Returns `false`
+ * if both arguments are `false`.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Logic
+ * @sig a -> b -> a | b
+ * @param {Any} a
+ * @param {Any} b
+ * @return {Any} the first argument if truthy, otherwise the second argument.
+ * @see R.either
+ * @example
+ *
+ *      R.or(true, true); //=> true
+ *      R.or(true, false); //=> true
+ *      R.or(false, true); //=> true
+ *      R.or(false, false); //=> false
+ */
+var or = /*#__PURE__*/_curry2(function or(a, b) {
+  return a || b;
+});
+
+/**
+ * A function wrapping calls to the two functions in an `||` operation,
+ * returning the result of the first function if it is truth-y and the result
+ * of the second function otherwise. Note that this is short-circuited,
+ * meaning that the second function will not be invoked if the first returns a
+ * truth-y value.
+ *
+ * In addition to functions, `R.either` also accepts any fantasy-land compatible
+ * applicative functor.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.12.0
+ * @category Logic
+ * @sig (*... -> Boolean) -> (*... -> Boolean) -> (*... -> Boolean)
+ * @param {Function} f a predicate
+ * @param {Function} g another predicate
+ * @return {Function} a function that applies its arguments to `f` and `g` and `||`s their outputs together.
+ * @see R.or
+ * @example
+ *
+ *      const gt10 = x => x > 10;
+ *      const even = x => x % 2 === 0;
+ *      const f = R.either(gt10, even);
+ *      f(101); //=> true
+ *      f(8); //=> true
+ *
+ *      R.either(Maybe.Just(false), Maybe.Just(55)); // => Maybe.Just(55)
+ *      R.either([false, false, 'a'], [11]) // => [11, 11, "a"]
+ */
+var either = /*#__PURE__*/_curry2(function either(f, g) {
+  return _isFunction(f) ? function _either() {
+    return f.apply(this, arguments) || g.apply(this, arguments);
+  } : lift(or)(f, g);
+});
+
+/**
+ * Returns the empty value of its argument's type. Ramda defines the empty
+ * value of Array (`[]`), Object (`{}`), String (`''`), and Arguments. Other
+ * types are supported if they define `<Type>.empty`,
+ * `<Type>.prototype.empty` or implement the
+ * [FantasyLand Monoid spec](https://github.com/fantasyland/fantasy-land#monoid).
+ *
+ * Dispatches to the `empty` method of the first argument, if present.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.3.0
+ * @category Function
+ * @sig a -> a
+ * @param {*} x
+ * @return {*}
+ * @example
+ *
+ *      R.empty(Just(42));      //=> Nothing()
+ *      R.empty([1, 2, 3]);     //=> []
+ *      R.empty('unicorns');    //=> ''
+ *      R.empty({x: 1, y: 2});  //=> {}
+ */
+var empty = /*#__PURE__*/_curry1(function empty(x) {
+  return x != null && typeof x['fantasy-land/empty'] === 'function' ? x['fantasy-land/empty']() : x != null && x.constructor != null && typeof x.constructor['fantasy-land/empty'] === 'function' ? x.constructor['fantasy-land/empty']() : x != null && typeof x.empty === 'function' ? x.empty() : x != null && x.constructor != null && typeof x.constructor.empty === 'function' ? x.constructor.empty() : _isArray(x) ? [] : _isString(x) ? '' : _isObject(x) ? {} : _isArguments(x) ? function () {
+    return arguments;
+  }() : void 0 // else
+  ;
+});
+
+/**
+ * Returns a new list containing the last `n` elements of the given list.
+ * If `n > list.length`, returns a list of `list.length` elements.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.16.0
+ * @category List
+ * @sig Number -> [a] -> [a]
+ * @sig Number -> String -> String
+ * @param {Number} n The number of elements to return.
+ * @param {Array} xs The collection to consider.
+ * @return {Array}
+ * @see R.dropLast
+ * @example
+ *
+ *      R.takeLast(1, ['foo', 'bar', 'baz']); //=> ['baz']
+ *      R.takeLast(2, ['foo', 'bar', 'baz']); //=> ['bar', 'baz']
+ *      R.takeLast(3, ['foo', 'bar', 'baz']); //=> ['foo', 'bar', 'baz']
+ *      R.takeLast(4, ['foo', 'bar', 'baz']); //=> ['foo', 'bar', 'baz']
+ *      R.takeLast(3, 'ramda');               //=> 'mda'
+ */
+var takeLast = /*#__PURE__*/_curry2(function takeLast(n, xs) {
+  return drop(n >= 0 ? xs.length - n : 0, xs);
+});
+
+/**
+ * Checks if a list ends with the provided sublist.
+ *
+ * Similarly, checks if a string ends with the provided substring.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.24.0
+ * @category List
+ * @sig [a] -> [a] -> Boolean
+ * @sig String -> String -> Boolean
+ * @param {*} suffix
+ * @param {*} list
+ * @return {Boolean}
+ * @see R.startsWith
+ * @example
+ *
+ *      R.endsWith('c', 'abc')                //=> true
+ *      R.endsWith('b', 'abc')                //=> false
+ *      R.endsWith(['c'], ['a', 'b', 'c'])    //=> true
+ *      R.endsWith(['b'], ['a', 'b', 'c'])    //=> false
+ */
+var endsWith = /*#__PURE__*/_curry2(function (suffix, list) {
+  return equals(takeLast(suffix.length, list), suffix);
+});
+
+/**
+ * Takes a function and two values in its domain and returns `true` if the
+ * values map to the same value in the codomain; `false` otherwise.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.18.0
+ * @category Relation
+ * @sig (a -> b) -> a -> a -> Boolean
+ * @param {Function} f
+ * @param {*} x
+ * @param {*} y
+ * @return {Boolean}
+ * @example
+ *
+ *      R.eqBy(Math.abs, 5, -5); //=> true
+ */
+var eqBy = /*#__PURE__*/_curry3(function eqBy(f, x, y) {
+  return equals(f(x), f(y));
+});
+
+/**
+ * Reports whether two objects have the same value, in [`R.equals`](#equals)
+ * terms, for the specified property. Useful as a curried predicate.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Object
+ * @sig k -> {k: v} -> {k: v} -> Boolean
+ * @param {String} prop The name of the property to compare
+ * @param {Object} obj1
+ * @param {Object} obj2
+ * @return {Boolean}
+ *
+ * @example
+ *
+ *      const o1 = { a: 1, b: 2, c: 3, d: 4 };
+ *      const o2 = { a: 10, b: 20, c: 3, d: 40 };
+ *      R.eqProps('a', o1, o2); //=> false
+ *      R.eqProps('c', o1, o2); //=> true
+ */
+var eqProps = /*#__PURE__*/_curry3(function eqProps(prop, obj1, obj2) {
+  return equals(obj1[prop], obj2[prop]);
+});
+
+/**
+ * Creates a new object by recursively evolving a shallow copy of `object`,
+ * according to the `transformation` functions. All non-primitive properties
+ * are copied by reference.
+ *
+ * A `transformation` function will not be invoked if its corresponding key
+ * does not exist in the evolved object.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.9.0
+ * @category Object
+ * @sig {k: (v -> v)} -> {k: v} -> {k: v}
+ * @param {Object} transformations The object specifying transformation functions to apply
+ *        to the object.
+ * @param {Object} object The object to be transformed.
+ * @return {Object} The transformed object.
+ * @example
+ *
+ *      const tomato = {firstName: '  Tomato ', data: {elapsed: 100, remaining: 1400}, id:123};
+ *      const transformations = {
+ *        firstName: R.trim,
+ *        lastName: R.trim, // Will not get invoked.
+ *        data: {elapsed: R.add(1), remaining: R.add(-1)}
+ *      };
+ *      R.evolve(transformations, tomato); //=> {firstName: 'Tomato', data: {elapsed: 101, remaining: 1399}, id:123}
+ */
+var evolve = /*#__PURE__*/_curry2(function evolve(transformations, object) {
+  var result = object instanceof Array ? [] : {};
+  var transformation, key, type;
+  for (key in object) {
+    transformation = transformations[key];
+    type = typeof transformation;
+    result[key] = type === 'function' ? transformation(object[key]) : transformation && type === 'object' ? evolve(transformation, object[key]) : object[key];
+  }
+  return result;
+});
+
+var XFind = /*#__PURE__*/function () {
+  function XFind(f, xf) {
+    this.xf = xf;
+    this.f = f;
+    this.found = false;
+  }
+  XFind.prototype['@@transducer/init'] = _xfBase.init;
+  XFind.prototype['@@transducer/result'] = function (result) {
+    if (!this.found) {
+      result = this.xf['@@transducer/step'](result, void 0);
+    }
+    return this.xf['@@transducer/result'](result);
+  };
+  XFind.prototype['@@transducer/step'] = function (result, input) {
+    if (this.f(input)) {
+      this.found = true;
+      result = _reduced(this.xf['@@transducer/step'](result, input));
+    }
+    return result;
+  };
+
+  return XFind;
+}();
+
+var _xfind = /*#__PURE__*/_curry2(function _xfind(f, xf) {
+  return new XFind(f, xf);
+});
+
+/**
+ * Returns the first element of the list which matches the predicate, or
+ * `undefined` if no element matches.
+ *
+ * Dispatches to the `find` method of the second argument, if present.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig (a -> Boolean) -> [a] -> a | undefined
+ * @param {Function} fn The predicate function used to determine if the element is the
+ *        desired one.
+ * @param {Array} list The array to consider.
+ * @return {Object} The element found, or `undefined`.
+ * @see R.transduce
+ * @example
+ *
+ *      const xs = [{a: 1}, {a: 2}, {a: 3}];
+ *      R.find(R.propEq('a', 2))(xs); //=> {a: 2}
+ *      R.find(R.propEq('a', 4))(xs); //=> undefined
+ */
+var find = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable(['find'], _xfind, function find(fn, list) {
+  var idx = 0;
+  var len = list.length;
+  while (idx < len) {
+    if (fn(list[idx])) {
+      return list[idx];
+    }
+    idx += 1;
+  }
+}));
+
+var XFindIndex = /*#__PURE__*/function () {
+  function XFindIndex(f, xf) {
+    this.xf = xf;
+    this.f = f;
+    this.idx = -1;
+    this.found = false;
+  }
+  XFindIndex.prototype['@@transducer/init'] = _xfBase.init;
+  XFindIndex.prototype['@@transducer/result'] = function (result) {
+    if (!this.found) {
+      result = this.xf['@@transducer/step'](result, -1);
+    }
+    return this.xf['@@transducer/result'](result);
+  };
+  XFindIndex.prototype['@@transducer/step'] = function (result, input) {
+    this.idx += 1;
+    if (this.f(input)) {
+      this.found = true;
+      result = _reduced(this.xf['@@transducer/step'](result, this.idx));
+    }
+    return result;
+  };
+
+  return XFindIndex;
+}();
+
+var _xfindIndex = /*#__PURE__*/_curry2(function _xfindIndex(f, xf) {
+  return new XFindIndex(f, xf);
+});
+
+/**
+ * Returns the index of the first element of the list which matches the
+ * predicate, or `-1` if no element matches.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.1
+ * @category List
+ * @sig (a -> Boolean) -> [a] -> Number
+ * @param {Function} fn The predicate function used to determine if the element is the
+ * desired one.
+ * @param {Array} list The array to consider.
+ * @return {Number} The index of the element found, or `-1`.
+ * @see R.transduce
+ * @example
+ *
+ *      const xs = [{a: 1}, {a: 2}, {a: 3}];
+ *      R.findIndex(R.propEq('a', 2))(xs); //=> 1
+ *      R.findIndex(R.propEq('a', 4))(xs); //=> -1
+ */
+var findIndex = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xfindIndex, function findIndex(fn, list) {
+  var idx = 0;
+  var len = list.length;
+  while (idx < len) {
+    if (fn(list[idx])) {
+      return idx;
+    }
+    idx += 1;
+  }
+  return -1;
+}));
+
+var XFindLast = /*#__PURE__*/function () {
+  function XFindLast(f, xf) {
+    this.xf = xf;
+    this.f = f;
+  }
+  XFindLast.prototype['@@transducer/init'] = _xfBase.init;
+  XFindLast.prototype['@@transducer/result'] = function (result) {
+    return this.xf['@@transducer/result'](this.xf['@@transducer/step'](result, this.last));
+  };
+  XFindLast.prototype['@@transducer/step'] = function (result, input) {
+    if (this.f(input)) {
+      this.last = input;
+    }
+    return result;
+  };
+
+  return XFindLast;
+}();
+
+var _xfindLast = /*#__PURE__*/_curry2(function _xfindLast(f, xf) {
+  return new XFindLast(f, xf);
+});
+
+/**
+ * Returns the last element of the list which matches the predicate, or
+ * `undefined` if no element matches.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.1
+ * @category List
+ * @sig (a -> Boolean) -> [a] -> a | undefined
+ * @param {Function} fn The predicate function used to determine if the element is the
+ * desired one.
+ * @param {Array} list The array to consider.
+ * @return {Object} The element found, or `undefined`.
+ * @see R.transduce
+ * @example
+ *
+ *      const xs = [{a: 1, b: 0}, {a:1, b: 1}];
+ *      R.findLast(R.propEq('a', 1))(xs); //=> {a: 1, b: 1}
+ *      R.findLast(R.propEq('a', 4))(xs); //=> undefined
+ */
+var findLast = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xfindLast, function findLast(fn, list) {
+  var idx = list.length - 1;
+  while (idx >= 0) {
+    if (fn(list[idx])) {
+      return list[idx];
+    }
+    idx -= 1;
+  }
+}));
+
+var XFindLastIndex = /*#__PURE__*/function () {
+  function XFindLastIndex(f, xf) {
+    this.xf = xf;
+    this.f = f;
+    this.idx = -1;
+    this.lastIdx = -1;
+  }
+  XFindLastIndex.prototype['@@transducer/init'] = _xfBase.init;
+  XFindLastIndex.prototype['@@transducer/result'] = function (result) {
+    return this.xf['@@transducer/result'](this.xf['@@transducer/step'](result, this.lastIdx));
+  };
+  XFindLastIndex.prototype['@@transducer/step'] = function (result, input) {
+    this.idx += 1;
+    if (this.f(input)) {
+      this.lastIdx = this.idx;
+    }
+    return result;
+  };
+
+  return XFindLastIndex;
+}();
+
+var _xfindLastIndex = /*#__PURE__*/_curry2(function _xfindLastIndex(f, xf) {
+  return new XFindLastIndex(f, xf);
+});
+
+/**
+ * Returns the index of the last element of the list which matches the
+ * predicate, or `-1` if no element matches.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.1
+ * @category List
+ * @sig (a -> Boolean) -> [a] -> Number
+ * @param {Function} fn The predicate function used to determine if the element is the
+ * desired one.
+ * @param {Array} list The array to consider.
+ * @return {Number} The index of the element found, or `-1`.
+ * @see R.transduce
+ * @example
+ *
+ *      const xs = [{a: 1, b: 0}, {a:1, b: 1}];
+ *      R.findLastIndex(R.propEq('a', 1))(xs); //=> 1
+ *      R.findLastIndex(R.propEq('a', 4))(xs); //=> -1
+ */
+var findLastIndex = /*#__PURE__*/_curry2( /*#__PURE__*/_dispatchable([], _xfindLastIndex, function findLastIndex(fn, list) {
+  var idx = list.length - 1;
+  while (idx >= 0) {
+    if (fn(list[idx])) {
+      return idx;
+    }
+    idx -= 1;
+  }
+  return -1;
+}));
+
+/**
+ * Returns a new list by pulling every item out of it (and all its sub-arrays)
+ * and putting them in a new array, depth-first.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig [a] -> [b]
+ * @param {Array} list The array to consider.
+ * @return {Array} The flattened list.
+ * @see R.unnest
+ * @example
+ *
+ *      R.flatten([1, 2, [3, 4], 5, [6, [7, 8, [9, [10, 11], 12]]]]);
+ *      //=> [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]
+ */
+var flatten = /*#__PURE__*/_curry1( /*#__PURE__*/_makeFlat(true));
+
+/**
+ * Returns a new function much like the supplied one, except that the first two
+ * arguments' order is reversed.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Function
+ * @sig ((a, b, c, ...) -> z) -> (b -> a -> c -> ... -> z)
+ * @param {Function} fn The function to invoke with its first two parameters reversed.
+ * @return {*} The result of invoking `fn` with its first two parameters' order reversed.
+ * @example
+ *
+ *      const mergeThree = (a, b, c) => [].concat(a, b, c);
+ *
+ *      mergeThree(1, 2, 3); //=> [1, 2, 3]
+ *
+ *      R.flip(mergeThree)(1, 2, 3); //=> [2, 1, 3]
+ * @symb R.flip(f)(a, b, c) = f(b, a, c)
+ */
+var flip = /*#__PURE__*/_curry1(function flip(fn) {
+  return curryN(fn.length, function (a, b) {
+    var args = Array.prototype.slice.call(arguments, 0);
+    args[0] = b;
+    args[1] = a;
+    return fn.apply(this, args);
+  });
+});
+
+/**
+ * Iterate over an input `list`, calling a provided function `fn` for each
+ * element in the list.
+ *
+ * `fn` receives one argument: *(value)*.
+ *
+ * Note: `R.forEach` does not skip deleted or unassigned indices (sparse
+ * arrays), unlike the native `Array.prototype.forEach` method. For more
+ * details on this behavior, see:
+ * https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Array/forEach#Description
+ *
+ * Also note that, unlike `Array.prototype.forEach`, Ramda's `forEach` returns
+ * the original array. In some libraries this function is named `each`.
+ *
+ * Dispatches to the `forEach` method of the second argument, if present.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.1
+ * @category List
+ * @sig (a -> *) -> [a] -> [a]
+ * @param {Function} fn The function to invoke. Receives one argument, `value`.
+ * @param {Array} list The list to iterate over.
+ * @return {Array} The original list.
+ * @see R.addIndex
+ * @example
+ *
+ *      const printXPlusFive = x => console.log(x + 5);
+ *      R.forEach(printXPlusFive, [1, 2, 3]); //=> [1, 2, 3]
+ *      // logs 6
+ *      // logs 7
+ *      // logs 8
+ * @symb R.forEach(f, [a, b, c]) = [a, b, c]
+ */
+var forEach = /*#__PURE__*/_curry2( /*#__PURE__*/_checkForMethod('forEach', function forEach(fn, list) {
+  var len = list.length;
+  var idx = 0;
+  while (idx < len) {
+    fn(list[idx]);
+    idx += 1;
+  }
+  return list;
+}));
+
+/**
+ * Iterate over an input `object`, calling a provided function `fn` for each
+ * key and value in the object.
+ *
+ * `fn` receives three argument: *(value, key, obj)*.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.23.0
+ * @category Object
+ * @sig ((a, String, StrMap a) -> Any) -> StrMap a -> StrMap a
+ * @param {Function} fn The function to invoke. Receives three argument, `value`, `key`, `obj`.
+ * @param {Object} obj The object to iterate over.
+ * @return {Object} The original object.
+ * @example
+ *
+ *      const printKeyConcatValue = (value, key) => console.log(key + ':' + value);
+ *      R.forEachObjIndexed(printKeyConcatValue, {x: 1, y: 2}); //=> {x: 1, y: 2}
+ *      // logs x:1
+ *      // logs y:2
+ * @symb R.forEachObjIndexed(f, {x: a, y: b}) = {x: a, y: b}
+ */
+var forEachObjIndexed = /*#__PURE__*/_curry2(function forEachObjIndexed(fn, obj) {
+  var keyList = keys(obj);
+  var idx = 0;
+  while (idx < keyList.length) {
+    var key = keyList[idx];
+    fn(obj[key], key, obj);
+    idx += 1;
+  }
+  return obj;
+});
+
+/**
+ * Creates a new object from a list key-value pairs. If a key appears in
+ * multiple pairs, the rightmost pair is included in the object.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.3.0
+ * @category List
+ * @sig [[k,v]] -> {k: v}
+ * @param {Array} pairs An array of two-element arrays that will be the keys and values of the output object.
+ * @return {Object} The object made by pairing up `keys` and `values`.
+ * @see R.toPairs, R.pair
+ * @example
+ *
+ *      R.fromPairs([['a', 1], ['b', 2], ['c', 3]]); //=> {a: 1, b: 2, c: 3}
+ */
+var fromPairs = /*#__PURE__*/_curry1(function fromPairs(pairs) {
+  var result = {};
+  var idx = 0;
+  while (idx < pairs.length) {
+    result[pairs[idx][0]] = pairs[idx][1];
+    idx += 1;
+  }
+  return result;
+});
+
+/**
+ * Splits a list into sub-lists stored in an object, based on the result of
+ * calling a String-returning function on each element, and grouping the
+ * results according to values returned.
+ *
+ * Dispatches to the `groupBy` method of the second argument, if present.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig (a -> String) -> [a] -> {String: [a]}
+ * @param {Function} fn Function :: a -> String
+ * @param {Array} list The array to group
+ * @return {Object} An object with the output of `fn` for keys, mapped to arrays of elements
+ *         that produced that key when passed to `fn`.
+ * @see R.reduceBy, R.transduce
+ * @example
+ *
+ *      const byGrade = R.groupBy(function(student) {
+ *        const score = student.score;
+ *        return score < 65 ? 'F' :
+ *               score < 70 ? 'D' :
+ *               score < 80 ? 'C' :
+ *               score < 90 ? 'B' : 'A';
+ *      });
+ *      const students = [{name: 'Abby', score: 84},
+ *                      {name: 'Eddy', score: 58},
+ *                      // ...
+ *                      {name: 'Jack', score: 69}];
+ *      byGrade(students);
+ *      // {
+ *      //   'A': [{name: 'Dianne', score: 99}],
+ *      //   'B': [{name: 'Abby', score: 84}]
+ *      //   // ...,
+ *      //   'F': [{name: 'Eddy', score: 58}]
+ *      // }
+ */
+var groupBy = /*#__PURE__*/_curry2( /*#__PURE__*/_checkForMethod('groupBy', /*#__PURE__*/reduceBy(function (acc, item) {
+  if (acc == null) {
+    acc = [];
+  }
+  acc.push(item);
+  return acc;
+}, null)));
+
+/**
+ * Takes a list and returns a list of lists where each sublist's elements are
+ * all satisfied pairwise comparison according to the provided function.
+ * Only adjacent elements are passed to the comparison function.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.21.0
+ * @category List
+ * @sig ((a, a) → Boolean) → [a] → [[a]]
+ * @param {Function} fn Function for determining whether two given (adjacent)
+ *        elements should be in the same group
+ * @param {Array} list The array to group. Also accepts a string, which will be
+ *        treated as a list of characters.
+ * @return {List} A list that contains sublists of elements,
+ *         whose concatenations are equal to the original list.
+ * @example
+ *
+ * R.groupWith(R.equals, [0, 1, 1, 2, 3, 5, 8, 13, 21])
+ * //=> [[0], [1, 1], [2], [3], [5], [8], [13], [21]]
+ *
+ * R.groupWith((a, b) => a + 1 === b, [0, 1, 1, 2, 3, 5, 8, 13, 21])
+ * //=> [[0, 1], [1, 2, 3], [5], [8], [13], [21]]
+ *
+ * R.groupWith((a, b) => a % 2 === b % 2, [0, 1, 1, 2, 3, 5, 8, 13, 21])
+ * //=> [[0], [1, 1], [2], [3, 5], [8], [13, 21]]
+ *
+ * R.groupWith(R.eqBy(isVowel), 'aestiou')
+ * //=> ['ae', 'st', 'iou']
+ */
+var groupWith = /*#__PURE__*/_curry2(function (fn, list) {
+  var res = [];
+  var idx = 0;
+  var len = list.length;
+  while (idx < len) {
+    var nextidx = idx + 1;
+    while (nextidx < len && fn(list[nextidx - 1], list[nextidx])) {
+      nextidx += 1;
+    }
+    res.push(list.slice(idx, nextidx));
+    idx = nextidx;
+  }
+  return res;
+});
+
+/**
+ * Returns `true` if the first argument is greater than the second; `false`
+ * otherwise.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Relation
+ * @sig Ord a => a -> a -> Boolean
+ * @param {*} a
+ * @param {*} b
+ * @return {Boolean}
+ * @see R.lt
+ * @example
+ *
+ *      R.gt(2, 1); //=> true
+ *      R.gt(2, 2); //=> false
+ *      R.gt(2, 3); //=> false
+ *      R.gt('a', 'z'); //=> false
+ *      R.gt('z', 'a'); //=> true
+ */
+var gt = /*#__PURE__*/_curry2(function gt(a, b) {
+  return a > b;
+});
+
+/**
+ * Returns `true` if the first argument is greater than or equal to the second;
+ * `false` otherwise.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category Relation
+ * @sig Ord a => a -> a -> Boolean
+ * @param {Number} a
+ * @param {Number} b
+ * @return {Boolean}
+ * @see R.lte
+ * @example
+ *
+ *      R.gte(2, 1); //=> true
+ *      R.gte(2, 2); //=> true
+ *      R.gte(2, 3); //=> false
+ *      R.gte('a', 'z'); //=> false
+ *      R.gte('z', 'a'); //=> true
+ */
+var gte = /*#__PURE__*/_curry2(function gte(a, b) {
+  return a >= b;
+});
+
+/**
+ * Returns whether or not a path exists in an object. Only the object's
+ * own properties are checked.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.26.0
+ * @category Object
+ * @typedefn Idx = String | Int
+ * @sig [Idx] -> {a} -> Boolean
+ * @param {Array} path The path to use.
+ * @param {Object} obj The object to check the path in.
+ * @return {Boolean} Whether the path exists.
+ * @see R.has
+ * @example
+ *
+ *      R.hasPath(['a', 'b'], {a: {b: 2}});         // => true
+ *      R.hasPath(['a', 'b'], {a: {b: undefined}}); // => true
+ *      R.hasPath(['a', 'b'], {a: {c: 2}});         // => false
+ *      R.hasPath(['a', 'b'], {});                  // => false
+ */
+var hasPath = /*#__PURE__*/_curry2(function hasPath(_path, obj) {
+  if (_path.length === 0) {
+    return false;
+  }
+  var val = obj;
+  var idx = 0;
+  while (idx < _path.length) {
+    if (_has(_path[idx], val)) {
+      val = val[_path[idx]];
+      idx += 1;
+    } else {
+      return false;
+    }
+  }
+  return true;
+});
+
+/**
+ * Returns whether or not an object has an own property with the specified name
+ *
+ * @func
+ * @memberOf R
+ * @since v0.7.0
+ * @category Object
+ * @sig s -> {s: x} -> Boolean
+ * @param {String} prop The name of the property to check for.
+ * @param {Object} obj The object to query.
+ * @return {Boolean} Whether the property exists.
+ * @example
+ *
+ *      const hasName = R.has('name');
+ *      hasName({name: 'alice'});   //=> true
+ *      hasName({name: 'bob'});     //=> true
+ *      hasName({});                //=> false
+ *
+ *      const point = {x: 0, y: 0};
+ *      const pointHas = R.has(R.__, point);
+ *      pointHas('x');  //=> true
+ *      pointHas('y');  //=> true
+ *      pointHas('z');  //=> false
+ */
+var has = /*#__PURE__*/_curry2(function has(prop, obj) {
+  return hasPath([prop], obj);
+});
+
+/**
+ * Returns whether or not an object or its prototype chain has a property with
+ * the specified name
+ *
+ * @func
+ * @memberOf R
+ * @since v0.7.0
+ * @category Object
+ * @sig s -> {s: x} -> Boolean
+ * @param {String} prop The name of the property to check for.
+ * @param {Object} obj The object to query.
+ * @return {Boolean} Whether the property exists.
+ * @example
+ *
+ *      function Rectangle(width, height) {
+ *        this.width = width;
+ *        this.height = height;
+ *      }
+ *      Rectangle.prototype.area = function() {
+ *        return this.width * this.height;
+ *      };
+ *
+ *      const square = new Rectangle(2, 2);
+ *      R.hasIn('width', square);  //=> true
+ *      R.hasIn('area', square);  //=> true
+ */
+var hasIn = /*#__PURE__*/_curry2(function hasIn(prop, obj) {
+  return prop in obj;
+});
+
+/**
+ * Returns true if its arguments are identical, false otherwise. Values are
+ * identical if they reference the same memory. `NaN` is identical to `NaN`;
+ * `0` and `-0` are not identical.
+ *
+ * Note this is merely a curried version of ES6 `Object.is`.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.15.0
+ * @category Relation
+ * @sig a -> a -> Boolean
+ * @param {*} a
+ * @param {*} b
+ * @return {Boolean}
+ * @example
+ *
+ *      const o = {};
+ *      R.identical(o, o); //=> true
+ *      R.identical(1, 1); //=> true
+ *      R.identical(1, '1'); //=> false
+ *      R.identical([], []); //=> false
+ *      R.identical(0, -0); //=> false
+ *      R.identical(NaN, NaN); //=> true
+ */
+var identical = /*#__PURE__*/_curry2(_objectIs$1);
+
+/**
+ * Creates a function that will process either the `onTrue` or the `onFalse`
+ * function depending upon the result of the `condition` predicate.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.8.0
+ * @category Logic
+ * @sig (*... -> Boolean) -> (*... -> *) -> (*... -> *) -> (*... -> *)
+ * @param {Function} condition A predicate function
+ * @param {Function} onTrue A function to invoke when the `condition` evaluates to a truthy value.
+ * @param {Function} onFalse A function to invoke when the `condition` evaluates to a falsy value.
+ * @return {Function} A new function that will process either the `onTrue` or the `onFalse`
+ *                    function depending upon the result of the `condition` predicate.
+ * @see R.unless, R.when, R.cond
+ * @example
+ *
+ *      const incCount = R.ifElse(
+ *        R.has('count'),
+ *        R.over(R.lensProp('count'), R.inc),
+ *        R.assoc('count', 1)
+ *      );
+ *      incCount({});           //=> { count: 1 }
+ *      incCount({ count: 1 }); //=> { count: 2 }
+ */
+var ifElse = /*#__PURE__*/_curry3(function ifElse(condition, onTrue, onFalse) {
+  return curryN(Math.max(condition.length, onTrue.length, onFalse.length), function _ifElse() {
+    return condition.apply(this, arguments) ? onTrue.apply(this, arguments) : onFalse.apply(this, arguments);
+  });
+});
+
+/**
+ * Increments its argument.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.9.0
+ * @category Math
+ * @sig Number -> Number
+ * @param {Number} n
+ * @return {Number} n + 1
+ * @see R.dec
+ * @example
+ *
+ *      R.inc(42); //=> 43
+ */
+var inc = /*#__PURE__*/add(1);
+
+/**
+ * Returns `true` if the specified value is equal, in [`R.equals`](#equals)
+ * terms, to at least one element of the given list; `false` otherwise.
+ * Works also with strings.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig a -> [a] -> Boolean
+ * @param {Object} a The item to compare against.
+ * @param {Array} list The array to consider.
+ * @return {Boolean} `true` if an equivalent item is in the list, `false` otherwise.
+ * @see R.any
+ * @example
+ *
+ *      R.includes(3, [1, 2, 3]); //=> true
+ *      R.includes(4, [1, 2, 3]); //=> false
+ *      R.includes({ name: 'Fred' }, [{ name: 'Fred' }]); //=> true
+ *      R.includes([42], [[42]]); //=> true
+ *      R.includes('ba', 'banana'); //=>true
+ */
+var includes = /*#__PURE__*/_curry2(_includes);
+
+/**
+ * Given a function that generates a key, turns a list of objects into an
+ * object indexing the objects by the given key. Note that if multiple
+ * objects generate the same value for the indexing key only the last value
+ * will be included in the generated object.
+ *
+ * Acts as a transducer if a transformer is given in list position.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.19.0
+ * @category List
+ * @sig (a -> String) -> [{k: v}] -> {k: {k: v}}
+ * @param {Function} fn Function :: a -> String
+ * @param {Array} array The array of objects to index
+ * @return {Object} An object indexing each array element by the given property.
+ * @example
+ *
+ *      const list = [{id: 'xyz', title: 'A'}, {id: 'abc', title: 'B'}];
+ *      R.indexBy(R.prop('id'), list);
+ *      //=> {abc: {id: 'abc', title: 'B'}, xyz: {id: 'xyz', title: 'A'}}
+ */
+var indexBy = /*#__PURE__*/reduceBy(function (acc, elem) {
+  return elem;
+}, null);
+
+/**
+ * Returns the position of the first occurrence of an item in an array, or -1
+ * if the item is not included in the array. [`R.equals`](#equals) is used to
+ * determine equality.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.1.0
+ * @category List
+ * @sig a -> [a] -> Number
+ * @param {*} target The item to find.
+ * @param {Array} xs The array to search in.
+ * @return {Number} the index of the target, or -1 if the target is not found.
+ * @see R.lastIndexOf
+ * @example
+ *
+ *      R.indexOf(3, [1,2,3,4]); //=> 2
+ *      R.indexOf(10, [1,2,3,4]); //=> -1
+ */
+var indexOf = /*#__PURE__*/_curry2(function indexOf(target, xs) {
+  return typeof xs.indexOf === 'function' && !_isArray(xs) ? xs.indexOf(target) : _indexOf(xs, target, 0);
+});
+
+/**
+ * Returns all but the last element of the given list or string.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.9.0
+ * @category List
+ * @sig [a] -> [a]
+ * @sig String -> String
+ * @param {*} list
+ * @return {*}
+ * @see R.last, R.head, R.tail
+ * @example
+ *
+ *      R.init([1, 2, 3]);  //=> [1, 2]
+ *      R.init([1, 2]);     //=> [1]
+ *      R.init([1]);        //=> []
+ *      R.init([]);         //=> []
+ *
+ *      R.init('abc');  //=> 'ab'
+ *      R.init('ab');   //=> 'a'
+ *      R.init('a');    //=> ''
+ *      R.init('');     //=> ''
+ */
+var init = /*#__PURE__*/slice(0, -1);
+
+/**
+ * Takes a predicate `pred`, a list `xs`, and a list `ys`, and returns a list
+ * `xs'` comprising each of the elements of `xs` which is equal to one or more
+ * elements of `ys` according to `pred`.
+ *
+ * `pred` must be a binary function expecting an element from each list.
+ *
+ * `xs`, `ys`, and `xs'` are treated as sets, semantically, so ordering should
+ * not be significant, but since `xs'` is ordered the implementation guarantees
+ * that its values are in the same order as they appear in `xs`. Duplicates are
+ * not removed, so `xs'` may contain duplicates if `xs` contains duplicates.
+ *
+ * @func
+ * @memberOf R
+ * @since v0.24.0
+ * @category Relation
+ * @sig ((a, b) -> Boolean) -> [a] -> [b] -> [a]
+ * @param {Function} pred
+ * @param {Array} xs
+ * @param {Array} ys
+ * @return {Array}
+ * @see R.intersection
+ * @example
+ *
+ *      R.innerJoin(
+ *        (record, id) => record.id === id,
+ *        [{id: 824, name: 'Richie Furay'},
+ *         {id: 956, name: 'Dewey Martin'},
+ *         {id: 313, name: 'Bruce Palmer'},
+ *         {id: 456, name: 'Stephen Stills'},
+ *         {id: 177, name: 'Neil Young'}],
+ *        [177, 456, 999]
+ *      );
+ *      //=> [{id: 456, name: 'Stephen Stills'}, {id: 177, name: 'Neil Young'}]
+ */
+var innerJoin = /*#__PURE__*/_curry3(function innerJoin(pred, xs, ys) {
+  return _filter(function (x) {
+    return _includesWith(pred, x, ys);
+  }, xs);
+});
+
+/**
+ * Inserts the supplied element into the list, at the specified `index`. _Note that
+
+ * this is not destructive_: it returns a copy of the list with the changes.
+ * <small>No lists have been harmed in the application of this function.</small>
+ *
+ * @func
+ * @memberOf R
+ * @since v0.2.2
+ * @category List
+ * @sig Number -> a -> [a] -> [a]
+ * @param {Number} index The position to insert the element
+ * @param {*} elt The element to insert into the Array
+ * @param {Array} list The list to insert into
+ * @return {Array} A new Array with `elt` inserted at `index`.
+ * @example
+ *
+ *      R.insert(2, 'x', [1,2,3,4]); //=> [1,2,'x',3,4]
+ */
+var insert = /*#__PURE__*/_curry3(function insert(idx, elt, list) {
+  idx = idx < list.length && idx >= 0 ? idx : list.length;
+  var result = Array.prototype.slice.call(list, 0);
+  result.splice(idx, 0, elt);
+  return result;
+});
+
+/**
+ * Inserts the sub-list into the list, at the specified `index`. _Note that this is not
+ * destructive_: it returns a copy of the list with the changes.
+ * <small>No lists have been harmed in the application of this function.</small>
+ *
+ * @func
+ * @memberOf R
+ * @since v0.9.0
+ * @category List
+ * @sig Number -> [a] -> [a] -> [a]
+ * @param {Number} index The position to insert the sub-list
+ * @param {Array} elts The sub-list to insert into the Array
+ * @param {Array} list The list to insert the sub-list into
+ * @return {Array} A new Array with `elts` inserted starting at `index`.
+ * @example
+ *
+ *      R.insertAll(2, ['x','y','z'], [1,2,3,4]); //=> [1,2,'x','y','z',3,4]
+ */
+var insertAll = /*#__PURE__*/_curry3(function insertAll(idx, elts, list) {
+  idx = idx < list.length && idx >= 0 ? idx : list.length;
+  return [].concat(Array.prototype.slice.call(list, 0, idx), elts, Array.prototype.slice.call(list, idx));
+});
 
 /**
  * Returns a new list containing only one copy of each element in the original
@@ -10465,7 +9518,7 @@ var intersection = /*#__PURE__*/_curry2(function intersection(list1, list2) {
     lookupList = list2;
     filteredList = list1;
   }
-  return uniq(_filter(flip(_contains)(lookupList), filteredList));
+  return uniq(_filter(flip(_includes)(lookupList), filteredList));
 });
 
 /**
@@ -10483,7 +9536,7 @@ var intersection = /*#__PURE__*/_curry2(function intersection(list1, list2) {
  * @return {Array} The new list.
  * @example
  *
- *      R.intersperse('n', ['ba', 'a', 'a']); //=> ['ba', 'n', 'a', 'n', 'a']
+ *      R.intersperse('a', ['b', 'n', 'n', 's']); //=> ['b', 'a', 'n', 'a', 'n', 'a', 's']
  */
 var intersperse = /*#__PURE__*/_curry2( /*#__PURE__*/_checkForMethod('intersperse', function intersperse(separator, list) {
   var out = [];
@@ -10523,7 +9576,7 @@ function _objectAssign(target) {
   return output;
 }
 
-var _assign = typeof Object.assign === 'function' ? Object.assign : _objectAssign;
+var _objectAssign$1 = typeof Object.assign === 'function' ? Object.assign : _objectAssign;
 
 /**
  * Creates an object containing a single key:value pair.
@@ -10539,7 +9592,7 @@ var _assign = typeof Object.assign === 'function' ? Object.assign : _objectAssig
  * @see R.pair
  * @example
  *
- *      var matchPhrases = R.compose(
+ *      const matchPhrases = R.compose(
  *        R.objOf('must'),
  *        R.map(R.objOf('match_phrase'))
  *      );
@@ -10569,7 +9622,7 @@ var _stepCatString = {
 var _stepCatObject = {
   '@@transducer/init': Object,
   '@@transducer/step': function (result, input) {
-    return _assign(result, _isArrayLike(input) ? objOf(input[0], input[1]) : input);
+    return _objectAssign$1(result, _isArrayLike(input) ? objOf(input[0], input[1]) : input);
   },
   '@@transducer/result': _identity
 };
@@ -10618,14 +9671,15 @@ function _stepCat(obj) {
  * @param {Function} xf The transducer function. Receives a transformer and returns a transformer.
  * @param {Array} list The list to iterate over.
  * @return {*} The final, accumulated value.
+ * @see R.transduce
  * @example
  *
- *      var numbers = [1, 2, 3, 4];
- *      var transducer = R.compose(R.map(R.add(1)), R.take(2));
+ *      const numbers = [1, 2, 3, 4];
+ *      const transducer = R.compose(R.map(R.add(1)), R.take(2));
  *
  *      R.into([], transducer, numbers); //=> [2, 3]
  *
- *      var intoArray = R.into([]);
+ *      const intoArray = R.into([]);
  *      intoArray(transducer, numbers); //=> [2, 3]
  */
 var into = /*#__PURE__*/_curry3(function into(acc, xf, list) {
@@ -10646,7 +9700,7 @@ var into = /*#__PURE__*/_curry3(function into(acc, xf, list) {
  * @see R.invertObj
  * @example
  *
- *      var raceResultsByFirstName = {
+ *      const raceResultsByFirstName = {
  *        first: 'alice',
  *        second: 'jake',
  *        third: 'alice',
@@ -10685,7 +9739,7 @@ var invert = /*#__PURE__*/_curry1(function invert(obj) {
  * @see R.invert
  * @example
  *
- *      var raceResults = {
+ *      const raceResults = {
  *        first: 'alice',
  *        second: 'jake'
  *      };
@@ -10693,7 +9747,7 @@ var invert = /*#__PURE__*/_curry1(function invert(obj) {
  *      //=> { 'alice': 'first', 'jake':'second' }
  *
  *      // Alternatively:
- *      var raceResults = ['alice', 'jake'];
+ *      const raceResults = ['alice', 'jake'];
  *      R.invertObj(raceResults);
  *      //=> { 'alice': '0', 'jake':'1' }
  */
@@ -10730,9 +9784,9 @@ var invertObj = /*#__PURE__*/_curry1(function invertObj(obj) {
  * @see R.construct
  * @example
  *
- *      var sliceFrom = R.invoker(1, 'slice');
+ *      const sliceFrom = R.invoker(1, 'slice');
  *      sliceFrom(6, 'abcdefghijklm'); //=> 'ghijklm'
- *      var sliceFrom6 = R.invoker(2, 'slice')(6);
+ *      const sliceFrom6 = R.invoker(2, 'slice')(6);
  *      sliceFrom6(8, 'abcdefghijklm'); //=> 'gh'
  * @symb R.invoker(0, 'method')(o) = o['method']()
  * @symb R.invoker(1, 'method')(a, o) = o['method'](a)
@@ -10815,7 +9869,7 @@ var isEmpty = /*#__PURE__*/_curry1(function isEmpty(x) {
  * @see R.split
  * @example
  *
- *      var spacer = R.join(' ');
+ *      const spacer = R.join(' ');
  *      spacer(['a', 2, 3.4]);   //=> 'a 2 3.4'
  *      R.join('|', [1, 2, 3]);    //=> '1|2|3'
  */
@@ -10834,7 +9888,7 @@ var join = /*#__PURE__*/invoker(1, 'join');
  * @see R.applySpec
  * @example
  *
- *      var getRange = R.juxt([Math.min, Math.max]);
+ *      const getRange = R.juxt([Math.min, Math.max]);
  *      getRange(3, 4, 9, -3); //=> [-3, 9]
  * @symb R.juxt([f, g, h])(a, b) = [f(a, b), g(a, b), h(a, b)]
  */
@@ -10860,9 +9914,9 @@ var juxt = /*#__PURE__*/_curry1(function juxt(fns) {
  * @see R.keys, R.valuesIn
  * @example
  *
- *      var F = function() { this.x = 'X'; };
+ *      const F = function() { this.x = 'X'; };
  *      F.prototype.y = 'Y';
- *      var f = new F();
+ *      const f = new F();
  *      R.keysIn(f); //=> ['x', 'y']
  */
 var keysIn = /*#__PURE__*/_curry1(function keysIn(obj) {
@@ -10948,7 +10002,7 @@ var length = /*#__PURE__*/_curry1(function length(list) {
  * @see R.view, R.set, R.over, R.lensIndex, R.lensProp
  * @example
  *
- *      var xLens = R.lens(R.prop('x'), R.assoc('x'));
+ *      const xLens = R.lens(R.prop('x'), R.assoc('x'));
  *
  *      R.view(xLens, {x: 1, y: 2});            //=> 1
  *      R.set(xLens, 4, {x: 1, y: 2});          //=> {x: 4, y: 2}
@@ -10978,7 +10032,7 @@ var lens = /*#__PURE__*/_curry2(function lens(getter, setter) {
  * @see R.view, R.set, R.over
  * @example
  *
- *      var headLens = R.lensIndex(0);
+ *      const headLens = R.lensIndex(0);
  *
  *      R.view(headLens, ['a', 'b', 'c']);            //=> 'a'
  *      R.set(headLens, 'x', ['a', 'b', 'c']);        //=> ['x', 'b', 'c']
@@ -11003,7 +10057,7 @@ var lensIndex = /*#__PURE__*/_curry1(function lensIndex(n) {
  * @see R.view, R.set, R.over
  * @example
  *
- *      var xHeadYLens = R.lensPath(['x', 0, 'y']);
+ *      const xHeadYLens = R.lensPath(['x', 0, 'y']);
  *
  *      R.view(xHeadYLens, {x: [{y: 2, z: 3}, {y: 4, z: 5}]});
  *      //=> 2
@@ -11030,7 +10084,7 @@ var lensPath = /*#__PURE__*/_curry1(function lensPath(p) {
  * @see R.view, R.set, R.over
  * @example
  *
- *      var xLens = R.lensProp('x');
+ *      const xLens = R.lensProp('x');
  *
  *      R.view(xLens, {x: 1, y: 2});            //=> 1
  *      R.set(xLens, 4, {x: 1, y: 2});          //=> {x: 4, y: 2}
@@ -11108,11 +10162,11 @@ var lte = /*#__PURE__*/_curry2(function lte(a, b) {
  * @param {*} acc The accumulator value.
  * @param {Array} list The list to iterate over.
  * @return {*} The final, accumulated value.
- * @see R.addIndex, R.mapAccumRight
+ * @see R.scan, R.addIndex, R.mapAccumRight
  * @example
  *
- *      var digits = ['1', '2', '3', '4'];
- *      var appender = (a, b) => [a + b, a + b];
+ *      const digits = ['1', '2', '3', '4'];
+ *      const appender = (a, b) => [a + b, a + b];
  *
  *      R.mapAccum(appender, 0, digits); //=> ['01234', ['01', '012', '0123', '01234']]
  * @symb R.mapAccum(f, a, [b, c, d]) = [
@@ -11146,14 +10200,14 @@ var mapAccum = /*#__PURE__*/_curry3(function mapAccum(fn, acc, list) {
  * Similar to [`mapAccum`](#mapAccum), except moves through the input list from
  * the right to the left.
  *
- * The iterator function receives two arguments, *value* and *acc*, and should
- * return a tuple *[value, acc]*.
+ * The iterator function receives two arguments, *acc* and *value*, and should
+ * return a tuple *[acc, value]*.
  *
  * @func
  * @memberOf R
  * @since v0.10.0
  * @category List
- * @sig ((x, acc) -> (y, acc)) -> acc -> [x] -> ([y], acc)
+ * @sig ((acc, x) -> (acc, y)) -> acc -> [x] -> (acc, [y])
  * @param {Function} fn The function to be called on every element of the input `list`.
  * @param {*} acc The accumulator value.
  * @param {Array} list The list to iterate over.
@@ -11161,17 +10215,17 @@ var mapAccum = /*#__PURE__*/_curry3(function mapAccum(fn, acc, list) {
  * @see R.addIndex, R.mapAccum
  * @example
  *
- *      var digits = ['1', '2', '3', '4'];
- *      var append = (a, b) => [a + b, a + b];
+ *      const digits = ['1', '2', '3', '4'];
+ *      const appender = (a, b) => [b + a, b + a];
  *
- *      R.mapAccumRight(append, 5, digits); //=> [['12345', '2345', '345', '45'], '12345']
+ *      R.mapAccumRight(appender, 5, digits); //=> ['12345', ['12345', '2345', '345', '45']]
  * @symb R.mapAccumRight(f, a, [b, c, d]) = [
+ *   f(f(f(a, d)[0], c)[0], b)[0],
  *   [
- *     f(b, f(c, f(d, a)[0])[0])[1],
- *     f(c, f(d, a)[0])[1],
- *     f(d, a)[1],
+ *     f(a, d)[1],
+ *     f(f(a, d)[0], c)[1],
+ *     f(f(f(a, d)[0], c)[0], b)[1]
  *   ]
- *   f(b, f(c, f(d, a)[0])[0])[0],
  * ]
  */
 var mapAccumRight = /*#__PURE__*/_curry3(function mapAccumRight(fn, acc, list) {
@@ -11179,11 +10233,11 @@ var mapAccumRight = /*#__PURE__*/_curry3(function mapAccumRight(fn, acc, list) {
   var result = [];
   var tuple = [acc];
   while (idx >= 0) {
-    tuple = fn(list[idx], tuple[0]);
+    tuple = fn(tuple[0], list[idx]);
     result[idx] = tuple[1];
     idx -= 1;
   }
-  return [result, tuple[0]];
+  return [tuple[0], result];
 });
 
 /**
@@ -11202,10 +10256,10 @@ var mapAccumRight = /*#__PURE__*/_curry3(function mapAccumRight(fn, acc, list) {
  * @see R.map
  * @example
  *
- *      var values = { x: 1, y: 2, z: 3 };
- *      var prependKeyAndDouble = (num, key, obj) => key + (num * 2);
+ *      const xyz = { x: 1, y: 2, z: 3 };
+ *      const prependKeyAndDouble = (num, key, obj) => key + (num * 2);
  *
- *      R.mapObjIndexed(prependKeyAndDouble, values); //=> { x: 'x2', y: 'y4', z: 'z6' }
+ *      R.mapObjIndexed(prependKeyAndDouble, xyz); //=> { x: 'x2', y: 'y4', z: 'z6' }
  */
 var mapObjIndexed = /*#__PURE__*/_curry2(function mapObjIndexed(fn, obj) {
   return _reduce(function (acc, key) {
@@ -11263,11 +10317,11 @@ var match = /*#__PURE__*/_curry2(function match(rx, str) {
  *      R.mathMod(17.2, 5); //=> NaN
  *      R.mathMod(17, 5.3); //=> NaN
  *
- *      var clock = R.mathMod(R.__, 12);
+ *      const clock = R.mathMod(R.__, 12);
  *      clock(15); //=> 3
  *      clock(24); //=> 0
  *
- *      var seventeenMod = R.mathMod(17);
+ *      const seventeenMod = R.mathMod(17);
  *      seventeenMod(3);  //=> 2
  *      seventeenMod(4);  //=> 1
  *      seventeenMod(10); //=> 7
@@ -11299,7 +10353,7 @@ var mathMod = /*#__PURE__*/_curry2(function mathMod(m, p) {
  * @example
  *
  *      //  square :: Number -> Number
- *      var square = n => n * n;
+ *      const square = n => n * n;
  *
  *      R.maxBy(square, -3, 2); //=> -3
  *
@@ -11377,11 +10431,11 @@ var median = /*#__PURE__*/_curry1(function median(list) {
 });
 
 /**
- * A customisable version of [`R.memoize`](#memoize). `memoizeWith` takes an
- * additional function that will be applied to a given argument set and used to
- * create the cache key under which the results of the function to be memoized
- * will be stored. Care must be taken when implementing key generation to avoid
- * clashes that may overwrite previous entries erroneously.
+ * Creates a new function that, when invoked, caches the result of calling `fn`
+ * for a given argument set and returns the result. Subsequent calls to the
+ * memoized `fn` with the same argument set will not result in an additional
+ * call to `fn`; instead, the cached result for that set of arguments will be
+ * returned.
  *
  *
  * @func
@@ -11392,7 +10446,6 @@ var median = /*#__PURE__*/_curry1(function median(list) {
  * @param {Function} fn The function to generate the cache key.
  * @param {Function} fn The function to memoize.
  * @return {Function} Memoized version of `fn`.
- * @see R.memoize
  * @example
  *
  *      let count = 0;
@@ -11417,38 +10470,6 @@ var memoizeWith = /*#__PURE__*/_curry2(function memoizeWith(mFn, fn) {
 });
 
 /**
- * Creates a new function that, when invoked, caches the result of calling `fn`
- * for a given argument set and returns the result. Subsequent calls to the
- * memoized `fn` with the same argument set will not result in an additional
- * call to `fn`; instead, the cached result for that set of arguments will be
- * returned.
- *
- * @func
- * @memberOf R
- * @since v0.1.0
- * @category Function
- * @sig (*... -> a) -> (*... -> a)
- * @param {Function} fn The function to memoize.
- * @return {Function} Memoized version of `fn`.
- * @see R.memoizeWith
- * @deprecated since v0.25.0
- * @example
- *
- *      let count = 0;
- *      const factorial = R.memoize(n => {
- *        count += 1;
- *        return R.product(R.range(1, n + 1));
- *      });
- *      factorial(5); //=> 120
- *      factorial(5); //=> 120
- *      factorial(5); //=> 120
- *      count; //=> 1
- */
-var memoize = /*#__PURE__*/memoizeWith(function () {
-  return toString$1(arguments);
-});
-
-/**
  * Create a new object with the own properties of the first object merged with
  * the own properties of the second object. If a key exists in both objects,
  * the value from the second object will be used.
@@ -11461,18 +10482,19 @@ var memoize = /*#__PURE__*/memoizeWith(function () {
  * @param {Object} l
  * @param {Object} r
  * @return {Object}
- * @see R.mergeDeepRight, R.mergeWith, R.mergeWithKey
+ * @see R.mergeRight, R.mergeDeepRight, R.mergeWith, R.mergeWithKey
+ * @deprecated
  * @example
  *
  *      R.merge({ 'name': 'fred', 'age': 10 }, { 'age': 40 });
  *      //=> { 'name': 'fred', 'age': 40 }
  *
- *      var resetToDefault = R.merge(R.__, {x: 0});
- *      resetToDefault({x: 5, y: 2}); //=> {x: 0, y: 2}
- * @symb R.merge({ x: 1, y: 2 }, { y: 5, z: 3 }) = { x: 1, y: 5, z: 3 }
+ *      const withDefaults = R.merge({x: 0, y: 0});
+ *      withDefaults({y: 2}); //=> {x: 0, y: 2}
+ * @symb R.merge(a, b) = {...a, ...b}
  */
 var merge = /*#__PURE__*/_curry2(function merge(l, r) {
-  return _assign({}, l, r);
+  return _objectAssign$1({}, l, r);
 });
 
 /**
@@ -11493,7 +10515,7 @@ var merge = /*#__PURE__*/_curry2(function merge(l, r) {
  * @symb R.mergeAll([{ x: 1 }, { y: 2 }, { z: 3 }]) = { x: 1, y: 2, z: 3 }
  */
 var mergeAll = /*#__PURE__*/_curry1(function mergeAll(list) {
-  return _assign.apply(null, [{}].concat(list));
+  return _objectAssign$1.apply(null, [{}].concat(list));
 });
 
 /**
@@ -11559,7 +10581,7 @@ var mergeWithKey = /*#__PURE__*/_curry3(function mergeWithKey(fn, l, r) {
  * @param {Object} lObj
  * @param {Object} rObj
  * @return {Object}
- * @see R.mergeWithKey, R.mergeDeep, R.mergeDeepWith
+ * @see R.mergeWithKey, R.mergeDeepWith
  * @example
  *
  *      let concatValues = (k, l, r) => k == 'values' ? R.concat(l, r) : r
@@ -11651,7 +10673,7 @@ var mergeDeepRight = /*#__PURE__*/_curry2(function mergeDeepRight(lObj, rObj) {
  * @param {Object} lObj
  * @param {Object} rObj
  * @return {Object}
- * @see R.mergeWith, R.mergeDeep, R.mergeDeepWithKey
+ * @see R.mergeWith, R.mergeDeepWithKey
  * @example
  *
  *      R.mergeDeepWith(R.concat,
@@ -11663,6 +10685,58 @@ var mergeDeepWith = /*#__PURE__*/_curry3(function mergeDeepWith(fn, lObj, rObj) 
   return mergeDeepWithKey(function (k, lVal, rVal) {
     return fn(lVal, rVal);
   }, lObj, rObj);
+});
+
+/**
+ * Create a new object with the own properties of the first object merged with
+ * the own properties of the second object. If a key exists in both objects,
+ * the value from the first object will be used.
+ *
+ * @func
+ * @memberOf R
+ * @category Object
+ * @sig {k: v} -> {k: v} -> {k: v}
+ * @param {Object} l
+ * @param {Object} r
+ * @return {Object}
+ * @see R.mergeRight, R.mergeDeepLeft, R.mergeWith, R.mergeWithKey
+ * @example
+ *
+ *      R.mergeLeft({ 'age': 40 }, { 'name': 'fred', 'age': 10 });
+ *      //=> { 'name': 'fred', 'age': 40 }
+ *
+ *      const resetToDefault = R.mergeLeft({x: 0});
+ *      resetToDefault({x: 5, y: 2}); //=> {x: 0, y: 2}
+ * @symb R.mergeLeft(a, b) = {...b, ...a}
+ */
+var mergeLeft = /*#__PURE__*/_curry2(function mergeLeft(l, r) {
+  return _objectAssign$1({}, r, l);
+});
+
+/**
+ * Create a new object with the own properties of the first object merged with
+ * the own properties of the second object. If a key exists in both objects,
+ * the value from the second object will be used.
+ *
+ * @func
+ * @memberOf R
+ * @category Object
+ * @sig {k: v} -> {k: v} -> {k: v}
+ * @param {Object} l
+ * @param {Object} r
+ * @return {Object}
+ * @see R.mergeLeft, R.mergeDeepRight, R.mergeWith, R.mergeWithKey
+ * @example
+ *
+ *      R.mergeRight({ 'name': 'fred', 'age': 10 }, { 'age': 40 });
+ *      //=> { 'name': 'fred', 'age': 40 }
+ *
+ *      const withDefaults = R.mergeRight({x: 0, y: 0});
+ *      withDefaults({y: 2}); //=> {x: 0, y: 2}
+ * @symb R.mergeRight(a, b) = {...a, ...b}
+ */
+var mergeRight = /*#__PURE__*/_curry2(function mergeRight(l, r) {
+  return _objectAssign$1({}, l, r);
 });
 
 /**
@@ -11732,7 +10806,7 @@ var min = /*#__PURE__*/_curry2(function min(a, b) {
  * @example
  *
  *      //  square :: Number -> Number
- *      var square = n => n * n;
+ *      const square = n => n * n;
  *
  *      R.minBy(square, -3, 2); //=> 2
  *
@@ -11764,12 +10838,39 @@ var minBy = /*#__PURE__*/_curry3(function minBy(f, a, b) {
  *      R.modulo(-17, 3); //=> -2
  *      R.modulo(17, -3); //=> 2
  *
- *      var isOdd = R.modulo(R.__, 2);
+ *      const isOdd = R.modulo(R.__, 2);
  *      isOdd(42); //=> 0
  *      isOdd(21); //=> 1
  */
 var modulo = /*#__PURE__*/_curry2(function modulo(a, b) {
   return a % b;
+});
+
+/**
+ * Move an item, at index `from`, to index `to`, in a list of elements.
+ * A new list will be created containing the new elements order.
+ *
+ * @func
+ * @memberOf R
+ * @category List
+ * @sig Number -> Number -> [a] -> [a]
+ * @param {Number} from The source index
+ * @param {Number} to The destination index
+ * @param {Array} list The list which will serve to realise the move
+ * @return {Array} The new list reordered
+ * @example
+ *
+ *      R.move(0, 2, ['a', 'b', 'c', 'd', 'e', 'f']); //=> ['b', 'c', 'a', 'd', 'e', 'f']
+ *      R.move(-1, 0, ['a', 'b', 'c', 'd', 'e', 'f']); //=> ['f', 'a', 'b', 'c', 'd', 'e'] list rotation
+ */
+var move = /*#__PURE__*/_curry3(function (from, to, list) {
+  var length = list.length;
+  var result = list.slice();
+  var positiveFrom = from < 0 ? length + from : from;
+  var positiveTo = to < 0 ? length + to : to;
+  var item = result.splice(positiveFrom, 1);
+
+  return positiveFrom < 0 || positiveFrom >= list.length || positiveTo < 0 || positiveTo >= list.length ? list : [].concat(result.slice(0, positiveTo)).concat(item).concat(result.slice(positiveTo, list.length));
 });
 
 /**
@@ -11786,8 +10887,8 @@ var modulo = /*#__PURE__*/_curry2(function modulo(a, b) {
  * @see R.divide
  * @example
  *
- *      var double = R.multiply(2);
- *      var triple = R.multiply(3);
+ *      const double = R.multiply(2);
+ *      const triple = R.multiply(3);
  *      double(3);       //=>  6
  *      triple(4);       //=> 12
  *      R.multiply(2, 5);  //=> 10
@@ -11818,7 +10919,9 @@ var negate = /*#__PURE__*/_curry1(function negate(n) {
  * Returns `true` if no elements of the list match the predicate, `false`
  * otherwise.
  *
- * Dispatches to the `any` method of the second argument, if present.
+ * Dispatches to the `all` method of the second argument, if present.
+ *
+ * Acts as a transducer if a transformer is given in list position.
  *
  * @func
  * @memberOf R
@@ -11831,13 +10934,15 @@ var negate = /*#__PURE__*/_curry1(function negate(n) {
  * @see R.all, R.any
  * @example
  *
- *      var isEven = n => n % 2 === 0;
- *      var isOdd = n => n % 2 === 1;
+ *      const isEven = n => n % 2 === 0;
+ *      const isOdd = n => n % 2 === 1;
  *
  *      R.none(isEven, [1, 3, 5, 7, 9, 11]); //=> true
  *      R.none(isOdd, [1, 3, 5, 7, 8, 11]); //=> false
  */
-var none = /*#__PURE__*/_curry2( /*#__PURE__*/_complement( /*#__PURE__*/_dispatchable(['any'], _xany, any)));
+var none = /*#__PURE__*/_curry2(function none(fn, input) {
+  return all(_complement(fn), input);
+});
 
 /**
  * Returns a function which returns its nth argument.
@@ -11868,7 +10973,9 @@ var nthArg = /*#__PURE__*/_curry1(function nthArg(n) {
  * `o` is a curried composition function that returns a unary function.
  * Like [`compose`](#compose), `o` performs right-to-left function composition.
  * Unlike [`compose`](#compose), the rightmost function passed to `o` will be
- * invoked with only one argument.
+ * invoked with only one argument. Also, unlike [`compose`](#compose), `o` is
+ * limited to accepting only 2 unary functions. The name o was chosen because
+ * of its similarity to the mathematical composition operator ∘.
  *
  * @func
  * @memberOf R
@@ -11881,8 +10988,8 @@ var nthArg = /*#__PURE__*/_curry1(function nthArg(n) {
  * @see R.compose, R.pipe
  * @example
  *
- *      var classyGreeting = name => "The name's " + name.last + ", " + name.first + " " + name.last
- *      var yellGreeting = R.o(R.toUpper, classyGreeting);
+ *      const classyGreeting = name => "The name's " + name.last + ", " + name.first + " " + name.last
+ *      const yellGreeting = R.o(R.toUpper, classyGreeting);
  *      yellGreeting({first: 'James', last: 'Bond'}); //=> "THE NAME'S BOND, JAMES BOND"
  *
  *      R.o(R.multiply(10), R.add(10))(-4) //=> 60
@@ -11967,7 +11074,7 @@ var omit = /*#__PURE__*/_curry2(function omit(names, obj) {
  * @return {Function} The wrapped function.
  * @example
  *
- *      var addOneOnce = R.once(x => x + 1);
+ *      const addOneOnce = R.once(x => x + 1);
  *      addOneOnce(10); //=> 11
  *      addOneOnce(addOneOnce(50)); //=> 11
  */
@@ -11982,6 +11089,45 @@ var once = /*#__PURE__*/_curry1(function once(fn) {
     result = fn.apply(this, arguments);
     return result;
   });
+});
+
+function _assertPromise(name, p) {
+  if (p == null || !_isFunction(p.then)) {
+    throw new TypeError('`' + name + '` expected a Promise, received ' + _toString(p, []));
+  }
+}
+
+/**
+ * Returns the result of applying the onFailure function to the value inside
+ * a failed promise. This is useful for handling rejected promises
+ * inside function compositions.
+ *
+ * @func
+ * @memberOf R
+ * @category Function
+ * @sig (e -> b) -> (Promise e a) -> (Promise e b)
+ * @sig (e -> (Promise f b)) -> (Promise e a) -> (Promise f b)
+ * @param {Function} onFailure The function to apply. Can return a value or a promise of a value.
+ * @param {Promise} p
+ * @return {Promise} The result of calling `p.then(null, onFailure)`
+ * @see R.then
+ * @example
+ *
+ *      var failedFetch = (id) => Promise.reject('bad ID');
+ *      var useDefault = () => ({ firstName: 'Bob', lastName: 'Loblaw' })
+ *
+ *      //recoverFromFailure :: String -> Promise ({firstName, lastName})
+ *      var recoverFromFailure = R.pipe(
+ *        failedFetch,
+ *        R.otherwise(useDefault),
+ *        R.then(R.pick(['firstName', 'lastName'])),
+ *      );
+ *      recoverFromFailure(12345).then(console.log)
+ */
+var otherwise = /*#__PURE__*/_curry2(function otherwise(f, p) {
+  _assertPromise('otherwise', p);
+
+  return p.then(null, f);
 });
 
 // `Identity` is a functor that holds a single value, where `map` simply
@@ -12010,7 +11156,7 @@ var Identity = function (x) {
  * @see R.prop, R.lensIndex, R.lensProp
  * @example
  *
- *      var headLens = R.lensIndex(0);
+ *      const headLens = R.lensIndex(0);
  *
  *      R.over(headLens, R.toUpper, ['foo', 'bar', 'baz']); //=> ['FOO', 'bar', 'baz']
  */
@@ -12064,18 +11210,18 @@ function _createPartialApplicator(concat) {
  * @param {Function} f
  * @param {Array} args
  * @return {Function}
- * @see R.partialRight
+ * @see R.partialRight, R.curry
  * @example
  *
- *      var multiply2 = (a, b) => a * b;
- *      var double = R.partial(multiply2, [2]);
+ *      const multiply2 = (a, b) => a * b;
+ *      const double = R.partial(multiply2, [2]);
  *      double(2); //=> 4
  *
- *      var greet = (salutation, title, firstName, lastName) =>
+ *      const greet = (salutation, title, firstName, lastName) =>
  *        salutation + ', ' + title + ' ' + firstName + ' ' + lastName + '!';
  *
- *      var sayHello = R.partial(greet, ['Hello']);
- *      var sayHelloToMs = R.partial(sayHello, ['Ms.']);
+ *      const sayHello = R.partial(greet, ['Hello']);
+ *      const sayHelloToMs = R.partial(sayHello, ['Ms.']);
  *      sayHelloToMs('Jane', 'Jones'); //=> 'Hello, Ms. Jane Jones!'
  * @symb R.partial(f, [a, b])(c, d) = f(a, b, c, d)
  */
@@ -12097,10 +11243,10 @@ var partial = /*#__PURE__*/_createPartialApplicator(_concat);
  * @see R.partial
  * @example
  *
- *      var greet = (salutation, title, firstName, lastName) =>
+ *      const greet = (salutation, title, firstName, lastName) =>
  *        salutation + ', ' + title + ' ' + firstName + ' ' + lastName + '!';
  *
- *      var greetMsJaneJones = R.partialRight(greet, ['Ms.', 'Jane', 'Jones']);
+ *      const greetMsJaneJones = R.partialRight(greet, ['Ms.', 'Jane', 'Jones']);
  *
  *      greetMsJaneJones('Hello'); //=> 'Hello, Ms. Jane Jones!'
  * @symb R.partialRight(f, [a, b])(c, d) = f(c, d, a, b)
@@ -12125,10 +11271,10 @@ var partialRight = /*#__PURE__*/_createPartialApplicator( /*#__PURE__*/flip(_con
  * @see R.filter, R.reject
  * @example
  *
- *      R.partition(R.contains('s'), ['sss', 'ttt', 'foo', 'bars']);
+ *      R.partition(R.includes('s'), ['sss', 'ttt', 'foo', 'bars']);
  *      // => [ [ 'sss', 'bars' ],  [ 'ttt', 'foo' ] ]
  *
- *      R.partition(R.contains('s'), { a: 'sss', b: 'ttt', foo: 'bars' });
+ *      R.partition(R.includes('s'), { a: 'sss', b: 'ttt', foo: 'bars' });
  *      // => [ { a: 'sss', foo: 'bars' }, { b: 'ttt' }  ]
  */
 var partition = /*#__PURE__*/juxt([filter, reject]);
@@ -12150,11 +11296,11 @@ var partition = /*#__PURE__*/juxt([filter, reject]);
  *         `false` otherwise.
  * @example
  *
- *      var user1 = { address: { zipCode: 90210 } };
- *      var user2 = { address: { zipCode: 55555 } };
- *      var user3 = { name: 'Bob' };
- *      var users = [ user1, user2, user3 ];
- *      var isFamous = R.pathEq(['address', 'zipCode'], 90210);
+ *      const user1 = { address: { zipCode: 90210 } };
+ *      const user2 = { address: { zipCode: 55555 } };
+ *      const user3 = { name: 'Bob' };
+ *      const users = [ user1, user2, user3 ];
+ *      const isFamous = R.pathEq(['address', 'zipCode'], 90210);
  *      R.filter(isFamous, users); //=> [ user1 ]
  */
 var pathEq = /*#__PURE__*/_curry3(function pathEq(_path, val, obj) {
@@ -12284,7 +11430,7 @@ var pickAll = /*#__PURE__*/_curry2(function pickAll(names, obj) {
  * @see R.pick, R.filter
  * @example
  *
- *      var isUpperCase = (val, key) => key.toUpperCase() === key;
+ *      const isUpperCase = (val, key) => key.toUpperCase() === key;
  *      R.pickBy(isUpperCase, {a: 1, b: 2, A: 3, B: 4}); //=> {A: 3, B: 4}
  */
 var pickBy = /*#__PURE__*/_curry2(function pickBy(test, obj) {
@@ -12311,13 +11457,14 @@ var pickBy = /*#__PURE__*/_curry2(function pickBy(test, obj) {
  * @param {...Function}
  * @return {Function}
  * @see R.composeK
+ * @deprecated since v0.26.0
  * @example
  *
  *      //  parseJson :: String -> Maybe *
  *      //  get :: String -> Object -> Maybe *
  *
  *      //  getStateCode :: Maybe String -> Maybe String
- *      var getStateCode = R.pipeK(
+ *      const getStateCode = R.pipeK(
  *        parseJson,
  *        get('user'),
  *        get('address'),
@@ -12431,9 +11578,9 @@ var useWith = /*#__PURE__*/_curry2(function useWith(fn, transformers) {
  * @return {Array} An array of objects with just the `props` properties.
  * @example
  *
- *      var abby = {name: 'Abby', age: 7, hair: 'blond', grade: 2};
- *      var fred = {name: 'Fred', age: 12, hair: 'brown', grade: 7};
- *      var kids = [abby, fred];
+ *      const abby = {name: 'Abby', age: 7, hair: 'blond', grade: 2};
+ *      const fred = {name: 'Fred', age: 12, hair: 'brown', grade: 7};
+ *      const kids = [abby, fred];
  *      R.project(['name', 'grade'], kids); //=> [{name: 'Abby', grade: 2}, {name: 'Fred', grade: 7}]
  */
 var project = /*#__PURE__*/useWith(_map, [pickAll, identity]); // passing `identity` gives correct arity
@@ -12441,7 +11588,7 @@ var project = /*#__PURE__*/useWith(_map, [pickAll, identity]); // passing `ident
 /**
  * Returns `true` if the specified object property is equal, in
  * [`R.equals`](#equals) terms, to the given value; `false` otherwise.
- * You can test multiple properties with [`R.where`](#where).
+ * You can test multiple properties with [`R.whereEq`](#whereEq).
  *
  * @func
  * @memberOf R
@@ -12455,12 +11602,12 @@ var project = /*#__PURE__*/useWith(_map, [pickAll, identity]); // passing `ident
  * @see R.whereEq, R.propSatisfies, R.equals
  * @example
  *
- *      var abby = {name: 'Abby', age: 7, hair: 'blond'};
- *      var fred = {name: 'Fred', age: 12, hair: 'brown'};
- *      var rusty = {name: 'Rusty', age: 10, hair: 'brown'};
- *      var alois = {name: 'Alois', age: 15, disposition: 'surly'};
- *      var kids = [abby, fred, rusty, alois];
- *      var hasBrownHair = R.propEq('hair', 'brown');
+ *      const abby = {name: 'Abby', age: 7, hair: 'blond'};
+ *      const fred = {name: 'Fred', age: 12, hair: 'brown'};
+ *      const rusty = {name: 'Rusty', age: 10, hair: 'brown'};
+ *      const alois = {name: 'Alois', age: 15, disposition: 'surly'};
+ *      const kids = [abby, fred, rusty, alois];
+ *      const hasBrownHair = R.propEq('hair', 'brown');
  *      R.filter(hasBrownHair, kids); //=> [fred, rusty]
  */
 var propEq = /*#__PURE__*/_curry3(function propEq(name, val, obj) {
@@ -12507,18 +11654,18 @@ var propIs = /*#__PURE__*/_curry3(function propIs(type, name, obj) {
  * @return {*} The value of given property of the supplied object or the default value.
  * @example
  *
- *      var alice = {
+ *      const alice = {
  *        name: 'ALICE',
  *        age: 101
  *      };
- *      var favorite = R.prop('favoriteLibrary');
- *      var favoriteWithDefault = R.propOr('Ramda', 'favoriteLibrary');
+ *      const favorite = R.prop('favoriteLibrary');
+ *      const favoriteWithDefault = R.propOr('Ramda', 'favoriteLibrary');
  *
  *      favorite(alice);  //=> undefined
  *      favoriteWithDefault(alice);  //=> 'Ramda'
  */
 var propOr = /*#__PURE__*/_curry3(function propOr(val, p, obj) {
-  return obj != null && _has(p, obj) ? obj[p] : val;
+  return pathOr(val, [p], obj);
 });
 
 /**
@@ -12561,7 +11708,7 @@ var propSatisfies = /*#__PURE__*/_curry3(function propSatisfies(pred, name, obj)
  *      R.props(['x', 'y'], {x: 1, y: 2}); //=> [1, 2]
  *      R.props(['c', 'a', 'b'], {b: 2, a: 1}); //=> [undefined, 1, 2]
  *
- *      var fullName = R.compose(R.join(' '), R.props(['first', 'last']));
+ *      const fullName = R.compose(R.join(' '), R.props(['first', 'last']));
  *      fullName({last: 'Bullet-Tooth', age: 33, first: 'Tony'}); //=> 'Tony Bullet-Tooth'
  */
 var props = /*#__PURE__*/_curry2(function props(ps, obj) {
@@ -12587,7 +11734,7 @@ var props = /*#__PURE__*/_curry2(function props(ps, obj) {
  * @sig Number -> Number -> [Number]
  * @param {Number} from The first number in the list.
  * @param {Number} to One more than the last number in the list.
- * @return {Array} The list of numbers in tthe set `[a, b)`.
+ * @return {Array} The list of numbers in the set `[a, b)`.
  * @example
  *
  *      R.range(1, 5);    //=> [1, 2, 3, 4]
@@ -12679,11 +11826,11 @@ var reduceRight = /*#__PURE__*/_curry3(function reduceRight(fn, acc, list) {
  * @see R.reduce, R.reduced
  * @example
  *
- *      var isOdd = (acc, x) => x % 2 === 1;
- *      var xs = [1, 3, 5, 60, 777, 800];
+ *      const isOdd = (acc, x) => x % 2 === 1;
+ *      const xs = [1, 3, 5, 60, 777, 800];
  *      R.reduceWhile(isOdd, R.add, 0, xs); //=> 9
  *
- *      var ys = [2, 4, 6]
+ *      const ys = [2, 4, 6]
  *      R.reduceWhile(isOdd, R.add, 111, ys); //=> 111
  */
 var reduceWhile = /*#__PURE__*/_curryN(4, [], function _reduceWhile(pred, fn, a, list) {
@@ -12697,9 +11844,10 @@ var reduceWhile = /*#__PURE__*/_curryN(4, [], function _reduceWhile(pred, fn, a,
  * and transduce functions. The returned value should be considered a black
  * box: the internal structure is not guaranteed to be stable.
  *
- * Note: this optimization is unavailable to functions not explicitly listed
- * above. For instance, it is not currently supported by
- * [`reduceRight`](#reduceRight).
+ * Note: this optimization is only available to the below functions:
+ * - [`reduce`](#reduce)
+ * - [`reduceWhile`](#reduceWhile)
+ * - [`transduce`](#transduce)
  *
  * @func
  * @memberOf R
@@ -12708,7 +11856,7 @@ var reduceWhile = /*#__PURE__*/_curryN(4, [], function _reduceWhile(pred, fn, a,
  * @sig a -> *
  * @param {*} x The final value of the reduce.
  * @return {*} The wrapped value.
- * @see R.reduce, R.transduce
+ * @see R.reduce, R.reduceWhile, R.transduce
  * @example
  *
  *     R.reduce(
@@ -12773,8 +11921,8 @@ var times = /*#__PURE__*/_curry2(function times(fn, n) {
  *
  *      R.repeat('hi', 5); //=> ['hi', 'hi', 'hi', 'hi', 'hi']
  *
- *      var obj = {};
- *      var repeatedObjs = R.repeat(obj, 5); //=> [{}, {}, {}, {}, {}]
+ *      const obj = {};
+ *      const repeatedObjs = R.repeat(obj, 5); //=> [{}, {}, {}, {}, {}]
  *      repeatedObjs[0] === repeatedObjs[1]; //=> true
  * @symb R.repeat(a, 0) = []
  * @symb R.repeat(a, 1) = [a]
@@ -12786,6 +11934,10 @@ var repeat = /*#__PURE__*/_curry2(function repeat(value, n) {
 
 /**
  * Replace a substring or regex match in a string with a replacement.
+ *
+ * The first two parameters correspond to the parameters of the
+ * `String.prototype.replace()` function, so the second parameter can also be a
+ * function.
  *
  * @func
  * @memberOf R
@@ -12822,11 +11974,11 @@ var replace = /*#__PURE__*/_curry3(function replace(regex, replacement, str) {
  * @param {*} acc The accumulator value.
  * @param {Array} list The list to iterate over.
  * @return {Array} A list of all intermediately reduced values.
- * @see R.reduce
+ * @see R.reduce, R.mapAccum
  * @example
  *
- *      var numbers = [1, 2, 3, 4];
- *      var factorials = R.scan(R.multiply, 1, numbers); //=> [1, 1, 2, 6, 24]
+ *      const numbers = [1, 2, 3, 4];
+ *      const factorials = R.scan(R.multiply, 1, numbers); //=> [1, 1, 2, 6, 24]
  * @symb R.scan(f, a, [b, c]) = [a, f(a, b), f(f(a, b), c)]
  */
 var scan = /*#__PURE__*/_curry3(function scan(fn, acc, list) {
@@ -12888,7 +12040,7 @@ var sequence = /*#__PURE__*/_curry2(function sequence(of, traversable) {
  * @see R.prop, R.lensIndex, R.lensProp
  * @example
  *
- *      var xLens = R.lensProp('x');
+ *      const xLens = R.lensProp('x');
  *
  *      R.set(xLens, 4, {x: 1, y: 2});  //=> {x: 4, y: 2}
  *      R.set(xLens, 8, {x: 1, y: 2});  //=> {x: 8, y: 2}
@@ -12914,7 +12066,7 @@ var set = /*#__PURE__*/_curry3(function set(lens, v, x) {
  * @return {Array} a new array with its elements sorted by the comparator function.
  * @example
  *
- *      var diff = function(a, b) { return a - b; };
+ *      const diff = function(a, b) { return a - b; };
  *      R.sort(diff, [4,2,7,5]); //=> [2, 4, 5, 7]
  */
 var sort = /*#__PURE__*/_curry2(function sort(comparator, list) {
@@ -12934,23 +12086,24 @@ var sort = /*#__PURE__*/_curry2(function sort(comparator, list) {
  * @return {Array} A new list sorted by the keys generated by `fn`.
  * @example
  *
- *      var sortByFirstItem = R.sortBy(R.prop(0));
- *      var sortByNameCaseInsensitive = R.sortBy(R.compose(R.toLower, R.prop('name')));
- *      var pairs = [[-1, 1], [-2, 2], [-3, 3]];
+ *      const sortByFirstItem = R.sortBy(R.prop(0));
+ *      const pairs = [[-1, 1], [-2, 2], [-3, 3]];
  *      sortByFirstItem(pairs); //=> [[-3, 3], [-2, 2], [-1, 1]]
- *      var alice = {
+ *
+ *      const sortByNameCaseInsensitive = R.sortBy(R.compose(R.toLower, R.prop('name')));
+ *      const alice = {
  *        name: 'ALICE',
  *        age: 101
  *      };
- *      var bob = {
+ *      const bob = {
  *        name: 'Bob',
  *        age: -10
  *      };
- *      var clara = {
+ *      const clara = {
  *        name: 'clara',
  *        age: 314.159
  *      };
- *      var people = [clara, bob, alice];
+ *      const people = [clara, bob, alice];
  *      sortByNameCaseInsensitive(people); //=> [alice, bob, clara]
  */
 var sortBy = /*#__PURE__*/_curry2(function sortBy(fn, list) {
@@ -12974,20 +12127,20 @@ var sortBy = /*#__PURE__*/_curry2(function sortBy(fn, list) {
  * @return {Array} A new list sorted according to the comarator functions.
  * @example
  *
- *      var alice = {
+ *      const alice = {
  *        name: 'alice',
  *        age: 40
  *      };
- *      var bob = {
+ *      const bob = {
  *        name: 'bob',
  *        age: 30
  *      };
- *      var clara = {
+ *      const clara = {
  *        name: 'clara',
  *        age: 40
  *      };
- *      var people = [clara, bob, alice];
- *      var ageNameSort = R.sortWith([
+ *      const people = [clara, bob, alice];
+ *      const ageNameSort = R.sortWith([
  *        R.descend(R.prop('age')),
  *        R.ascend(R.prop('name'))
  *      ]);
@@ -13020,7 +12173,7 @@ var sortWith = /*#__PURE__*/_curry2(function sortWith(fns, list) {
  * @see R.join
  * @example
  *
- *      var pathComponents = R.split('/');
+ *      const pathComponents = R.split('/');
  *      R.tail(pathComponents('/usr/local/bin/node')); //=> ['usr', 'local', 'bin', 'node']
  *
  *      R.split('.', 'a.b.c.xyz.d'); //=> ['a', 'b', 'c', 'xyz', 'd']
@@ -13111,17 +12264,20 @@ var splitWhen = /*#__PURE__*/_curry2(function splitWhen(pred, list) {
 });
 
 /**
- * Checks if a list starts with the provided values
+ * Checks if a list starts with the provided sublist.
+ *
+ * Similarly, checks if a string starts with the provided substring.
  *
  * @func
  * @memberOf R
  * @since v0.24.0
  * @category List
- * @sig [a] -> Boolean
- * @sig String -> Boolean
+ * @sig [a] -> [a] -> Boolean
+ * @sig String -> String -> Boolean
  * @param {*} prefix
  * @param {*} list
  * @return {Boolean}
+ * @see R.endsWith
  * @example
  *
  *      R.startsWith('a', 'abc')                //=> true
@@ -13149,10 +12305,10 @@ var startsWith = /*#__PURE__*/_curry2(function (prefix, list) {
  *
  *      R.subtract(10, 8); //=> 2
  *
- *      var minus5 = R.subtract(R.__, 5);
+ *      const minus5 = R.subtract(R.__, 5);
  *      minus5(17); //=> 12
  *
- *      var complementaryAngle = R.subtract(90);
+ *      const complementaryAngle = R.subtract(90);
  *      complementaryAngle(30); //=> 60
  *      complementaryAngle(72); //=> 18
  */
@@ -13199,9 +12355,9 @@ var symmetricDifference = /*#__PURE__*/_curry2(function symmetricDifference(list
  * @see R.symmetricDifference, R.difference, R.differenceWith
  * @example
  *
- *      var eqA = R.eqBy(R.prop('a'));
- *      var l1 = [{a: 1}, {a: 2}, {a: 3}, {a: 4}];
- *      var l2 = [{a: 3}, {a: 4}, {a: 5}, {a: 6}];
+ *      const eqA = R.eqBy(R.prop('a'));
+ *      const l1 = [{a: 1}, {a: 2}, {a: 3}, {a: 4}];
+ *      const l2 = [{a: 3}, {a: 4}, {a: 5}, {a: 6}];
  *      R.symmetricDifferenceWith(eqA, l1, l2); //=> [{a: 1}, {a: 2}, {a: 5}, {a: 6}]
  */
 var symmetricDifferenceWith = /*#__PURE__*/_curry3(function symmetricDifferenceWith(pred, list1, list2) {
@@ -13227,7 +12383,7 @@ var symmetricDifferenceWith = /*#__PURE__*/_curry3(function symmetricDifferenceW
  * @see R.dropLastWhile, R.addIndex
  * @example
  *
- *      var isNotOne = x => x !== 1;
+ *      const isNotOne = x => x !== 1;
  *
  *      R.takeLastWhile(isNotOne, [1, 2, 3, 4]); //=> [2, 3, 4]
  *
@@ -13282,7 +12438,7 @@ var _xtakeWhile = /*#__PURE__*/_curry2(function _xtakeWhile(f, xf) {
  * @see R.dropWhile, R.transduce, R.addIndex
  * @example
  *
- *      var isNotFour = x => x !== 4;
+ *      const isNotFour = x => x !== 4;
  *
  *      R.takeWhile(isNotFour, [1, 2, 3, 4, 3, 2, 1]); //=> [1, 2, 3]
  *
@@ -13331,7 +12487,7 @@ var _xtap = /*#__PURE__*/_curry2(function _xtap(f, xf) {
  * @return {*} `x`.
  * @example
  *
- *      var sayX = x => console.log('x is ' + x);
+ *      const sayX = x => console.log('x is ' + x);
  *      R.tap(sayX, 100); //=> 100
  *      // logs 'x is 100'
  * @symb R.tap(f, a) = a
@@ -13367,6 +12523,37 @@ var test = /*#__PURE__*/_curry2(function test(pattern, str) {
     throw new TypeError('‘test’ requires a value of type RegExp as its first argument; received ' + toString$1(pattern));
   }
   return _cloneRegExp(pattern).test(str);
+});
+
+/**
+ * Returns the result of applying the onSuccess function to the value inside
+ * a successfully resolved promise. This is useful for working with promises
+ * inside function compositions.
+ *
+ * @func
+ * @memberOf R
+ * @category Function
+ * @sig (a -> b) -> (Promise e a) -> (Promise e b)
+ * @sig (a -> (Promise e b)) -> (Promise e a) -> (Promise e b)
+ * @param {Function} onSuccess The function to apply. Can return a value or a promise of a value.
+ * @param {Promise} p
+ * @return {Promise} The result of calling `p.then(onSuccess)`
+ * @see R.otherwise
+ * @example
+ *
+ *      var makeQuery = (email) => ({ query: { email }});
+ *
+ *      //getMemberName :: String -> Promise ({firstName, lastName})
+ *      var getMemberName = R.pipe(
+ *        makeQuery,
+ *        fetchMember,
+ *        R.then(R.pick(['firstName', 'lastName']))
+ *      );
+ */
+var then = /*#__PURE__*/_curry2(function then(f, p) {
+  _assertPromise('then', p);
+
+  return p.then(f);
 });
 
 /**
@@ -13430,9 +12617,9 @@ var toPairs = /*#__PURE__*/_curry1(function toPairs(obj) {
  *         and prototype properties.
  * @example
  *
- *      var F = function() { this.x = 'X'; };
+ *      const F = function() { this.x = 'X'; };
  *      F.prototype.y = 'Y';
- *      var f = new F();
+ *      const f = new F();
  *      R.toPairsIn(f); //=> [['x','X'], ['y','Y']]
  */
 var toPairsIn = /*#__PURE__*/_curry1(function toPairsIn(obj) {
@@ -13499,12 +12686,12 @@ var toUpper = /*#__PURE__*/invoker(0, 'toUpperCase');
  * @see R.reduce, R.reduced, R.into
  * @example
  *
- *      var numbers = [1, 2, 3, 4];
- *      var transducer = R.compose(R.map(R.add(1)), R.take(2));
+ *      const numbers = [1, 2, 3, 4];
+ *      const transducer = R.compose(R.map(R.add(1)), R.take(2));
  *      R.transduce(transducer, R.flip(R.append), [], numbers); //=> [2, 3]
  *
- *      var isOdd = (x) => x % 2 === 1;
- *      var firstOddTransducer = R.compose(R.filter(isOdd), R.take(1));
+ *      const isOdd = (x) => x % 2 === 1;
+ *      const firstOddTransducer = R.compose(R.filter(isOdd), R.take(1));
  *      R.transduce(firstOddTransducer, R.flip(R.append), [], R.range(0, 100)); //=> [1]
  */
 var transduce = /*#__PURE__*/curryN(4, function transduce(xf, fn, acc, list) {
@@ -13573,11 +12760,11 @@ var transpose = /*#__PURE__*/_curry1(function transpose(outerlist) {
  * @see R.sequence
  * @example
  *
- *      // Returns `Nothing` if the given divisor is `0`
- *      safeDiv = n => d => d === 0 ? Nothing() : Just(n / d)
+ *      // Returns `Maybe.Nothing` if the given divisor is `0`
+ *      const safeDiv = n => d => d === 0 ? Maybe.Nothing() : Maybe.Just(n / d)
  *
- *      R.traverse(Maybe.of, safeDiv(10), [2, 4, 5]); //=> Just([5, 2.5, 2])
- *      R.traverse(Maybe.of, safeDiv(10), [2, 0, 5]); //=> Nothing
+ *      R.traverse(Maybe.of, safeDiv(10), [2, 4, 5]); //=> Maybe.Just([5, 2.5, 2])
+ *      R.traverse(Maybe.of, safeDiv(10), [2, 0, 5]); //=> Maybe.Nothing
  */
 var traverse = /*#__PURE__*/_curry3(function traverse(of, f, traversable) {
   return typeof traversable['fantasy-land/traverse'] === 'function' ? traversable['fantasy-land/traverse'](f, of) : sequence(of, map(f, traversable));
@@ -13601,14 +12788,13 @@ var hasProtoTrim = typeof String.prototype.trim === 'function';
  *      R.trim('   xyz  '); //=> 'xyz'
  *      R.map(R.trim, R.split(',', 'x, y, z')); //=> ['x', 'y', 'z']
  */
-var _trim = !hasProtoTrim || /*#__PURE__*/ws.trim() || ! /*#__PURE__*/zeroWidth.trim() ? function trim(str) {
+var trim = !hasProtoTrim || /*#__PURE__*/ws.trim() || ! /*#__PURE__*/zeroWidth.trim() ? /*#__PURE__*/_curry1(function trim(str) {
   var beginRx = new RegExp('^[' + ws + '][' + ws + ']*');
   var endRx = new RegExp('[' + ws + '][' + ws + ']*$');
   return str.replace(beginRx, '').replace(endRx, '');
-} : function trim(str) {
+}) : /*#__PURE__*/_curry1(function trim(str) {
   return str.trim();
-};
-var trim = /*#__PURE__*/_curry1(_trim);
+});
 
 /**
  * `tryCatch` takes two functions, a `tryer` and a `catcher`. The returned
@@ -13629,8 +12815,9 @@ var trim = /*#__PURE__*/_curry1(_trim);
  * @example
  *
  *      R.tryCatch(R.prop('x'), R.F)({x: true}); //=> true
- *      R.tryCatch(R.prop('x'), R.F)(null);      //=> false
- */
+ *      R.tryCatch(() => { throw 'foo'}, R.always('catched'))('bar') // => 'catched'
+ *      R.tryCatch(R.times(R.identity), R.always([]))('s') // => []
+ `` */
 var tryCatch = /*#__PURE__*/_curry2(function _tryCatch(tryer, catcher) {
   return _arity(tryer.length, function () {
     try {
@@ -13687,13 +12874,13 @@ var unapply = /*#__PURE__*/_curry1(function unapply(fn) {
  * @see R.binary, R.nAry
  * @example
  *
- *      var takesTwoArgs = function(a, b) {
+ *      const takesTwoArgs = function(a, b) {
  *        return [a, b];
  *      };
  *      takesTwoArgs.length; //=> 2
  *      takesTwoArgs(1, 2); //=> [1, 2]
  *
- *      var takesOneArg = R.unary(takesTwoArgs);
+ *      const takesOneArg = R.unary(takesTwoArgs);
  *      takesOneArg.length; //=> 1
  *      // Only 1 argument is passed to the wrapped function
  *      takesOneArg(1, 2); //=> [1, undefined]
@@ -13717,9 +12904,9 @@ var unary = /*#__PURE__*/_curry1(function unary(fn) {
  * @see R.curry
  * @example
  *
- *      var addFour = a => b => c => d => a + b + c + d;
+ *      const addFour = a => b => c => d => a + b + c + d;
  *
- *      var uncurriedAddFour = R.uncurryN(4, addFour);
+ *      const uncurriedAddFour = R.uncurryN(4, addFour);
  *      uncurriedAddFour(1, 2, 3, 4); //=> 10
  */
 var uncurryN = /*#__PURE__*/_curry2(function uncurryN(depth, fn) {
@@ -13759,7 +12946,7 @@ var uncurryN = /*#__PURE__*/_curry2(function uncurryN(depth, fn) {
  * @return {Array} The final list.
  * @example
  *
- *      var f = n => n > 50 ? false : [-n, n + 10];
+ *      const f = n => n > 50 ? false : [-n, n + 10];
  *      R.unfold(f, 10); //=> [-10, -20, -30, -40, -50]
  * @symb R.unfold(f, x) = [f(x)[0], f(f(x)[1])[0], f(f(f(x)[1])[1])[0], ...]
  */
@@ -13808,7 +12995,7 @@ var union = /*#__PURE__*/_curry2( /*#__PURE__*/compose(uniq, _concat));
  * @return {Array} The list of unique items.
  * @example
  *
- *      var strEq = R.eqBy(String);
+ *      const strEq = R.eqBy(String);
  *      R.uniqWith(strEq)([1, '1', 2, 1]); //=> [1, 2]
  *      R.uniqWith(strEq)([{}, {}]);       //=> [{}]
  *      R.uniqWith(strEq)([1, '1', 1]);    //=> [1]
@@ -13821,7 +13008,7 @@ var uniqWith = /*#__PURE__*/_curry2(function uniqWith(pred, list) {
   var item;
   while (idx < len) {
     item = list[idx];
-    if (!_containsWith(pred, item, result)) {
+    if (!_includesWith(pred, item, result)) {
       result[result.length] = item;
     }
     idx += 1;
@@ -13847,8 +13034,8 @@ var uniqWith = /*#__PURE__*/_curry2(function uniqWith(pred, list) {
  * @see R.union
  * @example
  *
- *      var l1 = [{a: 1}, {a: 2}];
- *      var l2 = [{a: 1}, {a: 4}];
+ *      const l1 = [{a: 1}, {a: 2}];
+ *      const l2 = [{a: 1}, {a: 4}];
  *      R.unionWith(R.eqBy(R.prop('a')), l1, l2); //=> [{a: 1}, {a: 2}, {a: 4}]
  */
 var unionWith = /*#__PURE__*/_curry3(function unionWith(pred, list1, list2) {
@@ -13872,7 +13059,7 @@ var unionWith = /*#__PURE__*/_curry3(function unionWith(pred, list1, list2) {
  * @param {*}        x           An object to test with the `pred` function and
  *                               pass to `whenFalseFn` if necessary.
  * @return {*} Either `x` or the result of applying `x` to `whenFalseFn`.
- * @see R.ifElse, R.when
+ * @see R.ifElse, R.when, R.cond
  * @example
  *
  *      let safeInc = R.unless(R.isNil, R.inc);
@@ -13945,9 +13132,9 @@ var until = /*#__PURE__*/_curry3(function until(pred, fn, init) {
  * @see R.values, R.keysIn
  * @example
  *
- *      var F = function() { this.x = 'X'; };
+ *      const F = function() { this.x = 'X'; };
  *      F.prototype.y = 'Y';
- *      var f = new F();
+ *      const f = new F();
  *      R.valuesIn(f); //=> ['X', 'Y']
  */
 var valuesIn = /*#__PURE__*/_curry1(function valuesIn(obj) {
@@ -13982,7 +13169,7 @@ var Const = function (x) {
  * @see R.prop, R.lensIndex, R.lensProp
  * @example
  *
- *      var xLens = R.lensProp('x');
+ *      const xLens = R.lensProp('x');
  *
  *      R.view(xLens, {x: 1, y: 2});  //=> 1
  *      R.view(xLens, {x: 4, y: 2});  //=> 4
@@ -14010,11 +13197,11 @@ var view = /*#__PURE__*/_curry2(function view(lens, x) {
  * @param {*}        x          An object to test with the `pred` function and
  *                              pass to `whenTrueFn` if necessary.
  * @return {*} Either `x` or the result of applying `x` to `whenTrueFn`.
- * @see R.ifElse, R.unless
+ * @see R.ifElse, R.unless, R.cond
  * @example
  *
  *      // truncate :: String -> String
- *      var truncate = R.when(
+ *      const truncate = R.when(
  *        R.propSatisfies(R.gt(R.__, 10), 'length'),
  *        R.pipe(R.take(10), R.append('…'), R.join(''))
  *      );
@@ -14047,7 +13234,7 @@ var when = /*#__PURE__*/_curry3(function when(pred, whenTrueFn, x) {
  * @example
  *
  *      // pred :: Object -> Boolean
- *      var pred = R.where({
+ *      const pred = R.where({
  *        a: R.equals('foo'),
  *        b: R.complement(R.equals('bar')),
  *        x: R.gt(R.__, 10),
@@ -14090,7 +13277,7 @@ var where = /*#__PURE__*/_curry2(function where(spec, testObj) {
  * @example
  *
  *      // pred :: Object -> Boolean
- *      var pred = R.whereEq({a: 1, b: 2});
+ *      const pred = R.whereEq({a: 1, b: 2});
  *
  *      pred({a: 1});              //=> false
  *      pred({a: 1, b: 2});        //=> true
@@ -14115,13 +13302,13 @@ var whereEq = /*#__PURE__*/_curry2(function whereEq(spec, testObj) {
  * @param {Array} list1 The values to be removed from `list2`.
  * @param {Array} list2 The array to remove values from.
  * @return {Array} The new array without values in `list1`.
- * @see R.transduce, R.difference
+ * @see R.transduce, R.difference, R.remove
  * @example
  *
  *      R.without([1, 2], [1, 2, 1, 3, 4]); //=> [3, 4]
  */
 var without = /*#__PURE__*/_curry2(function (xs, list) {
-  return reject(flip(_contains)(xs), list);
+  return reject(flip(_includes)(xs), list);
 });
 
 /**
@@ -14235,7 +13422,7 @@ var zipObj = /*#__PURE__*/_curry2(function zipObj(keys, values) {
  *         using `fn`.
  * @example
  *
- *      var f = (x, y) => {
+ *      const f = (x, y) => {
  *        // ...
  *      };
  *      R.zipWith(f, [1, 2, 3], ['a', 'b', 'c']);
@@ -14253,256 +13440,290 @@ var zipWith = /*#__PURE__*/_curry3(function zipWith(fn, a, b) {
   return rv;
 });
 
-
-
-var es = ({
-	F: F,
-	T: T,
-	__: __,
-	add: add,
-	addIndex: addIndex,
-	adjust: adjust,
-	all: all,
-	allPass: allPass,
-	always: always,
-	and: and,
-	any: any,
-	anyPass: anyPass,
-	ap: ap,
-	aperture: aperture,
-	append: append,
-	apply: apply,
-	applySpec: applySpec,
-	applyTo: applyTo,
-	ascend: ascend,
-	assoc: assoc,
-	assocPath: assocPath,
-	binary: binary,
-	bind: bind,
-	both: both,
-	call: call,
-	chain: chain,
-	clamp: clamp,
-	clone: clone,
-	comparator: comparator,
-	complement: complement,
-	compose: compose,
-	composeK: composeK,
-	composeP: composeP,
-	concat: concat,
-	cond: cond,
-	construct: construct,
-	constructN: constructN,
-	contains: contains$1,
-	converge: converge,
-	countBy: countBy,
-	curry: curry,
-	curryN: curryN,
-	dec: dec,
-	defaultTo: defaultTo,
-	descend: descend,
-	difference: difference,
-	differenceWith: differenceWith,
-	dissoc: dissoc,
-	dissocPath: dissocPath,
-	divide: divide,
-	drop: drop,
-	dropLast: dropLast$1,
-	dropLastWhile: dropLastWhile$1,
-	dropRepeats: dropRepeats,
-	dropRepeatsWith: dropRepeatsWith,
-	dropWhile: dropWhile,
-	either: either,
-	empty: empty,
-	endsWith: endsWith,
-	eqBy: eqBy,
-	eqProps: eqProps,
-	equals: equals,
-	evolve: evolve,
-	filter: filter,
-	find: find,
-	findIndex: findIndex,
-	findLast: findLast,
-	findLastIndex: findLastIndex,
-	flatten: flatten,
-	flip: flip,
-	forEach: forEach,
-	forEachObjIndexed: forEachObjIndexed,
-	fromPairs: fromPairs,
-	groupBy: groupBy,
-	groupWith: groupWith,
-	gt: gt,
-	gte: gte,
-	has: has,
-	hasIn: hasIn,
-	head: head,
-	identical: identical,
-	identity: identity,
-	ifElse: ifElse,
-	inc: inc,
-	indexBy: indexBy,
-	indexOf: indexOf,
-	init: init,
-	innerJoin: innerJoin,
-	insert: insert,
-	insertAll: insertAll,
-	intersection: intersection,
-	intersperse: intersperse,
-	into: into,
-	invert: invert,
-	invertObj: invertObj,
-	invoker: invoker,
-	is: is,
-	isEmpty: isEmpty,
-	isNil: isNil,
-	join: join,
-	juxt: juxt,
-	keys: keys,
-	keysIn: keysIn,
-	last: last,
-	lastIndexOf: lastIndexOf,
-	length: length,
-	lens: lens,
-	lensIndex: lensIndex,
-	lensPath: lensPath,
-	lensProp: lensProp,
-	lift: lift,
-	liftN: liftN,
-	lt: lt,
-	lte: lte,
-	map: map,
-	mapAccum: mapAccum,
-	mapAccumRight: mapAccumRight,
-	mapObjIndexed: mapObjIndexed,
-	match: match,
-	mathMod: mathMod,
-	max: max,
-	maxBy: maxBy,
-	mean: mean,
-	median: median,
-	memoize: memoize,
-	memoizeWith: memoizeWith,
-	merge: merge,
-	mergeAll: mergeAll,
-	mergeDeepLeft: mergeDeepLeft,
-	mergeDeepRight: mergeDeepRight,
-	mergeDeepWith: mergeDeepWith,
-	mergeDeepWithKey: mergeDeepWithKey,
-	mergeWith: mergeWith,
-	mergeWithKey: mergeWithKey,
-	min: min,
-	minBy: minBy,
-	modulo: modulo,
-	multiply: multiply,
-	nAry: nAry,
-	negate: negate,
-	none: none,
-	not: not,
-	nth: nth,
-	nthArg: nthArg,
-	o: o,
-	objOf: objOf,
-	of: of,
-	omit: omit,
-	once: once,
-	or: or,
-	over: over,
-	pair: pair,
-	partial: partial,
-	partialRight: partialRight,
-	partition: partition,
-	path: path,
-	pathEq: pathEq,
-	pathOr: pathOr,
-	pathSatisfies: pathSatisfies,
-	pick: pick,
-	pickAll: pickAll,
-	pickBy: pickBy,
-	pipe: pipe,
-	pipeK: pipeK,
-	pipeP: pipeP,
-	pluck: pluck,
-	prepend: prepend,
-	product: product,
-	project: project,
-	prop: prop,
-	propEq: propEq,
-	propIs: propIs,
-	propOr: propOr,
-	propSatisfies: propSatisfies,
-	props: props,
-	range: range,
-	reduce: reduce,
-	reduceBy: reduceBy,
-	reduceRight: reduceRight,
-	reduceWhile: reduceWhile,
-	reduced: reduced,
-	reject: reject,
-	remove: remove,
-	repeat: repeat,
-	replace: replace,
-	reverse: reverse,
-	scan: scan,
-	sequence: sequence,
-	set: set,
-	slice: slice,
-	sort: sort,
-	sortBy: sortBy,
-	sortWith: sortWith,
-	split: split,
-	splitAt: splitAt,
-	splitEvery: splitEvery,
-	splitWhen: splitWhen,
-	startsWith: startsWith,
-	subtract: subtract,
-	sum: sum,
-	symmetricDifference: symmetricDifference,
-	symmetricDifferenceWith: symmetricDifferenceWith,
-	tail: tail,
-	take: take,
-	takeLast: takeLast,
-	takeLastWhile: takeLastWhile,
-	takeWhile: takeWhile,
-	tap: tap,
-	test: test,
-	times: times,
-	toLower: toLower,
-	toPairs: toPairs,
-	toPairsIn: toPairsIn,
-	toString: toString$1,
-	toUpper: toUpper,
-	transduce: transduce,
-	transpose: transpose,
-	traverse: traverse,
-	trim: trim,
-	tryCatch: tryCatch,
-	type: type,
-	unapply: unapply,
-	unary: unary,
-	uncurryN: uncurryN,
-	unfold: unfold,
-	union: union,
-	unionWith: unionWith,
-	uniq: uniq,
-	uniqBy: uniqBy,
-	uniqWith: uniqWith,
-	unless: unless,
-	unnest: unnest,
-	until: until,
-	update: update,
-	useWith: useWith,
-	values: values,
-	valuesIn: valuesIn,
-	view: view,
-	when: when,
-	where: where,
-	whereEq: whereEq,
-	without: without,
-	xprod: xprod,
-	zip: zip,
-	zipObj: zipObj,
-	zipWith: zipWith
+/**
+ * Creates a thunk out of a function. A thunk delays a calculation until
+ * its result is needed, providing lazy evaluation of arguments.
+ *
+ * @func
+ * @memberOf R
+ * @category Function
+ * @sig ((a, b, ..., j) -> k) -> (a, b, ..., j) -> (() -> k)
+ * @param {Function} fn A function to wrap in a thunk
+ * @return {Function} Expects arguments for `fn` and returns a new function
+ *  that, when called, applies those arguments to `fn`.
+ * @see R.partial, R.partialRight
+ * @example
+ *
+ *      R.thunkify(R.identity)(42)(); //=> 42
+ *      R.thunkify((a, b) => a + b)(25, 17)(); //=> 42
+ */
+var thunkify = /*#__PURE__*/_curry1(function thunkify(fn) {
+  return curryN(fn.length, function createThunk() {
+    var fnArgs = arguments;
+    return function invokeThunk() {
+      return fn.apply(this, fnArgs);
+    };
+  });
 });
+
+var es = {
+    __proto__: null,
+    F: F,
+    T: T,
+    __: __,
+    add: add,
+    addIndex: addIndex,
+    adjust: adjust,
+    all: all,
+    allPass: allPass,
+    always: always,
+    and: and,
+    any: any,
+    anyPass: anyPass,
+    ap: ap,
+    aperture: aperture,
+    append: append,
+    apply: apply,
+    applySpec: applySpec,
+    applyTo: applyTo,
+    ascend: ascend,
+    assoc: assoc,
+    assocPath: assocPath,
+    binary: binary,
+    bind: bind,
+    both: both,
+    call: call,
+    chain: chain,
+    clamp: clamp,
+    clone: clone,
+    comparator: comparator,
+    complement: complement,
+    compose: compose,
+    composeK: composeK,
+    composeP: composeP,
+    composeWith: composeWith,
+    concat: concat,
+    cond: cond,
+    construct: construct,
+    constructN: constructN,
+    contains: contains$1,
+    converge: converge,
+    countBy: countBy,
+    curry: curry,
+    curryN: curryN,
+    dec: dec,
+    defaultTo: defaultTo,
+    descend: descend,
+    difference: difference,
+    differenceWith: differenceWith,
+    dissoc: dissoc,
+    dissocPath: dissocPath,
+    divide: divide,
+    drop: drop,
+    dropLast: dropLast$1,
+    dropLastWhile: dropLastWhile$1,
+    dropRepeats: dropRepeats,
+    dropRepeatsWith: dropRepeatsWith,
+    dropWhile: dropWhile,
+    either: either,
+    empty: empty,
+    endsWith: endsWith,
+    eqBy: eqBy,
+    eqProps: eqProps,
+    equals: equals,
+    evolve: evolve,
+    filter: filter,
+    find: find,
+    findIndex: findIndex,
+    findLast: findLast,
+    findLastIndex: findLastIndex,
+    flatten: flatten,
+    flip: flip,
+    forEach: forEach,
+    forEachObjIndexed: forEachObjIndexed,
+    fromPairs: fromPairs,
+    groupBy: groupBy,
+    groupWith: groupWith,
+    gt: gt,
+    gte: gte,
+    has: has,
+    hasIn: hasIn,
+    hasPath: hasPath,
+    head: head,
+    identical: identical,
+    identity: identity,
+    ifElse: ifElse,
+    inc: inc,
+    includes: includes,
+    indexBy: indexBy,
+    indexOf: indexOf,
+    init: init,
+    innerJoin: innerJoin,
+    insert: insert,
+    insertAll: insertAll,
+    intersection: intersection,
+    intersperse: intersperse,
+    into: into,
+    invert: invert,
+    invertObj: invertObj,
+    invoker: invoker,
+    is: is,
+    isEmpty: isEmpty,
+    isNil: isNil,
+    join: join,
+    juxt: juxt,
+    keys: keys,
+    keysIn: keysIn,
+    last: last,
+    lastIndexOf: lastIndexOf,
+    length: length,
+    lens: lens,
+    lensIndex: lensIndex,
+    lensPath: lensPath,
+    lensProp: lensProp,
+    lift: lift,
+    liftN: liftN,
+    lt: lt,
+    lte: lte,
+    map: map,
+    mapAccum: mapAccum,
+    mapAccumRight: mapAccumRight,
+    mapObjIndexed: mapObjIndexed,
+    match: match,
+    mathMod: mathMod,
+    max: max,
+    maxBy: maxBy,
+    mean: mean,
+    median: median,
+    memoizeWith: memoizeWith,
+    merge: merge,
+    mergeAll: mergeAll,
+    mergeDeepLeft: mergeDeepLeft,
+    mergeDeepRight: mergeDeepRight,
+    mergeDeepWith: mergeDeepWith,
+    mergeDeepWithKey: mergeDeepWithKey,
+    mergeLeft: mergeLeft,
+    mergeRight: mergeRight,
+    mergeWith: mergeWith,
+    mergeWithKey: mergeWithKey,
+    min: min,
+    minBy: minBy,
+    modulo: modulo,
+    move: move,
+    multiply: multiply,
+    nAry: nAry,
+    negate: negate,
+    none: none,
+    not: not,
+    nth: nth,
+    nthArg: nthArg,
+    o: o,
+    objOf: objOf,
+    of: of,
+    omit: omit,
+    once: once,
+    or: or,
+    otherwise: otherwise,
+    over: over,
+    pair: pair,
+    partial: partial,
+    partialRight: partialRight,
+    partition: partition,
+    path: path,
+    pathEq: pathEq,
+    pathOr: pathOr,
+    pathSatisfies: pathSatisfies,
+    pick: pick,
+    pickAll: pickAll,
+    pickBy: pickBy,
+    pipe: pipe,
+    pipeK: pipeK,
+    pipeP: pipeP,
+    pipeWith: pipeWith,
+    pluck: pluck,
+    prepend: prepend,
+    product: product,
+    project: project,
+    prop: prop,
+    propEq: propEq,
+    propIs: propIs,
+    propOr: propOr,
+    propSatisfies: propSatisfies,
+    props: props,
+    range: range,
+    reduce: reduce,
+    reduceBy: reduceBy,
+    reduceRight: reduceRight,
+    reduceWhile: reduceWhile,
+    reduced: reduced,
+    reject: reject,
+    remove: remove,
+    repeat: repeat,
+    replace: replace,
+    reverse: reverse,
+    scan: scan,
+    sequence: sequence,
+    set: set,
+    slice: slice,
+    sort: sort,
+    sortBy: sortBy,
+    sortWith: sortWith,
+    split: split,
+    splitAt: splitAt,
+    splitEvery: splitEvery,
+    splitWhen: splitWhen,
+    startsWith: startsWith,
+    subtract: subtract,
+    sum: sum,
+    symmetricDifference: symmetricDifference,
+    symmetricDifferenceWith: symmetricDifferenceWith,
+    tail: tail,
+    take: take,
+    takeLast: takeLast,
+    takeLastWhile: takeLastWhile,
+    takeWhile: takeWhile,
+    tap: tap,
+    test: test,
+    then: then,
+    times: times,
+    toLower: toLower,
+    toPairs: toPairs,
+    toPairsIn: toPairsIn,
+    toString: toString$1,
+    toUpper: toUpper,
+    transduce: transduce,
+    transpose: transpose,
+    traverse: traverse,
+    trim: trim,
+    tryCatch: tryCatch,
+    type: type,
+    unapply: unapply,
+    unary: unary,
+    uncurryN: uncurryN,
+    unfold: unfold,
+    union: union,
+    unionWith: unionWith,
+    uniq: uniq,
+    uniqBy: uniqBy,
+    uniqWith: uniqWith,
+    unless: unless,
+    unnest: unnest,
+    until: until,
+    update: update,
+    useWith: useWith,
+    values: values,
+    valuesIn: valuesIn,
+    view: view,
+    when: when,
+    where: where,
+    whereEq: whereEq,
+    without: without,
+    xprod: xprod,
+    zip: zip,
+    zipObj: zipObj,
+    zipWith: zipWith,
+    thunkify: thunkify
+};
 
 var mimecodec = createCommonjsModule(function (module, exports) {
 
@@ -14783,7 +14004,13 @@ function mimeWordsDecode() {
   var str = arguments.length > 0 && arguments[0] !== undefined ? arguments[0] : '';
 
   str = str.toString().replace(/(=\?[^?]+\?[QqBb]\?[^?]+\?=)\s+(?==\?[^?]+\?[QqBb]\?[^?]*\?=)/g, '$1');
-  str = str.replace(/\?==\?[uU][tT][fF]-8\?[QqBb]\?/g, ''); // join bytes of multi-byte UTF-8
+  // join bytes of multi-byte UTF-8
+  var prevEncoding = void 0;
+  str = str.replace(/(\?=)?=\?[uU][tT][fF]-8\?([QqBb])\?/g, function (match, endOfPrevWord, encoding) {
+    var result = endOfPrevWord && encoding === prevEncoding ? '' : match;
+    prevEncoding = encoding;
+    return result;
+  });
   str = str.replace(/=\?[\w_\-*]+\?[QqBb]\?[^?]*\?=/g, function (mimeWord) {
     return mimeWordDecode(mimeWord.replace(/\s+/g, ''));
   });
@@ -15048,8 +14275,6 @@ function continuationEncode(key, data, maxLength, fromCharset) {
   var list = [];
   var encodedStr = typeof data === 'string' ? data : (0, charset.decode)(data, fromCharset);
   var line;
-  var startPos = 0;
-  var isEncoded = false;
 
   maxLength = maxLength || 50;
 
@@ -15076,66 +14301,26 @@ function continuationEncode(key, data, maxLength, fromCharset) {
       });
     }
   } else {
-    // first line includes the charset and language info and needs to be encoded
-    // even if it does not contain any unicode characters
-    line = 'utf-8\'\'';
-    isEncoded = true;
-    startPos = 0;
     // process text with unicode or special chars
-    for (var i = 0, len = encodedStr.length; i < len; i++) {
-      var chr = encodedStr[i];
-
-      if (isEncoded) {
-        chr = encodeURIComponent(chr);
-      } else {
-        // try to urlencode current char
-        chr = chr === ' ' ? chr : encodeURIComponent(chr);
-        // By default it is not required to encode a line, the need
-        // only appears when the string contains unicode or special chars
-        // in this case we start processing the line over and encode all chars
-        if (chr !== encodedStr[i]) {
-          // Check if it is even possible to add the encoded char to the line
-          // If not, there is no reason to use this line, just push it to the list
-          // and start a new line with the char that needs encoding
-          if ((encodeURIComponent(line) + chr).length >= maxLength) {
-            list.push({
-              line: line,
-              encoded: isEncoded
-            });
-            line = '';
-            startPos = i - 1;
-          } else {
-            isEncoded = true;
-            i = startPos;
-            line = '';
-            continue;
-          }
-        }
+    var uriEncoded = encodeURIComponent('utf-8\'\'' + encodedStr);
+    var i = 0;
+    while (true) {
+      var len = maxLength;
+      // must not split hex encoded byte between lines
+      if (uriEncoded[i + maxLength - 1] === '%') {
+        len -= 1;
+      } else if (uriEncoded[i + maxLength - 2] === '%') {
+        len -= 2;
       }
-
-      // if the line is already too long, push it to the list and start a new one
-      if ((line + chr).length >= maxLength) {
-        list.push({
-          line: line,
-          encoded: isEncoded
-        });
-        line = chr = encodedStr[i] === ' ' ? ' ' : encodeURIComponent(encodedStr[i]);
-        if (chr === encodedStr[i]) {
-          isEncoded = false;
-          startPos = i - 1;
-        } else {
-          isEncoded = true;
-        }
-      } else {
-        line += chr;
+      line = uriEncoded.substr(i, len);
+      if (!line) {
+        break;
       }
-    }
-
-    if (line) {
       list.push({
         line: line,
-        encoded: isEncoded
+        encoded: true
       });
+      i += line.length;
     }
   }
 
@@ -15314,1153 +14499,1634 @@ var mimecodec_19 = mimecodec.continuationEncode;
 
 /**
  * @param {Date} [date] an optional date to convert to RFC2822 format
- * @param {boolean} [useUtc=false] whether to parse the date as UTC (default: false)
+ * @param {boolean} [useUtc] whether to parse the date as UTC (default: false)
  * @returns {string} the converted date
  */
 function getRFC2822Date(date = new Date(), useUtc = false) {
-	if (useUtc) {
-		return getRFC2822DateUTC(date);
-	}
-
-	const dates = date
-		.toString()
-		.replace('GMT', '')
-		.replace(/\s\(.*\)$/, '')
-		.split(' ');
-
-	dates[0] = dates[0] + ',';
-
-	const day = dates[1];
-	dates[1] = dates[2];
-	dates[2] = day;
-
-	return dates.join(' ');
+    if (useUtc) {
+        return getRFC2822DateUTC(date);
+    }
+    const dates = date
+        .toString()
+        .replace('GMT', '')
+        .replace(/\s\(.*\)$/, '')
+        .split(' ');
+    dates[0] = dates[0] + ',';
+    const day = dates[1];
+    dates[1] = dates[2];
+    dates[2] = day;
+    return dates.join(' ');
 }
-
 /**
  * @param {Date} [date] an optional date to convert to RFC2822 format (UTC)
  * @returns {string} the converted date
  */
 function getRFC2822DateUTC(date = new Date()) {
-	const dates = date.toUTCString().split(' ');
-	dates.pop(); // remove timezone
-	dates.push('+0000');
-	return dates.join(' ');
+    const dates = date.toUTCString().split(' ');
+    dates.pop(); // remove timezone
+    dates.push('+0000');
+    return dates.join(' ');
 }
-
-var getRFC2822Date_1 = getRFC2822Date;
-var getRFC2822DateUTC_1 = getRFC2822DateUTC;
 
 var date = {
-	getRFC2822Date: getRFC2822Date_1,
-	getRFC2822DateUTC: getRFC2822DateUTC_1
+    __proto__: null,
+    getRFC2822Date: getRFC2822Date,
+    getRFC2822DateUTC: getRFC2822DateUTC
 };
 
-var date$1 = ({
-	default: date,
-	__moduleExports: date,
-	getRFC2822Date: getRFC2822Date_1,
-	getRFC2822DateUTC: getRFC2822DateUTC_1
-});
-
-const { hostname: hostname$1 } = os;
-const { Stream } = stream;
-
-const { mimeWordEncode } = mimecodec;
-const { getRFC2822Date: getRFC2822Date$1 } = date;
-
-const CRLF$1 = '\r\n';
-
+const CRLF = '\r\n';
 /**
  * MIME standard wants 76 char chunks when sending out.
- * @type {76}
  */
 const MIMECHUNK = 76;
-
 /**
  * meets both base64 and mime divisibility
- * @type {456}
  */
-const MIME64CHUNK = /** @type {456} */ (MIMECHUNK * 6);
-
+const MIME64CHUNK = (MIMECHUNK * 6);
 /**
  * size of the message stream buffer
- * @type {12768}
  */
-const BUFFERSIZE = /** @type {12768} */ (MIMECHUNK * 24 * 7);
-
-/**
- * @type {number}
- */
+const BUFFERSIZE = (MIMECHUNK * 24 * 7);
 let counter = 0;
-
-/**
- * @returns {string} the generated boundary
- */
 function generate_boundary() {
-	let text = '';
-	const possible =
-		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'()+_,-./:=?";
-
-	for (let i = 0; i < 69; i++) {
-		text += possible.charAt(Math.floor(Math.random() * possible.length));
-	}
-
-	return text;
+    let text = '';
+    const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'()+_,-./:=?";
+    for (let i = 0; i < 69; i++) {
+        text += possible.charAt(Math.floor(Math.random() * possible.length));
+    }
+    return text;
 }
-
-/**
- * @param {string} l the person to parse into an address
- * @returns {string} the parsed address
- */
-function person2address(l) {
-	return addressparser_1(l)
-		.map(({ name, address }) => {
-			return name
-				? `${mimeWordEncode(name).replace(/,/g, '=2C')} <${address}>`
-				: address;
-		})
-		.join(', ');
+function convertPersonToAddress(person) {
+    return addressparser_1(person)
+        .map(({ name, address }) => {
+        return name
+            ? `${mimecodec_10(name).replace(/,/g, '=2C')} <${address}>`
+            : address;
+    })
+        .join(', ');
 }
-
-/**
- * @param {string} header_name the header name to fix
- * @returns {string} the fixed header name
- */
-function fix_header_name_case(header_name) {
-	return header_name
-		.toLowerCase()
-		.replace(/^(.)|-(.)/g, match => match.toUpperCase());
+function convertDashDelimitedTextToSnakeCase(text) {
+    return text
+        .toLowerCase()
+        .replace(/^(.)|-(.)/g, (match) => match.toUpperCase());
 }
-
 class Message {
-	/**
-	 * @typedef {Object} MessageHeaders
-	 * @property {string?} content-type
-	 * @property {string} [subject]
-	 * @property {string} [text]
-	 * @property {MessageAttachment} [attachment]
-	 * @param {MessageHeaders} headers hash of message headers
-	 */
-	constructor(headers) {
-		this.attachments = [];
-
-		/**
-		 * @type {MessageAttachment}
-		 */
-		this.alternative = null;
-		this.header = {
-			'message-id': `<${new Date().getTime()}.${counter++}.${
-				process.pid
-			}@${hostname$1()}>`,
-			date: getRFC2822Date$1(),
-		};
-
-		this.content = 'text/plain; charset=utf-8';
-		for (const header in headers) {
-			// allow user to override default content-type to override charset or send a single non-text message
-			if (/^content-type$/i.test(header)) {
-				this.content = headers[header];
-			} else if (header === 'text') {
-				this.text = headers[header];
-			} else if (
-				header === 'attachment' &&
-				typeof headers[header] === 'object'
-			) {
-				const attachment = headers[header];
-				if (Array.isArray(attachment)) {
-					for (let i = 0; i < attachment.length; i++) {
-						this.attach(attachment[i]);
-					}
-				} else {
-					this.attach(attachment);
-				}
-			} else if (header === 'subject') {
-				this.header.subject = mimeWordEncode(headers.subject);
-			} else if (/^(cc|bcc|to|from)/i.test(header)) {
-				this.header[header.toLowerCase()] = person2address(headers[header]);
-			} else {
-				// allow any headers the user wants to set??
-				// if(/cc|bcc|to|from|reply-to|sender|subject|date|message-id/i.test(header))
-				this.header[header.toLowerCase()] = headers[header];
-			}
-		}
-	}
-
-	/**
-	 * @param {MessageAttachment} options attachment options
-	 * @returns {Message} the current instance for chaining
-	 */
-	attach(options) {
-		/*
-			legacy support, will remove eventually...
-			arguments -> (path, type, name, headers)
-		*/
-		if (typeof options === 'string' && arguments.length > 1) {
-			options = {
-				path: options,
-				type: arguments[1],
-				name: arguments[2],
-			};
-		}
-
-		// sender can specify an attachment as an alternative
-		if (options.alternative) {
-			this.alternative = options;
-			this.alternative.charset = options.charset || 'utf-8';
-			this.alternative.type = options.type || 'text/html';
-			this.alternative.inline = true;
-		} else {
-			this.attachments.push(options);
-		}
-
-		return this;
-	}
-
-	/**
-	 * legacy support, will remove eventually...
-	 * should use Message.attach() instead
-	 * @param {string} html html data
-	 * @param {string} [charset='utf-8'] the charset to encode as
-	 * @returns {Message} the current Message instance
-	 */
-	attach_alternative(html, charset) {
-		this.alternative = {
-			data: html,
-			charset: charset || 'utf-8',
-			type: 'text/html',
-			inline: true,
-		};
-
-		return this;
-	}
-
-	/**
-	 * @param {function(boolean, string): void} callback This callback is displayed as part of the Requester class.
-	 * @returns {void}
-	 */
-	valid(callback) {
-		if (!this.header.from) {
-			callback(false, 'message does not have a valid sender');
-		}
-
-		if (!(this.header.to || this.header.cc || this.header.bcc)) {
-			callback(false, 'message does not have a valid recipient');
-		} else if (this.attachments.length === 0) {
-			callback(true, undefined);
-		} else {
-			const failed = [];
-
-			this.attachments.forEach(attachment => {
-				if (attachment.path) {
-					if (fs.existsSync(attachment.path) == false) {
-						failed.push(`${attachment.path} does not exist`);
-					}
-				} else if (attachment.stream) {
-					if (!attachment.stream.readable) {
-						failed.push('attachment stream is not readable');
-					}
-				} else if (!attachment.data) {
-					failed.push('attachment has no data associated with it');
-				}
-			});
-
-			callback(failed.length === 0, failed.join(', '));
-		}
-	}
-
-	/**
-	 * returns a stream of the current message
-	 * @returns {MessageStream} a stream of the current message
-	 */
-	stream() {
-		return new MessageStream(this);
-	}
-
-	/**
-	 * @param {function(Error, string): void} callback the function to call with the error and buffer
-	 * @returns {void}
-	 */
-	read(callback) {
-		let buffer = '';
-		const str = this.stream();
-		str.on('data', data => (buffer += data));
-		str.on('end', err => callback(err, buffer));
-		str.on('error', err => callback(err, buffer));
-	}
+    constructor(headers) {
+        this.attachments = [];
+        this.header = {
+            'message-id': `<${new Date().getTime()}.${counter++}.${process.pid}@${os.hostname()}>`,
+            date: getRFC2822Date(),
+        };
+        this.content = 'text/plain; charset=utf-8';
+        this.alternative = null;
+        for (const header in headers) {
+            // allow user to override default content-type to override charset or send a single non-text message
+            if (/^content-type$/i.test(header)) {
+                this.content = headers[header];
+            }
+            else if (header === 'text') {
+                this.text = headers[header];
+            }
+            else if (header === 'attachment' &&
+                typeof headers[header] === 'object') {
+                const attachment = headers[header];
+                if (Array.isArray(attachment)) {
+                    for (let i = 0; i < attachment.length; i++) {
+                        this.attach(attachment[i]);
+                    }
+                }
+                else if (attachment != null) {
+                    this.attach(attachment);
+                }
+            }
+            else if (header === 'subject') {
+                this.header.subject = mimecodec_10(headers.subject);
+            }
+            else if (/^(cc|bcc|to|from)/i.test(header)) {
+                this.header[header.toLowerCase()] = convertPersonToAddress(headers[header]);
+            }
+            else {
+                // allow any headers the user wants to set??
+                // if(/cc|bcc|to|from|reply-to|sender|subject|date|message-id/i.test(header))
+                this.header[header.toLowerCase()] = headers[header];
+            }
+        }
+    }
+    /**
+     * @public
+     * @param {MessageAttachment} options attachment options
+     * @returns {Message} the current instance for chaining
+     */
+    attach(options) {
+        // sender can specify an attachment as an alternative
+        if (options.alternative) {
+            this.alternative = options;
+            this.alternative.charset = options.charset || 'utf-8';
+            this.alternative.type = options.type || 'text/html';
+            this.alternative.inline = true;
+        }
+        else {
+            this.attachments.push(options);
+        }
+        return this;
+    }
+    /**
+     * legacy support, will remove eventually...
+     * should use Message.attach() instead
+     * @param {string} html html data
+     * @param {string} [charset='utf-8'] the charset to encode as
+     * @returns {Message} the current Message instance
+     */
+    attach_alternative(html, charset) {
+        this.alternative = {
+            data: html,
+            charset: charset || 'utf-8',
+            type: 'text/html',
+            inline: true,
+        };
+        return this;
+    }
+    /**
+     * @public
+     * @param {function(boolean, string): void} callback This callback is displayed as part of the Requester class.
+     * @returns {void}
+     */
+    valid(callback) {
+        if (!this.header.from) {
+            callback(false, 'message does not have a valid sender');
+        }
+        if (!(this.header.to || this.header.cc || this.header.bcc)) {
+            callback(false, 'message does not have a valid recipient');
+        }
+        else if (this.attachments.length === 0) {
+            callback(true, undefined);
+        }
+        else {
+            const failed = [];
+            this.attachments.forEach((attachment) => {
+                if (attachment.path) {
+                    if (fs.existsSync(attachment.path) == false) {
+                        failed.push(`${attachment.path} does not exist`);
+                    }
+                }
+                else if (attachment.stream) {
+                    if (!attachment.stream.readable) {
+                        failed.push('attachment stream is not readable');
+                    }
+                }
+                else if (!attachment.data) {
+                    failed.push('attachment has no data associated with it');
+                }
+            });
+            callback(failed.length === 0, failed.join(', '));
+        }
+    }
+    /**
+     * @public
+     * @returns {*} a stream of the current message
+     */
+    stream() {
+        // eslint-disable-next-line @typescript-eslint/no-use-before-define
+        return new MessageStream(this);
+    }
+    /**
+     * @public
+     * @param {function(Error, string): void} callback the function to call with the error and buffer
+     * @returns {void}
+     */
+    read(callback) {
+        let buffer = '';
+        const str = this.stream();
+        str.on('data', (data) => (buffer += data));
+        str.on('end', (err) => callback(err, buffer));
+        str.on('error', (err) => callback(err, buffer));
+    }
 }
-
-/**
- * @typedef {Object} MessageAttachmentHeaders
- * @property {string} content-type
- * @property {string} content-transfer-encoding
- * @property {string} content-disposition
- */
-
-/**
- * @typedef {Object} MessageAttachment
- * @property {string} [name]
- * @property {string} [type]
- * @property {string} [charset]
- * @property {string} [method]
- * @property {string} [path]
- * @property {NodeJS.ReadWriteStream} [stream]
- * @property {boolean} [inline]
- * @property {MessageAttachment} [alternative]
- * @property {MessageAttachment[]} [related]
- * @property {*} [encoded]
- * @property {*} [data]
- * @property {MessageAttachmentHeaders} [headers]
- */
-
-class MessageStream extends Stream {
-	/**
-	 * @param {Message} message the message to stream
-	 */
-	constructor(message) {
-		super();
-
-		/**
-		 * @type {Message}
-		 */
-		this.message = message;
-
-		/**
-		 * @type {boolean}
-		 */
-		this.readable = true;
-
-		/**
-		 * @type {boolean}
-		 */
-		this.paused = false;
-
-		/**
-		 * @type {Buffer}
-		 */
-		this.buffer = Buffer.alloc(MIMECHUNK * 24 * 7);
-
-		/**
-		 * @type {number}
-		 */
-		this.bufferIndex = 0;
-
-		/**
-		 * @returns {void}
-		 */
-		const output_mixed = () => {
-			const boundary = generate_boundary();
-			output(
-				`Content-Type: multipart/mixed; boundary="${boundary}"${CRLF$1}${CRLF$1}--${boundary}${CRLF$1}`
-			);
-
-			if (this.message.alternative == null) {
-				output_text(this.message);
-				output_message(boundary, this.message.attachments, 0, close);
-			} else {
-				const cb = () =>
-					output_message(boundary, this.message.attachments, 0, close);
-				output_alternative(this.message, cb);
-			}
-		};
-
-		/**
-		 * @param {string} boundary the boundary text between outputs
-		 * @param {MessageAttachment[]} list the list of potential messages to output
-		 * @param {number} index the index of the list item to output
-		 * @param {function(): void} callback the function to call if index is greater than upper bound
-		 * @returns {void}
-		 */
-		const output_message = (boundary, list, index, callback) => {
-			if (index < list.length) {
-				output(`--${boundary}${CRLF$1}`);
-				if (list[index].related) {
-					output_related(list[index], () =>
-						output_message(boundary, list, index + 1, callback)
-					);
-				} else {
-					output_attachment(list[index], () =>
-						output_message(boundary, list, index + 1, callback)
-					);
-				}
-			} else {
-				output(`${CRLF$1}--${boundary}--${CRLF$1}${CRLF$1}`);
-				callback();
-			}
-		};
-
-		/**
-		 * @param {MessageAttachment} attachment the metadata to use as headers
-		 * @returns {void}
-		 */
-		const output_attachment_headers = attachment => {
-			let data = [];
-			const headers = {
-				'content-type':
-					attachment.type +
-					(attachment.charset ? `; charset=${attachment.charset}` : '') +
-					(attachment.method ? `; method=${attachment.method}` : ''),
-				'content-transfer-encoding': 'base64',
-				'content-disposition': attachment.inline
-					? 'inline'
-					: `attachment; filename="${mimeWordEncode(attachment.name)}"`,
-			};
-
-			// allow sender to override default headers
-			for (const header in attachment.headers || {}) {
-				headers[header.toLowerCase()] = attachment.headers[header];
-			}
-
-			for (const header in headers) {
-				data = data.concat([
-					fix_header_name_case(header),
-					': ',
-					headers[header],
-					CRLF$1,
-				]);
-			}
-
-			output(data.concat([CRLF$1]).join(''));
-		};
-
-		/**
-		 * @param {MessageAttachment} attachment the metadata to use as headers
-		 * @param {function(): void} callback the function to call after output is finished
-		 * @returns {void}
-		 */
-		const output_attachment = (attachment, callback) => {
-			const build = attachment.path
-				? output_file
-				: attachment.stream
-					? output_stream
-					: output_data;
-			output_attachment_headers(attachment);
-			build(attachment, callback);
-		};
-
-		/**
-		 * @param {MessageAttachment} attachment the metadata to use as headers
-		 * @param {function(): void} callback the function to call after output is finished
-		 * @returns {void}
-		 */
-		const output_data = (attachment, callback) => {
-			output_base64(
-				attachment.encoded
-					? attachment.data
-					: Buffer.from(attachment.data).toString('base64'),
-				callback
-			);
-		};
-
-		/**
-		 * @param {MessageAttachment} attachment the metadata to use as headers
-		 * @param {function(NodeJS.ErrnoException): void} next the function to call when the file is closed
-		 * @returns {void}
-		 */
-		const output_file = (attachment, next) => {
-			const chunk = MIME64CHUNK * 16;
-			const buffer = Buffer.alloc(chunk);
-			const closed = fd => fs.closeSync(fd);
-
-			/**
-			 * @param {Error} err the error to emit
-			 * @param {number} fd the file descriptor
-			 * @returns {void}
-			 */
-			const opened = (err, fd) => {
-				if (!err) {
-					const read = (err, bytes) => {
-						if (!err && this.readable) {
-							let encoding =
-								attachment && attachment.headers
-									? attachment.headers['content-transfer-encoding'] || 'base64'
-									: 'base64';
-							if (encoding === 'ascii' || encoding === '7bit') {
-								encoding = 'ascii';
-							} else if (encoding === 'binary' || encoding === '8bit') {
-								encoding = 'binary';
-							} else {
-								encoding = 'base64';
-							}
-							// guaranteed to be encoded without padding unless it is our last read
-							output_base64(buffer.toString(encoding, 0, bytes), () => {
-								if (bytes == chunk) {
-									// we read a full chunk, there might be more
-									fs.read(fd, buffer, 0, chunk, null, read);
-								} // that was the last chunk, we are done reading the file
-								else {
-									this.removeListener('error', closed);
-									fs.close(fd, next);
-								}
-							});
-						} else {
-							this.emit(
-								'error',
-								err || { message: 'message stream was interrupted somehow!' }
-							);
-						}
-					};
-
-					fs.read(fd, buffer, 0, chunk, null, read);
-					this.once('error', closed);
-				} else {
-					this.emit('error', err);
-				}
-			};
-
-			fs.open(attachment.path, 'r', opened);
-		};
-
-		/**
-		 * @param {MessageAttachment} attachment the metadata to use as headers
-		 * @param {function(): void} callback the function to call after output is finished
-		 * @returns {void}
-		 */
-		const output_stream = (attachment, callback) => {
-			if (attachment.stream.readable) {
-				let previous = Buffer.alloc(0);
-
-				attachment.stream.resume();
-
-				attachment.stream.on('end', () => {
-					output_base64(previous.toString('base64'), callback);
-					this.removeListener('pause', attachment.stream.pause);
-					this.removeListener('resume', attachment.stream.resume);
-					this.removeListener('error', attachment.stream.resume);
-				});
-
-				attachment.stream.on('data', buff => {
-					// do we have bytes from a previous stream data event?
-					let buffer = Buffer.isBuffer(buff) ? buff : Buffer.from(buff);
-
-					if (previous.byteLength > 0) {
-						buffer = Buffer.concat([previous, buffer]);
-					}
-
-					const padded = buffer.length % MIME64CHUNK;
-					previous = Buffer.alloc(padded);
-
-					// encode as much of the buffer to base64 without empty bytes
-					if (padded > 0) {
-						// copy dangling bytes into previous buffer
-						buffer.copy(previous, 0, buffer.length - padded);
-					}
-					output_base64(buffer.toString('base64', 0, buffer.length - padded));
-				});
-
-				this.on('pause', attachment.stream.pause);
-				this.on('resume', attachment.stream.resume);
-				this.on('error', attachment.stream.resume);
-			} else {
-				this.emit('error', { message: 'stream not readable' });
-			}
-		};
-
-		/**
-		 * @param {string} data the data to output as base64
-		 * @param {function(): void} [callback] the function to call after output is finished
-		 * @returns {void}
-		 */
-		const output_base64 = (data, callback) => {
-			const loops = Math.ceil(data.length / MIMECHUNK);
-			let loop = 0;
-			while (loop < loops) {
-				output(data.substring(MIMECHUNK * loop, MIMECHUNK * (loop + 1)) + CRLF$1);
-				loop++;
-			}
-			if (callback) {
-				callback();
-			}
-		};
-
-		/**
-		 * @param {Message} message the message to output
-		 * @returns {void}
-		 */
-		const output_text = message => {
-			let data = [];
-
-			data = data.concat([
-				'Content-Type:',
-				message.content,
-				CRLF$1,
-				'Content-Transfer-Encoding: 7bit',
-				CRLF$1,
-			]);
-			data = data.concat(['Content-Disposition: inline', CRLF$1, CRLF$1]);
-			data = data.concat([message.text || '', CRLF$1, CRLF$1]);
-
-			output(data.join(''));
-		};
-
-		/**
-		 * @param {Message} message the message to output
-		 * @param {function(): void} callback the function to call after output is finished
-		 * @returns {void}
-		 */
-		const output_alternative = (message, callback) => {
-			const boundary = generate_boundary();
-			output(
-				`Content-Type: multipart/alternative; boundary="${boundary}"${CRLF$1}${CRLF$1}--${boundary}${CRLF$1}`
-			);
-			output_text(message);
-			output(`--${boundary}${CRLF$1}`);
-
-			/**
-			 * @returns {void}
-			 */
-			const finish = () => {
-				output([CRLF$1, '--', boundary, '--', CRLF$1, CRLF$1].join(''));
-				callback();
-			};
-
-			if (message.alternative.related) {
-				output_related(message.alternative, finish);
-			} else {
-				output_attachment(message.alternative, finish);
-			}
-		};
-
-		/**
-		 * @param {MessageAttachment} message the message to output
-		 * @param {function(): void} callback the function to call after output is finished
-		 * @returns {void}
-		 */
-		const output_related = (message, callback) => {
-			const boundary = generate_boundary();
-			output(
-				`Content-Type: multipart/related; boundary="${boundary}"${CRLF$1}${CRLF$1}--${boundary}${CRLF$1}`
-			);
-			output_attachment(message, () => {
-				output_message(boundary, message.related, 0, () => {
-					output(`${CRLF$1}--${boundary}--${CRLF$1}${CRLF$1}`);
-					callback();
-				});
-			});
-		};
-
-		/**
-		 * @returns {void}
-		 */
-		const output_header_data = () => {
-			if (this.message.attachments.length || this.message.alternative) {
-				output(`MIME-Version: 1.0${CRLF$1}`);
-				output_mixed();
-			} // you only have a text message!
-			else {
-				output_text(this.message);
-				close();
-			}
-		};
-
-		/**
-		 * @returns {void}
-		 */
-		const output_header = () => {
-			let data = [];
-
-			for (const header in this.message.header) {
-				// do not output BCC in the headers (regex) nor custom Object.prototype functions...
-				if (
-					!/bcc/i.test(header) &&
-					this.message.header.hasOwnProperty(header)
-				) {
-					data = data.concat([
-						fix_header_name_case(header),
-						': ',
-						this.message.header[header],
-						CRLF$1,
-					]);
-				}
-			}
-
-			output(data.join(''));
-			output_header_data();
-		};
-
-		/**
-		 * @param {string} data the data to output
-		 * @param {function(...args): void} [callback] the function
-		 * @param {*[]} [args] array of arguments to pass to the callback
-		 * @returns {void}
-		 */
-		const output = (data, callback, args) => {
-			const bytes = Buffer.byteLength(data);
-
-			// can we buffer the data?
-			if (bytes + this.bufferIndex < this.buffer.length) {
-				this.buffer.write(data, this.bufferIndex);
-				this.bufferIndex += bytes;
-				if (callback) {
-					callback.apply(null, args);
-				}
-			}
-			// we can't buffer the data, so ship it out!
-			else if (bytes > this.buffer.length) {
-				if (this.bufferIndex) {
-					this.emit('data', this.buffer.toString('utf-8', 0, this.bufferIndex));
-					this.bufferIndex = 0;
-				}
-
-				const loops = Math.ceil(data.length / this.buffer.length);
-				let loop = 0;
-				while (loop < loops) {
-					this.emit(
-						'data',
-						data.substring(
-							this.buffer.length * loop,
-							this.buffer.length * (loop + 1)
-						)
-					);
-					loop++;
-				}
-			} // we need to clean out the buffer, it is getting full
-			else {
-				if (!this.paused) {
-					this.emit('data', this.buffer.toString('utf-8', 0, this.bufferIndex));
-					this.buffer.write(data, 0);
-					this.bufferIndex = bytes;
-					// we could get paused after emitting data...
-					if (this.paused) {
-						this.once('resume', () => callback.apply(null, args));
-					} else if (callback) {
-						callback.apply(null, args);
-					}
-				} // we can't empty out the buffer, so let's wait till we resume before adding to it
-				else {
-					this.once('resume', () => output(data, callback, args));
-				}
-			}
-		};
-
-		/**
-		 * @param {*} [err] the error to emit
-		 * @returns {void}
-		 */
-		const close = err => {
-			if (err) {
-				this.emit('error', err);
-			} else {
-				this.emit('data', this.buffer.toString('utf-8', 0, this.bufferIndex));
-				this.emit('end');
-			}
-			this.buffer = null;
-			this.bufferIndex = 0;
-			this.readable = false;
-			this.removeAllListeners('resume');
-			this.removeAllListeners('pause');
-			this.removeAllListeners('error');
-			this.removeAllListeners('data');
-			this.removeAllListeners('end');
-		};
-
-		this.once('destroy', close);
-		process.nextTick(output_header);
-	}
-
-	/**
-	 * pause the stream
-	 * @returns {void}
-	 */
-	pause() {
-		this.paused = true;
-		this.emit('pause');
-	}
-
-	/**
-	 * resume the stream
-	 * @returns {void}
-	 */
-	resume() {
-		this.paused = false;
-		this.emit('resume');
-	}
-
-	/**
-	 * destroy the stream
-	 * @returns {void}
-	 */
-	destroy() {
-		this.emit(
-			'destroy',
-			this.bufferIndex > 0 ? { message: 'message stream destroyed' } : null
-		);
-	}
-
-	/**
-	 * destroy the stream at first opportunity
-	 * @returns {void}
-	 */
-	destroySoon() {
-		this.emit('destroy');
-	}
+class MessageStream extends stream.Stream {
+    /**
+     * @param {*} message the message to stream
+     */
+    constructor(message) {
+        super();
+        this.message = message;
+        this.readable = true;
+        this.paused = false;
+        this.buffer = Buffer.alloc(MIMECHUNK * 24 * 7);
+        this.bufferIndex = 0;
+        /**
+         * @param {string} [data] the data to output
+         * @param {Function} [callback] the function
+         * @param {any[]} [args] array of arguments to pass to the callback
+         * @returns {void}
+         */
+        const output = (data) => {
+            // can we buffer the data?
+            if (this.buffer != null) {
+                const bytes = Buffer.byteLength(data);
+                if (bytes + this.bufferIndex < this.buffer.length) {
+                    this.buffer.write(data, this.bufferIndex);
+                    this.bufferIndex += bytes;
+                }
+                // we can't buffer the data, so ship it out!
+                else if (bytes > this.buffer.length) {
+                    if (this.bufferIndex) {
+                        this.emit('data', this.buffer.toString('utf-8', 0, this.bufferIndex));
+                        this.bufferIndex = 0;
+                    }
+                    const loops = Math.ceil(data.length / this.buffer.length);
+                    let loop = 0;
+                    while (loop < loops) {
+                        this.emit('data', data.substring(this.buffer.length * loop, this.buffer.length * (loop + 1)));
+                        loop++;
+                    }
+                } // we need to clean out the buffer, it is getting full
+                else {
+                    if (!this.paused) {
+                        this.emit('data', this.buffer.toString('utf-8', 0, this.bufferIndex));
+                        this.buffer.write(data, 0);
+                        this.bufferIndex = bytes;
+                    }
+                    else {
+                        // we can't empty out the buffer, so let's wait till we resume before adding to it
+                        this.once('resume', () => output(data));
+                    }
+                }
+            }
+        };
+        /**
+         * @param {MessageAttachment | AlternateMessageAttachment} [attachment] the attachment whose headers you would like to output
+         * @returns {void}
+         */
+        const output_attachment_headers = (attachment) => {
+            let data = [];
+            const headers = {
+                'content-type': attachment.type +
+                    (attachment.charset ? `; charset=${attachment.charset}` : '') +
+                    (attachment.method ? `; method=${attachment.method}` : ''),
+                'content-transfer-encoding': 'base64',
+                'content-disposition': attachment.inline
+                    ? 'inline'
+                    : `attachment; filename="${mimecodec_10(attachment.name)}"`,
+            };
+            // allow sender to override default headers
+            if (attachment.headers != null) {
+                for (const header in attachment.headers) {
+                    headers[header.toLowerCase()] = attachment.headers[header];
+                }
+            }
+            for (const header in headers) {
+                data = data.concat([
+                    convertDashDelimitedTextToSnakeCase(header),
+                    ': ',
+                    headers[header],
+                    CRLF,
+                ]);
+            }
+            output(data.concat([CRLF]).join(''));
+        };
+        /**
+         * @param {string} data the data to output as base64
+         * @param {function(): void} [callback] the function to call after output is finished
+         * @returns {void}
+         */
+        const output_base64 = (data, callback) => {
+            const loops = Math.ceil(data.length / MIMECHUNK);
+            let loop = 0;
+            while (loop < loops) {
+                output(data.substring(MIMECHUNK * loop, MIMECHUNK * (loop + 1)) + CRLF);
+                loop++;
+            }
+            if (callback) {
+                callback();
+            }
+        };
+        const output_file = (attachment, next) => {
+            const chunk = MIME64CHUNK * 16;
+            const buffer = Buffer.alloc(chunk);
+            const closed = (fd) => fs.closeSync(fd);
+            /**
+             * @param {Error} err the error to emit
+             * @param {number} fd the file descriptor
+             * @returns {void}
+             */
+            const opened = (err, fd) => {
+                if (!err) {
+                    const read = (err, bytes) => {
+                        if (!err && this.readable) {
+                            let encoding = attachment && attachment.headers
+                                ? attachment.headers['content-transfer-encoding'] || 'base64'
+                                : 'base64';
+                            if (encoding === 'ascii' || encoding === '7bit') {
+                                encoding = 'ascii';
+                            }
+                            else if (encoding === 'binary' || encoding === '8bit') {
+                                encoding = 'binary';
+                            }
+                            else {
+                                encoding = 'base64';
+                            }
+                            // guaranteed to be encoded without padding unless it is our last read
+                            output_base64(buffer.toString(encoding, 0, bytes), () => {
+                                if (bytes == chunk) {
+                                    // we read a full chunk, there might be more
+                                    fs.read(fd, buffer, 0, chunk, null, read);
+                                } // that was the last chunk, we are done reading the file
+                                else {
+                                    this.removeListener('error', closed);
+                                    fs.close(fd, next);
+                                }
+                            });
+                        }
+                        else {
+                            this.emit('error', err || { message: 'message stream was interrupted somehow!' });
+                        }
+                    };
+                    fs.read(fd, buffer, 0, chunk, null, read);
+                    this.once('error', closed);
+                }
+                else {
+                    this.emit('error', err);
+                }
+            };
+            fs.open(attachment.path, 'r', opened);
+        };
+        /**
+         * @param {MessageAttachment} attachment the metadata to use as headers
+         * @param {function(): void} callback the function to call after output is finished
+         * @returns {void}
+         */
+        const output_stream = (attachment, callback) => {
+            if (attachment.stream != null && attachment.stream.readable) {
+                let previous = Buffer.alloc(0);
+                attachment.stream.resume();
+                attachment.stream.on('end', () => {
+                    output_base64(previous.toString('base64'), callback);
+                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                    this.removeListener('pause', attachment.stream.pause);
+                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                    this.removeListener('resume', attachment.stream.resume);
+                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
+                    this.removeListener('error', attachment.stream.resume);
+                });
+                attachment.stream.on('data', (buff) => {
+                    // do we have bytes from a previous stream data event?
+                    let buffer = Buffer.isBuffer(buff) ? buff : Buffer.from(buff);
+                    if (previous.byteLength > 0) {
+                        buffer = Buffer.concat([previous, buffer]);
+                    }
+                    const padded = buffer.length % MIME64CHUNK;
+                    previous = Buffer.alloc(padded);
+                    // encode as much of the buffer to base64 without empty bytes
+                    if (padded > 0) {
+                        // copy dangling bytes into previous buffer
+                        buffer.copy(previous, 0, buffer.length - padded);
+                    }
+                    output_base64(buffer.toString('base64', 0, buffer.length - padded));
+                });
+                this.on('pause', attachment.stream.pause);
+                this.on('resume', attachment.stream.resume);
+                this.on('error', attachment.stream.resume);
+            }
+            else {
+                this.emit('error', { message: 'stream not readable' });
+            }
+        };
+        const output_attachment = (attachment, callback) => {
+            const build = attachment.path
+                ? output_file
+                : attachment.stream
+                    ? output_stream
+                    : output_data;
+            output_attachment_headers(attachment);
+            build(attachment, callback);
+        };
+        /**
+         * @param {string} boundary the boundary text between outputs
+         * @param {MessageAttachment[]} list the list of potential messages to output
+         * @param {number} index the index of the list item to output
+         * @param {function(): void} callback the function to call if index is greater than upper bound
+         * @returns {void}
+         */
+        const output_message = (boundary, list, index, callback) => {
+            if (index < list.length) {
+                output(`--${boundary}${CRLF}`);
+                if (list[index].related) {
+                    output_related(list[index], () => output_message(boundary, list, index + 1, callback));
+                }
+                else {
+                    output_attachment(list[index], () => output_message(boundary, list, index + 1, callback));
+                }
+            }
+            else {
+                output(`${CRLF}--${boundary}--${CRLF}${CRLF}`);
+                callback();
+            }
+        };
+        const output_mixed = () => {
+            const boundary = generate_boundary();
+            output(`Content-Type: multipart/mixed; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`);
+            if (this.message.alternative == null) {
+                output_text(this.message);
+                output_message(boundary, this.message.attachments, 0, close);
+            }
+            else {
+                output_alternative(
+                // typescript bug; should narrow to { alternative: AlternateMessageAttachment }
+                this.message, () => output_message(boundary, this.message.attachments, 0, close));
+            }
+        };
+        /**
+         * @param {MessageAttachment} attachment the metadata to use as headers
+         * @param {function(): void} callback the function to call after output is finished
+         * @returns {void}
+         */
+        const output_data = (attachment, callback) => {
+            output_base64(attachment.encoded
+                ? attachment.data
+                : Buffer.from(attachment.data).toString('base64'), callback);
+        };
+        /**
+         * @param {Message} message the message to output
+         * @returns {void}
+         */
+        const output_text = (message) => {
+            let data = [];
+            data = data.concat([
+                'Content-Type:',
+                message.content,
+                CRLF,
+                'Content-Transfer-Encoding: 7bit',
+                CRLF,
+            ]);
+            data = data.concat(['Content-Disposition: inline', CRLF, CRLF]);
+            data = data.concat([message.text || '', CRLF, CRLF]);
+            output(data.join(''));
+        };
+        /**
+         * @param {MessageAttachment} message the message to output
+         * @param {function(): void} callback the function to call after output is finished
+         * @returns {void}
+         */
+        const output_related = (message, callback) => {
+            const boundary = generate_boundary();
+            output(`Content-Type: multipart/related; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`);
+            output_attachment(message, () => {
+                var _a;
+                output_message(boundary, (_a = message.related) !== null && _a !== void 0 ? _a : [], 0, () => {
+                    output(`${CRLF}--${boundary}--${CRLF}${CRLF}`);
+                    callback();
+                });
+            });
+        };
+        /**
+         * @param {Message} message the message to output
+         * @param {function(): void} callback the function to call after output is finished
+         * @returns {void}
+         */
+        const output_alternative = (message, callback) => {
+            const boundary = generate_boundary();
+            output(`Content-Type: multipart/alternative; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`);
+            output_text(message);
+            output(`--${boundary}${CRLF}`);
+            /**
+             * @returns {void}
+             */
+            const finish = () => {
+                output([CRLF, '--', boundary, '--', CRLF, CRLF].join(''));
+                callback();
+            };
+            if (message.alternative.related) {
+                output_related(message.alternative, finish);
+            }
+            else {
+                output_attachment(message.alternative, finish);
+            }
+        };
+        const close = (err) => {
+            var _a, _b;
+            if (err) {
+                this.emit('error', err);
+            }
+            else {
+                this.emit('data', (_b = (_a = this.buffer) === null || _a === void 0 ? void 0 : _a.toString('utf-8', 0, this.bufferIndex)) !== null && _b !== void 0 ? _b : '');
+                this.emit('end');
+            }
+            this.buffer = null;
+            this.bufferIndex = 0;
+            this.readable = false;
+            this.removeAllListeners('resume');
+            this.removeAllListeners('pause');
+            this.removeAllListeners('error');
+            this.removeAllListeners('data');
+            this.removeAllListeners('end');
+        };
+        /**
+         * @returns {void}
+         */
+        const output_header_data = () => {
+            if (this.message.attachments.length || this.message.alternative) {
+                output(`MIME-Version: 1.0${CRLF}`);
+                output_mixed();
+            } // you only have a text message!
+            else {
+                output_text(this.message);
+                close();
+            }
+        };
+        /**
+         * @returns {void}
+         */
+        const output_header = () => {
+            let data = [];
+            for (const header in this.message.header) {
+                // do not output BCC in the headers (regex) nor custom Object.prototype functions...
+                if (!/bcc/i.test(header) &&
+                    Object.prototype.hasOwnProperty.call(this.message.header, header)) {
+                    data = data.concat([
+                        convertDashDelimitedTextToSnakeCase(header),
+                        ': ',
+                        this.message.header[header],
+                        CRLF,
+                    ]);
+                }
+            }
+            output(data.join(''));
+            output_header_data();
+        };
+        this.once('destroy', close);
+        process.nextTick(output_header);
+    }
+    /**
+     * @public
+     * pause the stream
+     * @returns {void}
+     */
+    pause() {
+        this.paused = true;
+        this.emit('pause');
+    }
+    /**
+     * @public
+     * resume the stream
+     * @returns {void}
+     */
+    resume() {
+        this.paused = false;
+        this.emit('resume');
+    }
+    /**
+     * @public
+     * destroy the stream
+     * @returns {void}
+     */
+    destroy() {
+        this.emit('destroy', this.bufferIndex > 0 ? { message: 'message stream destroyed' } : null);
+    }
+    /**
+     * @public
+     * destroy the stream at first opportunity
+     * @returns {void}
+     */
+    destroySoon() {
+        this.emit('destroy');
+    }
 }
-
-var Message_1 = Message;
-var BUFFERSIZE_1 = BUFFERSIZE;
-var create = headers => new Message(headers);
 
 var message = {
-	Message: Message_1,
-	BUFFERSIZE: BUFFERSIZE_1,
-	create: create
+    __proto__: null,
+    MIMECHUNK: MIMECHUNK,
+    MIME64CHUNK: MIME64CHUNK,
+    BUFFERSIZE: BUFFERSIZE,
+    Message: Message
 };
-
-var message$1 = ({
-	default: message,
-	__moduleExports: message,
-	Message: Message_1,
-	BUFFERSIZE: BUFFERSIZE_1,
-	create: create
-});
-
-const { SMTP: SMTP$1, state: state$1 } = smtp;
-const { Message: Message$1, create: create$1 } = message;
-
-
-class Client {
-	/**
-	 * @typedef {Object} MessageStack
-	 * @property {function(Error, Message): void} [callback]
-	 * @property {Message} [message]
-	 * @property {string} [returnPath]
-	 * @property {string} [from]
-	 * @property {string} [subject]
-	 * @property {string|Array} [to]
-	 * @property {Array} [cc]
-	 * @property {Array} [bcc]
-	 * @property {string} [text]
-	 * @property {*} [attachment]
-	 *
-	 * @typedef {Object} SMTPSocketOptions
-	 * @property {string} key
-	 * @property {string} ca
-	 * @property {string} cert
-	 *
-	 * @typedef {Object} SMTPOptions
-	 * @property {number} [timeout]
-	 * @property {string} [user]
-	 * @property {string} [password]
-	 * @property {string} [domain]
-	 * @property {string} [host]
-	 * @property {number} [port]
-	 * @property {boolean|SMTPSocketOptions} [ssl]
-	 * @property {boolean|SMTPSocketOptions} [tls]
-	 * @property {string[]} [authentication]
-	 * @property {function(...any): void} [logger]
-	 *
-	 * @constructor
-	 * @param {SMTPOptions} server smtp options
-	 */
-	constructor(server) {
-		this.smtp = new SMTP$1(server);
-		//this.smtp.debug(1);
-
-		/**
-		 * @type {MessageStack[]}
-		 */
-		this.queue = [];
-
-		/**
-		 * @type {NodeJS.Timer}
-		 */
-		this.timer = null;
-
-		/**
-		 * @type {boolean}
-		 */
-		this.sending = false;
-
-		/**
-		 * @type {boolean}
-		 */
-		this.ready = false;
-	}
-
-	/**
-	 * @param {Message|MessageStack} msg msg
-	 * @param {function(Error, MessageStack): void} callback callback
-	 * @returns {void}
-	 */
-	send(msg, callback) {
-		/**
-		 * @type {Message}
-		 */
-		const message$$1 =
-			msg instanceof Message$1
-				? msg
-				: this._canMakeMessage(msg)
-					? create$1(msg)
-					: null;
-
-		if (message$$1 == null) {
-			callback(
-				new Error('message is not a valid Message instance'),
-				/** @type {MessageStack} */ (msg)
-			);
-			return;
-		}
-
-		message$$1.valid((valid, why) => {
-			if (valid) {
-				const stack = {
-					message: message$$1,
-					to: addressparser_1(message$$1.header.to),
-					from: addressparser_1(message$$1.header.from)[0].address,
-					callback: (callback || function() {}).bind(this),
-				};
-
-				if (message$$1.header.cc) {
-					stack.to = stack.to.concat(addressparser_1(message$$1.header.cc));
-				}
-
-				if (message$$1.header.bcc) {
-					stack.to = stack.to.concat(addressparser_1(message$$1.header.bcc));
-				}
-
-				if (
-					message$$1.header['return-path'] &&
-					addressparser_1(message$$1.header['return-path']).length
-				) {
-					stack.returnPath = addressparser_1(
-						message$$1.header['return-path']
-					)[0].address;
-				}
-
-				this.queue.push(stack);
-				this._poll();
-			} else {
-				callback(new Error(why), /** @type {MessageStack} */ (msg));
-			}
-		});
-	}
-
-	/**
-	 * @private
-	 * @returns {void}
-	 */
-	_poll() {
-		clearTimeout(this.timer);
-
-		if (this.queue.length) {
-			if (this.smtp.state() == state$1.NOTCONNECTED) {
-				this._connect(this.queue[0]);
-			} else if (
-				this.smtp.state() == state$1.CONNECTED &&
-				!this.sending &&
-				this.ready
-			) {
-				this._sendmail(this.queue.shift());
-			}
-		}
-		// wait around 1 seconds in case something does come in,
-		// otherwise close out SMTP connection if still open
-		else if (this.smtp.state() == state$1.CONNECTED) {
-			this.timer = setTimeout(() => this.smtp.quit(), 1000);
-		}
-	}
-
-	/**
-	 * @private
-	 * @param {MessageStack} stack stack
-	 * @returns {void}
-	 */
-	_connect(stack) {
-		/**
-		 * @param {Error} err callback error
-		 * @returns {void}
-		 */
-		const connect = err => {
-			if (!err) {
-				const begin = err => {
-					if (!err) {
-						this.ready = true;
-						this._poll();
-					} else {
-						stack.callback(err, stack.message);
-
-						// clear out the queue so all callbacks can be called with the same error message
-						this.queue.shift();
-						this._poll();
-					}
-				};
-
-				if (!this.smtp.authorized()) {
-					this.smtp.login(begin);
-				} else {
-					this.smtp.ehlo_or_helo_if_needed(begin);
-				}
-			} else {
-				stack.callback(err, stack.message);
-
-				// clear out the queue so all callbacks can be called with the same error message
-				this.queue.shift();
-				this._poll();
-			}
-		};
-
-		this.ready = false;
-		this.smtp.connect(connect);
-	}
-
-	/**
-	 * @private
-	 * @param {MessageStack} msg message stack
-	 * @returns {boolean} can make message
-	 */
-	_canMakeMessage(msg) {
-		return (
-			msg.from &&
-			(msg.to || msg.cc || msg.bcc) &&
-			(msg.text !== undefined || this._containsInlinedHtml(msg.attachment))
-		);
-	}
-
-	/**
-	 * @private
-	 * @param {*} attachment attachment
-	 * @returns {boolean} does contain
-	 */
-	_containsInlinedHtml(attachment) {
-		if (Array.isArray(attachment)) {
-			return attachment.some(att => {
-				return this._isAttachmentInlinedHtml(att);
-			});
-		} else {
-			return this._isAttachmentInlinedHtml(attachment);
-		}
-	}
-
-	/**
-	 * @private
-	 * @param {*} attachment attachment
-	 * @returns {boolean} is inlined
-	 */
-	_isAttachmentInlinedHtml(attachment) {
-		return (
-			attachment &&
-			(attachment.data || attachment.path) &&
-			attachment.alternative === true
-		);
-	}
-
-	/**
-	 * @private
-	 * @param {MessageStack} stack stack
-	 * @param {function(MessageStack): void} next next
-	 * @returns {function(Error): void} callback
-	 */
-	_sendsmtp(stack, next) {
-		/**
-		 * @param {Error} [err] error
-		 * @returns {void}
-		 */
-		return err => {
-			if (!err && next) {
-				next.apply(this, [stack]);
-			} else {
-				// if we snag on SMTP commands, call done, passing the error
-				// but first reset SMTP state so queue can continue polling
-				this.smtp.rset(() => this._senddone(err, stack));
-			}
-		};
-	}
-
-	/**
-	 * @private
-	 * @param {MessageStack} stack stack
-	 * @returns {void}
-	 */
-	_sendmail(stack) {
-		const from = stack.returnPath || stack.from;
-		this.sending = true;
-		this.smtp.mail(this._sendsmtp(stack, this._sendrcpt), '<' + from + '>');
-	}
-
-	/**
-	 * @private
-	 * @param {MessageStack} stack stack
-	 * @returns {void}
-	 */
-	_sendrcpt(stack) {
-		if (stack.to == null || typeof stack.to === 'string') {
-			throw new TypeError('stack.to must be array');
-		}
-
-		const to = stack.to.shift().address;
-		this.smtp.rcpt(
-			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
-			`<${to}>`
-		);
-	}
-
-	/**
-	 * @private
-	 * @param {MessageStack} stack stack
-	 * @returns {void}
-	 */
-	_senddata(stack) {
-		this.smtp.data(this._sendsmtp(stack, this._sendmessage));
-	}
-
-	/**
-	 * @private
-	 * @param {MessageStack} stack stack
-	 * @returns {void}
-	 */
-	_sendmessage(stack) {
-		const stream$$1 = stack.message.stream();
-
-		stream$$1.on('data', data => this.smtp.message(data));
-		stream$$1.on('end', () => {
-			this.smtp.data_end(
-				this._sendsmtp(stack, () => this._senddone(null, stack))
-			);
-		});
-
-		// there is no way to cancel a message while in the DATA portion,
-		// so we have to close the socket to prevent a bad email from going out
-		stream$$1.on('error', err => {
-			this.smtp.close();
-			this._senddone(err, stack);
-		});
-	}
-
-	/**
-	 * @private
-	 * @param {Error} err err
-	 * @param {MessageStack} stack stack
-	 * @returns {void}
-	 */
-	_senddone(err, stack) {
-		this.sending = false;
-		stack.callback(err, stack.message);
-		this._poll();
-	}
-}
-
-var Client_1 = Client;
 
 /**
- * @param {SMTPOptions} server smtp options
- * @returns {Client} the client
+ * @readonly
+ * @enum
  */
-var connect$1 = server => new Client(server);
+const SMTPErrorStates = {
+    COULDNOTCONNECT: 1,
+    BADRESPONSE: 2,
+    AUTHFAILED: 3,
+    TIMEDOUT: 4,
+    ERROR: 5,
+    NOCONNECTION: 6,
+    AUTHNOTSUPPORTED: 7,
+    CONNECTIONCLOSED: 8,
+    CONNECTIONENDED: 9,
+    CONNECTIONAUTH: 10,
+};
+class SMTPError extends Error {
+    constructor(message) {
+        super(message);
+        this.code = null;
+        this.smtp = null;
+        this.previous = null;
+    }
+}
+function makeSMTPError(message, code, error, smtp) {
+    const msg = (error === null || error === void 0 ? void 0 : error.message) ? `${message} (${error.message})` : message;
+    const err = new SMTPError(msg);
+    err.code = code;
+    err.smtp = smtp;
+    if (error) {
+        err.previous = error;
+    }
+    return err;
+}
 
-var client = {
-	Client: Client_1,
-	connect: connect$1
+var error = {
+    __proto__: null,
+    SMTPErrorStates: SMTPErrorStates,
+    makeSMTPError: makeSMTPError
 };
 
-var client$1 = ({
-	default: client,
-	__moduleExports: client,
-	Client: Client_1,
-	connect: connect$1
-});
+class SMTPResponse {
+    constructor(stream, timeout, onerror) {
+        let buffer = '';
+        const notify = () => {
+            var _a, _b;
+            if (buffer.length) {
+                // parse buffer for response codes
+                const line = buffer.replace('\r', '');
+                if (!((_b = (_a = line
+                    .trim()
+                    .split(/\n/)
+                    .pop()) === null || _a === void 0 ? void 0 : _a.match(/^(\d{3})\s/)) !== null && _b !== void 0 ? _b : false)) {
+                    return;
+                }
+                const match = line ? line.match(/(\d+)\s?(.*)/) : null;
+                const data = match !== null
+                    ? { code: match[1], message: match[2], data: line }
+                    : { code: -1, data: line };
+                stream.emit('response', null, data);
+                buffer = '';
+            }
+        };
+        const error = (err) => {
+            stream.emit('response', makeSMTPError('connection encountered an error', SMTPErrorStates.ERROR, err));
+        };
+        const timedout = (err) => {
+            stream.end();
+            stream.emit('response', makeSMTPError('timedout while connecting to smtp server', SMTPErrorStates.TIMEDOUT, err));
+        };
+        const watch = (data) => {
+            if (data !== null) {
+                buffer += data.toString();
+                notify();
+            }
+        };
+        const close = (err) => {
+            stream.emit('response', makeSMTPError('connection has closed', SMTPErrorStates.CONNECTIONCLOSED, err));
+        };
+        const end = (err) => {
+            stream.emit('response', makeSMTPError('connection has ended', SMTPErrorStates.CONNECTIONENDED, err));
+        };
+        this.stop = (err) => {
+            stream.removeAllListeners('response');
+            stream.removeListener('data', watch);
+            stream.removeListener('end', end);
+            stream.removeListener('close', close);
+            stream.removeListener('error', error);
+            if (err != null && typeof onerror === 'function') {
+                onerror(err);
+            }
+        };
+        stream.on('data', watch);
+        stream.on('end', end);
+        stream.on('close', close);
+        stream.on('error', error);
+        stream.setTimeout(timeout, timedout);
+    }
+}
 
-exports.server = client$1;
-exports.message = message$1;
-exports.date = date$1;
-exports.SMTP = smtp$1;
-exports.error = error$1;
+/**
+ * @readonly
+ * @enum
+ */
+const AUTH_METHODS = {
+    PLAIN: 'PLAIN',
+    'CRAM-MD5': 'CRAM-MD5',
+    LOGIN: 'LOGIN',
+    XOAUTH2: 'XOAUTH2',
+};
+/**
+ * @readonly
+ * @enum
+ */
+const SMTPState = {
+    NOTCONNECTED: 0,
+    CONNECTING: 1,
+    CONNECTED: 2,
+};
+const DEFAULT_TIMEOUT = 5000;
+const SMTP_PORT = 25;
+const SMTP_SSL_PORT = 465;
+const SMTP_TLS_PORT = 587;
+const CRLF$1 = '\r\n';
+let DEBUG = 0;
+/**
+ * @param {...any} args the message(s) to log
+ * @returns {void}
+ */
+const log = (...args) => {
+    if (DEBUG === 1) {
+        args.forEach((d) => console.log(typeof d === 'object'
+            ? d instanceof Error
+                ? d.message
+                : JSON.stringify(d)
+            : d));
+    }
+};
+/**
+ * @param {function(...*): void} callback the function to call
+ * @param {...*} args the arguments to apply to the function
+ * @returns {void}
+ */
+const caller = (callback, ...args) => {
+    if (typeof callback === 'function') {
+        callback(...args);
+    }
+};
+class SMTPConnection extends events.EventEmitter {
+    /**
+     * SMTP class written using python's (2.7) smtplib.py as a base
+     */
+    constructor({ timeout, host, user, password, domain, port, ssl, tls, logger, authentication, } = {}) {
+        super();
+        this.timeout = DEFAULT_TIMEOUT;
+        this.log = log;
+        this.authentication = [
+            AUTH_METHODS['CRAM-MD5'],
+            AUTH_METHODS.LOGIN,
+            AUTH_METHODS.PLAIN,
+            AUTH_METHODS.XOAUTH2,
+        ];
+        this._state = SMTPState.NOTCONNECTED;
+        this._secure = false;
+        this.loggedin = false;
+        this.sock = null;
+        this.features = null;
+        this.monitor = null;
+        this.domain = os.hostname();
+        this.host = 'localhost';
+        this.ssl = false;
+        this.tls = false;
+        if (Array.isArray(authentication)) {
+            this.authentication = authentication;
+        }
+        if (typeof timeout === 'number') {
+            this.timeout = timeout;
+        }
+        if (typeof domain === 'string') {
+            this.domain = domain;
+        }
+        if (typeof host === 'string') {
+            this.host = host;
+        }
+        if (ssl != null &&
+            (typeof ssl === 'boolean' ||
+                (typeof ssl === 'object' && Array.isArray(ssl) === false))) {
+            this.ssl = ssl;
+        }
+        if (tls != null &&
+            (typeof tls === 'boolean' ||
+                (typeof tls === 'object' && Array.isArray(tls) === false))) {
+            this.tls = tls;
+        }
+        this.port = port || (ssl ? SMTP_SSL_PORT : tls ? SMTP_TLS_PORT : SMTP_PORT);
+        this.loggedin = user && password ? false : true;
+        // keep these strings hidden when quicky debugging/logging
+        this.user = () => user;
+        this.password = () => password;
+        if (typeof logger === 'function') {
+            this.log = log;
+        }
+    }
+    /**
+     * @public
+     * @param {0 | 1} level -
+     * @returns {void}
+     */
+    debug(level) {
+        DEBUG = level;
+    }
+    /**
+     * @public
+     * @returns {SMTPState} the current state
+     */
+    state() {
+        return this._state;
+    }
+    /**
+     * @public
+     * @returns {boolean} whether or not the instance is authorized
+     */
+    authorized() {
+        return this.loggedin;
+    }
+    /**
+     * @public
+     * @param {function(...*): void} callback function to call after response
+     * @param {number} [port] the port to use for the connection
+     * @param {string} [host] the hostname to use for the connection
+     * @param {ConnectOptions} [options={}] the options
+     * @returns {void}
+     */
+    connect(callback, port = this.port, host = this.host, options = {}) {
+        this.port = port;
+        this.host = host;
+        this.ssl = options.ssl || this.ssl;
+        if (this._state !== SMTPState.NOTCONNECTED) {
+            this.quit(() => this.connect(callback, port, host, options));
+        }
+        /**
+         * @returns {void}
+         */
+        const connected = () => {
+            this.log(`connected: ${this.host}:${this.port}`);
+            if (this.ssl && !this.tls) {
+                // if key/ca/cert was passed in, check if connection is authorized
+                if (typeof this.ssl !== 'boolean' &&
+                    this.sock instanceof tls.TLSSocket &&
+                    !this.sock.authorized) {
+                    this.close(true);
+                    caller(callback, makeSMTPError('could not establish an ssl connection', SMTPErrorStates.CONNECTIONAUTH));
+                }
+                else {
+                    this._secure = true;
+                }
+            }
+        };
+        /**
+         * @param {Error} err err
+         * @returns {void}
+         */
+        const connectedErrBack = (err) => {
+            if (!err) {
+                connected();
+            }
+            else {
+                this.close(true);
+                this.log(err);
+                caller(callback, makeSMTPError('could not connect', SMTPErrorStates.COULDNOTCONNECT, err));
+            }
+        };
+        const response = (err, msg) => {
+            if (err) {
+                if (this._state === SMTPState.NOTCONNECTED && !this.sock) {
+                    return;
+                }
+                this.close(true);
+                caller(callback, err);
+            }
+            else if (msg.code == '220') {
+                this.log(msg.data);
+                // might happen first, so no need to wait on connected()
+                this._state = SMTPState.CONNECTED;
+                caller(callback, null, msg.data);
+            }
+            else {
+                this.log(`response (data): ${msg.data}`);
+                this.quit(() => {
+                    caller(callback, makeSMTPError('bad response on connection', SMTPErrorStates.BADRESPONSE, err, msg.data));
+                });
+            }
+        };
+        this._state = SMTPState.CONNECTING;
+        this.log(`connecting: ${this.host}:${this.port}`);
+        if (this.ssl) {
+            this.sock = tls.connect(this.port, this.host, typeof this.ssl === 'object' ? this.ssl : {}, connected);
+        }
+        else {
+            this.sock = new net.Socket();
+            this.sock.connect(this.port, this.host, connectedErrBack);
+        }
+        this.monitor = new SMTPResponse(this.sock, this.timeout, () => this.close(true));
+        this.sock.once('response', response);
+        this.sock.once('error', response); // the socket could reset or throw, so let's handle it and let the user know
+    }
+    /**
+     * @public
+     * @param {string} str the string to send
+     * @param {*} callback function to call after response
+     * @returns {void}
+     */
+    send(str, callback) {
+        if (this.sock && this._state === SMTPState.CONNECTED) {
+            this.log(str);
+            this.sock.once('response', (err, msg) => {
+                if (err) {
+                    caller(callback, err);
+                }
+                else {
+                    this.log(msg.data);
+                    caller(callback, null, msg);
+                }
+            });
+            this.sock.write(str);
+        }
+        else {
+            this.close(true);
+            caller(callback, makeSMTPError('no connection has been established', SMTPErrorStates.NOCONNECTION));
+        }
+    }
+    /**
+     * @public
+     * @param {string} cmd command to issue
+     * @param {function(...*): void} callback function to call after response
+     * @param {(number[] | number)} [codes=[250]] array codes
+     * @returns {void}
+     */
+    command(cmd, callback, codes = [250]) {
+        const codesArray = Array.isArray(codes)
+            ? codes
+            : typeof codes === 'number'
+                ? [codes]
+                : [250];
+        const response = (err, msg) => {
+            if (err) {
+                caller(callback, err);
+            }
+            else {
+                if (codesArray.indexOf(Number(msg.code)) !== -1) {
+                    caller(callback, err, msg.data, msg.message);
+                }
+                else {
+                    const suffix = msg.message ? `: ${msg.message}` : '';
+                    const errorMessage = `bad response on command '${cmd.split(' ')[0]}'${suffix}`;
+                    caller(callback, makeSMTPError(errorMessage, SMTPErrorStates.BADRESPONSE, null, msg.data));
+                }
+            }
+        };
+        this.send(cmd + CRLF$1, response);
+    }
+    /**
+     * @public
+     * @description SMTP 'helo' command.
+     *
+     * Hostname to send for self command defaults to the FQDN of the local
+     * host.
+     *
+     * @param {function(...*): void} callback function to call after response
+     * @param {string} domain the domain to associate with the 'helo' request
+     * @returns {void}
+     */
+    helo(callback, domain) {
+        this.command(`helo ${domain || this.domain}`, (err, data) => {
+            if (err) {
+                caller(callback, err);
+            }
+            else {
+                this.parse_smtp_features(data);
+                caller(callback, err, data);
+            }
+        });
+    }
+    /**
+     * @public
+     * @param {function(...*): void} callback function to call after response
+     * @returns {void}
+     */
+    starttls(callback) {
+        const response = (err, msg) => {
+            if (this.sock == null) {
+                throw new Error('null socket');
+            }
+            if (err) {
+                err.message += ' while establishing a starttls session';
+                caller(callback, err);
+            }
+            else {
+                const secureContext = tls.createSecureContext(typeof this.tls === 'object' ? this.tls : {});
+                const secureSocket = new tls.TLSSocket(this.sock, { secureContext });
+                secureSocket.on('error', (err) => {
+                    this.close(true);
+                    caller(callback, err);
+                });
+                this._secure = true;
+                this.sock = secureSocket;
+                new SMTPResponse(this.sock, this.timeout, () => this.close(true));
+                caller(callback, msg.data);
+            }
+        };
+        this.command('starttls', response, [220]);
+    }
+    /**
+     * @public
+     * @param {string} data the string to parse for features
+     * @returns {void}
+     */
+    parse_smtp_features(data) {
+        //  According to RFC1869 some (badly written)
+        //  MTA's will disconnect on an ehlo. Toss an exception if
+        //  that happens -ddm
+        data.split('\n').forEach((ext) => {
+            const parse = ext.match(/^(?:\d+[-=]?)\s*?([^\s]+)(?:\s+(.*)\s*?)?$/);
+            // To be able to communicate with as many SMTP servers as possible,
+            // we have to take the old-style auth advertisement into account,
+            // because:
+            // 1) Else our SMTP feature parser gets confused.
+            // 2) There are some servers that only advertise the auth methods we
+            // support using the old style.
+            if (parse != null && this.features != null) {
+                // RFC 1869 requires a space between ehlo keyword and parameters.
+                // It's actually stricter, in that only spaces are allowed between
+                // parameters, but were not going to check for that here.  Note
+                // that the space isn't present if there are no parameters.
+                this.features[parse[1].toLowerCase()] = parse[2] || true;
+            }
+        });
+    }
+    /**
+     * @public
+     * @param {function(...*): void} callback function to call after response
+     * @param {string} domain the domain to associate with the 'ehlo' request
+     * @returns {void}
+     */
+    ehlo(callback, domain) {
+        this.features = {};
+        this.command(`ehlo ${domain || this.domain}`, (err, data) => {
+            if (err) {
+                caller(callback, err);
+            }
+            else {
+                this.parse_smtp_features(data);
+                if (this.tls && !this._secure) {
+                    this.starttls(() => this.ehlo(callback, domain));
+                }
+                else {
+                    caller(callback, err, data);
+                }
+            }
+        });
+    }
+    /**
+     * @public
+     * @param {string} opt the features keyname to check
+     * @returns {boolean} whether the extension exists
+     */
+    has_extn(opt) {
+        var _a;
+        return ((_a = this.features) !== null && _a !== void 0 ? _a : {})[opt.toLowerCase()] === undefined;
+    }
+    /**
+     * @public
+     * @description SMTP 'help' command, returns text from the server
+     * @param {function(...*): void} callback function to call after response
+     * @param {string} domain the domain to associate with the 'help' request
+     * @returns {void}
+     */
+    help(callback, domain) {
+        this.command(domain ? `help ${domain}` : 'help', callback, [211, 214]);
+    }
+    /**
+     * @public
+     * @param {function(...*): void} callback function to call after response
+     * @returns {void}
+     */
+    rset(callback) {
+        this.command('rset', callback);
+    }
+    /**
+     * @public
+     * @param {function(...*): void} callback function to call after response
+     * @returns {void}
+     */
+    noop(callback) {
+        this.send('noop', callback);
+    }
+    /**
+     * @public
+     * @param {function(...*): void} callback function to call after response
+     * @param {string} from the sender
+     * @returns {void}
+     */
+    mail(callback, from) {
+        this.command(`mail FROM:${from}`, callback);
+    }
+    /**
+     * @public
+     * @param {function(...*): void} callback function to call after response
+     * @param {string} to the receiver
+     * @returns {void}
+     */
+    rcpt(callback, to) {
+        this.command(`RCPT TO:${to}`, callback, [250, 251]);
+    }
+    /**
+     * @public
+     * @param {function(...*): void} callback function to call after response
+     * @returns {void}
+     */
+    data(callback) {
+        this.command('data', callback, [354]);
+    }
+    /**
+     * @public
+     * @param {function(...*): void} callback function to call after response
+     * @returns {void}
+     */
+    data_end(callback) {
+        this.command(`${CRLF$1}.`, callback);
+    }
+    /**
+     * @public
+     * @param {string} data the message to send
+     * @returns {void}
+     */
+    message(data) {
+        var _a, _b;
+        this.log(data);
+        (_b = (_a = this.sock) === null || _a === void 0 ? void 0 : _a.write(data)) !== null && _b !== void 0 ? _b : this.log('no socket to write to');
+    }
+    /**
+     * @public
+     * @description SMTP 'verify' command -- checks for address validity.
+     * @param {string} address the address to validate
+     * @param {function(...*): void} callback function to call after response
+     * @returns {void}
+     */
+    verify(address, callback) {
+        this.command(`vrfy ${address}`, callback, [250, 251, 252]);
+    }
+    /**
+     * @public
+     * @description SMTP 'expn' command -- expands a mailing list.
+     * @param {string} address the mailing list to expand
+     * @param {function(...*): void} callback function to call after response
+     * @returns {void}
+     */
+    expn(address, callback) {
+        this.command(`expn ${address}`, callback);
+    }
+    /**
+     * @public
+     * @description Calls this.ehlo() and, if an error occurs, this.helo().
+     *
+     * If there has been no previous EHLO or HELO command self session, self
+     * method tries ESMTP EHLO first.
+     *
+     * @param {function(...*): void} callback function to call after response
+     * @param {string} [domain] the domain to associate with the command
+     * @returns {void}
+     */
+    ehlo_or_helo_if_needed(callback, domain) {
+        // is this code callable...?
+        if (!this.features) {
+            const response = (err, data) => caller(callback, err, data);
+            this.ehlo((err, data) => {
+                if (err) {
+                    this.helo(response, domain);
+                }
+                else {
+                    caller(callback, err, data);
+                }
+            }, domain);
+        }
+    }
+    /**
+     * @public
+     *
+     * Log in on an SMTP server that requires authentication.
+     *
+     * If there has been no previous EHLO or HELO command self session, self
+     * method tries ESMTP EHLO first.
+     *
+     * This method will return normally if the authentication was successful.
+     *
+     * @param {function(...*): void} callback function to call after response
+     * @param {string} [user] the username to authenticate with
+     * @param {string} [password] the password for the authentication
+     * @param {{ method: string, domain: string }} [options] login options
+     * @returns {void}
+     */
+    login(callback, user, password, options = {}) {
+        var _a, _b;
+        const login = {
+            user: user ? () => user : this.user,
+            password: password ? () => password : this.password,
+            method: (_b = (_a = options === null || options === void 0 ? void 0 : options.method) === null || _a === void 0 ? void 0 : _a.toUpperCase()) !== null && _b !== void 0 ? _b : '',
+        };
+        const domain = (options === null || options === void 0 ? void 0 : options.domain) || this.domain;
+        const initiate = (err, data) => {
+            var _a;
+            if (err) {
+                caller(callback, err);
+                return;
+            }
+            let method = null;
+            /**
+             * @param {string} challenge challenge
+             * @returns {string} base64 cram hash
+             */
+            const encode_cram_md5 = (challenge) => {
+                const hmac = crypto.createHmac('md5', login.password());
+                hmac.update(Buffer.from(challenge, 'base64').toString('ascii'));
+                return Buffer.from(`${login.user()} ${hmac.digest('hex')}`).toString('base64');
+            };
+            /**
+             * @returns {string} base64 login/password
+             */
+            const encode_plain = () => Buffer.from(`\u0000${login.user()}\u0000${login.password()}`).toString('base64');
+            /**
+             * @see https://developers.google.com/gmail/xoauth2_protocol
+             * @returns {string} base64 xoauth2 auth token
+             */
+            const encode_xoauth2 = () => Buffer.from(`user=${login.user()}\u0001auth=Bearer ${login.password()}\u0001\u0001`).toString('base64');
+            // List of authentication methods we support: from preferred to
+            // less preferred methods.
+            if (!method) {
+                const preferred = this.authentication;
+                let auth = '';
+                if (typeof ((_a = this.features) === null || _a === void 0 ? void 0 : _a.auth) === 'string') {
+                    auth = this.features.auth;
+                }
+                for (let i = 0; i < preferred.length; i++) {
+                    if (auth.includes(preferred[i])) {
+                        method = preferred[i];
+                        break;
+                    }
+                }
+            }
+            /**
+             * handle bad responses from command differently
+             * @param {Error} err err
+             * @param {*} data data
+             * @returns {void}
+             */
+            const failed = (err, data) => {
+                this.loggedin = false;
+                this.close(); // if auth is bad, close the connection, it won't get better by itself
+                caller(callback, makeSMTPError('authorization.failed', SMTPErrorStates.AUTHFAILED, err, data));
+            };
+            /**
+             * @param {Error} err err
+             * @param {*} data data
+             * @returns {void}
+             */
+            const response = (err, data) => {
+                if (err) {
+                    failed(err, data);
+                }
+                else {
+                    this.loggedin = true;
+                    caller(callback, err, data);
+                }
+            };
+            /**
+             * @param {Error} err err
+             * @param {*} data data
+             * @param {string} msg msg
+             * @returns {void}
+             */
+            const attempt = (err, data, msg) => {
+                if (err) {
+                    failed(err, data);
+                }
+                else {
+                    if (method === AUTH_METHODS['CRAM-MD5']) {
+                        this.command(encode_cram_md5(msg), response, [235, 503]);
+                    }
+                    else if (method === AUTH_METHODS.LOGIN) {
+                        this.command(Buffer.from(login.password()).toString('base64'), response, [235, 503]);
+                    }
+                }
+            };
+            /**
+             * @param {Error} err err
+             * @param {*} data data
+             * @param {string} msg msg
+             * @returns {void}
+             */
+            const attempt_user = (err, data) => {
+                if (err) {
+                    failed(err, data);
+                }
+                else {
+                    if (method === AUTH_METHODS.LOGIN) {
+                        this.command(Buffer.from(login.user()).toString('base64'), attempt, [334]);
+                    }
+                }
+            };
+            switch (method) {
+                case AUTH_METHODS['CRAM-MD5']:
+                    this.command(`AUTH  ${AUTH_METHODS['CRAM-MD5']}`, attempt, [334]);
+                    break;
+                case AUTH_METHODS.LOGIN:
+                    this.command(`AUTH ${AUTH_METHODS.LOGIN}`, attempt_user, [334]);
+                    break;
+                case AUTH_METHODS.PLAIN:
+                    this.command(`AUTH ${AUTH_METHODS.PLAIN} ${encode_plain()}`, response, [235, 503]);
+                    break;
+                case AUTH_METHODS.XOAUTH2:
+                    this.command(`AUTH ${AUTH_METHODS.XOAUTH2} ${encode_xoauth2()}`, response, [235, 503]);
+                    break;
+                default:
+                    const msg = 'no form of authorization supported';
+                    const err = makeSMTPError(msg, SMTPErrorStates.AUTHNOTSUPPORTED, null, data);
+                    caller(callback, err);
+                    break;
+            }
+        };
+        this.ehlo_or_helo_if_needed(initiate, domain);
+    }
+    /**
+     * @public
+     * @param {boolean} [force=false] whether or not to force destroy the connection
+     * @returns {void}
+     */
+    close(force = false) {
+        if (this.sock) {
+            if (force) {
+                this.log('smtp connection destroyed!');
+                this.sock.destroy();
+            }
+            else {
+                this.log('smtp connection closed.');
+                this.sock.end();
+            }
+        }
+        if (this.monitor) {
+            this.monitor.stop();
+            this.monitor = null;
+        }
+        this._state = SMTPState.NOTCONNECTED;
+        this._secure = false;
+        this.sock = null;
+        this.features = null;
+        this.loggedin = !(this.user() && this.password());
+    }
+    /**
+     * @public
+     * @param {function(...*): void} [callback] function to call after response
+     * @returns {void}
+     */
+    quit(callback) {
+        this.command('quit', (err, data) => {
+            caller(callback, err, data);
+            this.close();
+        }, [221, 250]);
+    }
+}
+
+var smtp = {
+    __proto__: null,
+    AUTH_METHODS: AUTH_METHODS,
+    SMTPState: SMTPState,
+    DEFAULT_TIMEOUT: DEFAULT_TIMEOUT,
+    SMTPConnection: SMTPConnection
+};
+
+class Client {
+    /**
+     * @param {SMTPConnectionOptions} server smtp options
+     */
+    constructor(server) {
+        this.queue = [];
+        this.sending = false;
+        this.ready = false;
+        this.timer = null;
+        this.smtp = new SMTPConnection(server);
+        //this.smtp.debug(1);
+    }
+    /**
+     * @public
+     * @param {Message} msg the message to send
+     * @param {function(err: Error, msg: Message): void} callback sss
+     * @returns {void}
+     */
+    send(msg, callback) {
+        const message = msg instanceof Message
+            ? msg
+            : this._canMakeMessage(msg)
+                ? new Message(msg)
+                : null;
+        if (message == null) {
+            callback(new Error('message is not a valid Message instance'), msg);
+            return;
+        }
+        message.valid((valid, why) => {
+            if (valid) {
+                const stack = {
+                    message,
+                    to: addressparser_1(message.header.to),
+                    from: addressparser_1(message.header.from)[0].address,
+                    callback: (callback ||
+                        function () {
+                            /* ø */
+                        }).bind(this),
+                };
+                if (message.header.cc) {
+                    stack.to = stack.to.concat(addressparser_1(message.header.cc));
+                }
+                if (message.header.bcc) {
+                    stack.to = stack.to.concat(addressparser_1(message.header.bcc));
+                }
+                if (message.header['return-path'] &&
+                    addressparser_1(message.header['return-path']).length) {
+                    stack.returnPath = addressparser_1(message.header['return-path'])[0].address;
+                }
+                this.queue.push(stack);
+                this._poll();
+            }
+            else {
+                callback(new Error(why), msg);
+            }
+        });
+    }
+    /**
+     * @protected
+     * @returns {void}
+     */
+    _poll() {
+        if (this.timer != null) {
+            clearTimeout(this.timer);
+        }
+        if (this.queue.length) {
+            if (this.smtp.state() == SMTPState.NOTCONNECTED) {
+                this._connect(this.queue[0]);
+            }
+            else if (this.smtp.state() == SMTPState.CONNECTED &&
+                !this.sending &&
+                this.ready) {
+                this._sendmail(this.queue.shift());
+            }
+        }
+        // wait around 1 seconds in case something does come in,
+        // otherwise close out SMTP connection if still open
+        else if (this.smtp.state() == SMTPState.CONNECTED) {
+            this.timer = setTimeout(() => this.smtp.quit(), 1000);
+        }
+    }
+    /**
+     * @protected
+     * @param {MessageStack} stack stack
+     * @returns {void}
+     */
+    _connect(stack) {
+        /**
+         * @param {Error} err callback error
+         * @returns {void}
+         */
+        const connect = (err) => {
+            if (!err) {
+                const begin = (err) => {
+                    if (!err) {
+                        this.ready = true;
+                        this._poll();
+                    }
+                    else {
+                        stack.callback(err, stack.message);
+                        // clear out the queue so all callbacks can be called with the same error message
+                        this.queue.shift();
+                        this._poll();
+                    }
+                };
+                if (!this.smtp.authorized()) {
+                    this.smtp.login(begin);
+                }
+                else {
+                    this.smtp.ehlo_or_helo_if_needed(begin);
+                }
+            }
+            else {
+                stack.callback(err, stack.message);
+                // clear out the queue so all callbacks can be called with the same error message
+                this.queue.shift();
+                this._poll();
+            }
+        };
+        this.ready = false;
+        this.smtp.connect(connect);
+    }
+    /**
+     * @protected
+     * @param {MessageStack} msg message stack
+     * @returns {boolean} can make message
+     */
+    _canMakeMessage(msg) {
+        return (msg.from &&
+            (msg.to || msg.cc || msg.bcc) &&
+            (msg.text !== undefined || this._containsInlinedHtml(msg.attachment)));
+    }
+    /**
+     * @protected
+     * @param {*} attachment attachment
+     * @returns {*} whether the attachment contains inlined html
+     */
+    _containsInlinedHtml(attachment) {
+        if (Array.isArray(attachment)) {
+            return attachment.some((att) => {
+                return this._isAttachmentInlinedHtml(att);
+            });
+        }
+        else {
+            return this._isAttachmentInlinedHtml(attachment);
+        }
+    }
+    /**
+     * @protected
+     * @param {MessageAttachment} attachment attachment
+     * @returns {boolean} whether the attachment is inlined html
+     */
+    _isAttachmentInlinedHtml(attachment) {
+        return (attachment &&
+            (attachment.data || attachment.path) &&
+            attachment.alternative === true);
+    }
+    /**
+     * @protected
+     * @param {MessageStack} stack stack
+     * @param {function(MessageStack): void} next next
+     * @returns {function(Error): void} callback
+     */
+    _sendsmtp(stack, next) {
+        /**
+         * @param {Error} [err] error
+         * @returns {void}
+         */
+        return (err) => {
+            if (!err && next) {
+                next.apply(this, [stack]);
+            }
+            else {
+                // if we snag on SMTP commands, call done, passing the error
+                // but first reset SMTP state so queue can continue polling
+                this.smtp.rset(() => this._senddone(err, stack));
+            }
+        };
+    }
+    /**
+     * @protected
+     * @param {MessageStack} stack stack
+     * @returns {void}
+     */
+    _sendmail(stack) {
+        const from = stack.returnPath || stack.from;
+        this.sending = true;
+        this.smtp.mail(this._sendsmtp(stack, this._sendrcpt), '<' + from + '>');
+    }
+    /**
+     * @protected
+     * @param {MessageStack} stack stack
+     * @returns {void}
+     */
+    _sendrcpt(stack) {
+        var _a;
+        if (stack.to == null || typeof stack.to === 'string') {
+            throw new TypeError('stack.to must be array');
+        }
+        const to = (_a = stack.to.shift()) === null || _a === void 0 ? void 0 : _a.address;
+        this.smtp.rcpt(this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata), `<${to}>`);
+    }
+    /**
+     * @protected
+     * @param {MessageStack} stack stack
+     * @returns {void}
+     */
+    _senddata(stack) {
+        this.smtp.data(this._sendsmtp(stack, this._sendmessage));
+    }
+    /**
+     * @protected
+     * @param {MessageStack} stack stack
+     * @returns {void}
+     */
+    _sendmessage(stack) {
+        const stream = stack.message.stream();
+        stream.on('data', (data) => this.smtp.message(data));
+        stream.on('end', () => {
+            this.smtp.data_end(this._sendsmtp(stack, () => this._senddone(null, stack)));
+        });
+        // there is no way to cancel a message while in the DATA portion,
+        // so we have to close the socket to prevent a bad email from going out
+        stream.on('error', (err) => {
+            this.smtp.close();
+            this._senddone(err, stack);
+        });
+    }
+    /**
+     * @protected
+     * @param {Error} err err
+     * @param {MessageStack} stack stack
+     * @returns {void}
+     */
+    _senddone(err, stack) {
+        this.sending = false;
+        stack.callback(err, stack.message);
+        this._poll();
+    }
+}
+
+var client = {
+    __proto__: null,
+    Client: Client
+};
+
+exports.client = client;
+exports.date = date;
+exports.error = error;
+exports.message = message;
+exports.smtp = smtp;
+//# sourceMappingURL=email.cjs.map

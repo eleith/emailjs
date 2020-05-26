@@ -1,87 +1,53 @@
-const { SMTP, state } = require('./smtp');
-const { Message, create } = require('./message');
-const addressparser = require('addressparser');
+import addressparser from 'addressparser';
+import { Message } from './message';
+import type { MessageAttachment, MessageHeaders } from './message';
+import { SMTPConnection, SMTPState } from './smtp';
+import type { SMTPConnectionOptions } from './smtp';
 
-class Client {
+export interface MessageStack {
+	callback: (error: Error | null, message: Message) => void;
+	message: Message;
+	attachment: MessageAttachment;
+	text: string;
+	returnPath: string;
+	from: string;
+	to: ReturnType<typeof addressparser>;
+	cc: string[];
+	bcc: string[];
+}
+
+export class Client {
+	public readonly smtp: SMTPConnection;
+	public readonly queue: MessageStack[] = [];
+
+	protected sending = false;
+	protected ready = false;
+	protected timer: NodeJS.Timer | null = null;
+
 	/**
-	 * @typedef {Object} MessageStack
-	 * @property {function(Error, Message): void} [callback]
-	 * @property {Message} [message]
-	 * @property {string} [returnPath]
-	 * @property {string} [from]
-	 * @property {string} [subject]
-	 * @property {string|Array} [to]
-	 * @property {Array} [cc]
-	 * @property {Array} [bcc]
-	 * @property {string} [text]
-	 * @property {*} [attachment]
-	 *
-	 * @typedef {Object} SMTPSocketOptions
-	 * @property {string} key
-	 * @property {string} ca
-	 * @property {string} cert
-	 *
-	 * @typedef {Object} SMTPOptions
-	 * @property {number} [timeout]
-	 * @property {string} [user]
-	 * @property {string} [password]
-	 * @property {string} [domain]
-	 * @property {string} [host]
-	 * @property {number} [port]
-	 * @property {boolean|SMTPSocketOptions} [ssl]
-	 * @property {boolean|SMTPSocketOptions} [tls]
-	 * @property {string[]} [authentication]
-	 * @property {function(...any): void} [logger]
-	 *
-	 * @constructor
-	 * @param {SMTPOptions} server smtp options
+	 * @param {SMTPConnectionOptions} server smtp options
 	 */
-	constructor(server) {
-		this.smtp = new SMTP(server);
+	constructor(server: Partial<SMTPConnectionOptions>) {
+		this.smtp = new SMTPConnection(server);
 		//this.smtp.debug(1);
-
-		/**
-		 * @type {MessageStack[]}
-		 */
-		this.queue = [];
-
-		/**
-		 * @type {NodeJS.Timer}
-		 */
-		this.timer = null;
-
-		/**
-		 * @type {boolean}
-		 */
-		this.sending = false;
-
-		/**
-		 * @type {boolean}
-		 */
-		this.ready = false;
 	}
 
 	/**
-	 * @param {Message|MessageStack} msg msg
-	 * @param {function(Error, MessageStack): void} callback callback
+	 * @public
+	 * @param {Message} msg the message to send
+	 * @param {function(err: Error, msg: Message): void} callback sss
 	 * @returns {void}
 	 */
-	send(msg, callback) {
-		/**
-		 * @type {Message}
-		 */
-		const message =
+	public send(msg: Message, callback: (err: Error, msg: Message) => void) {
+		const message: Message | null =
 			msg instanceof Message
 				? msg
 				: this._canMakeMessage(msg)
-					? create(msg)
-					: null;
+				? new Message(msg)
+				: null;
 
 		if (message == null) {
-			callback(
-				new Error('message is not a valid Message instance'),
-				/** @type {MessageStack} */ (msg)
-			);
+			callback(new Error('message is not a valid Message instance'), msg);
 			return;
 		}
 
@@ -91,8 +57,13 @@ class Client {
 					message,
 					to: addressparser(message.header.to),
 					from: addressparser(message.header.from)[0].address,
-					callback: (callback || function() {}).bind(this),
-				};
+					callback: (
+						callback ||
+						function () {
+							/* ø */
+						}
+					).bind(this),
+				} as MessageStack;
 
 				if (message.header.cc) {
 					stack.to = stack.to.concat(addressparser(message.header.cc));
@@ -114,49 +85,51 @@ class Client {
 				this.queue.push(stack);
 				this._poll();
 			} else {
-				callback(new Error(why), /** @type {MessageStack} */ (msg));
+				callback(new Error(why), msg);
 			}
 		});
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @returns {void}
 	 */
-	_poll() {
-		clearTimeout(this.timer);
+	protected _poll() {
+		if (this.timer != null) {
+			clearTimeout(this.timer);
+		}
 
 		if (this.queue.length) {
-			if (this.smtp.state() == state.NOTCONNECTED) {
+			if (this.smtp.state() == SMTPState.NOTCONNECTED) {
 				this._connect(this.queue[0]);
 			} else if (
-				this.smtp.state() == state.CONNECTED &&
+				this.smtp.state() == SMTPState.CONNECTED &&
 				!this.sending &&
 				this.ready
 			) {
-				this._sendmail(this.queue.shift());
+				this._sendmail(this.queue.shift() as MessageStack);
 			}
 		}
 		// wait around 1 seconds in case something does come in,
 		// otherwise close out SMTP connection if still open
-		else if (this.smtp.state() == state.CONNECTED) {
+		else if (this.smtp.state() == SMTPState.CONNECTED) {
 			this.timer = setTimeout(() => this.smtp.quit(), 1000);
 		}
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_connect(stack) {
+	protected _connect(stack: MessageStack) {
 		/**
 		 * @param {Error} err callback error
 		 * @returns {void}
 		 */
-		const connect = err => {
+		const connect = (err: Error) => {
 			if (!err) {
-				const begin = err => {
+				const begin = (err: Error) => {
 					if (!err) {
 						this.ready = true;
 						this._poll();
@@ -188,11 +161,11 @@ class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} msg message stack
 	 * @returns {boolean} can make message
 	 */
-	_canMakeMessage(msg) {
+	protected _canMakeMessage(msg: MessageHeaders) {
 		return (
 			msg.from &&
 			(msg.to || msg.cc || msg.bcc) &&
@@ -201,13 +174,15 @@ class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {*} attachment attachment
-	 * @returns {boolean} does contain
+	 * @returns {*} whether the attachment contains inlined html
 	 */
-	_containsInlinedHtml(attachment) {
+	protected _containsInlinedHtml(
+		attachment: MessageAttachment | MessageAttachment[]
+	) {
 		if (Array.isArray(attachment)) {
-			return attachment.some(att => {
+			return attachment.some((att) => {
 				return this._isAttachmentInlinedHtml(att);
 			});
 		} else {
@@ -216,11 +191,11 @@ class Client {
 	}
 
 	/**
-	 * @private
-	 * @param {*} attachment attachment
-	 * @returns {boolean} is inlined
+	 * @protected
+	 * @param {MessageAttachment} attachment attachment
+	 * @returns {boolean} whether the attachment is inlined html
 	 */
-	_isAttachmentInlinedHtml(attachment) {
+	protected _isAttachmentInlinedHtml(attachment: MessageAttachment) {
 		return (
 			attachment &&
 			(attachment.data || attachment.path) &&
@@ -229,17 +204,17 @@ class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @param {function(MessageStack): void} next next
 	 * @returns {function(Error): void} callback
 	 */
-	_sendsmtp(stack, next) {
+	protected _sendsmtp(stack: MessageStack, next: (msg: MessageStack) => void) {
 		/**
 		 * @param {Error} [err] error
 		 * @returns {void}
 		 */
-		return err => {
+		return (err: Error) => {
 			if (!err && next) {
 				next.apply(this, [stack]);
 			} else {
@@ -251,27 +226,27 @@ class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendmail(stack) {
+	protected _sendmail(stack: MessageStack) {
 		const from = stack.returnPath || stack.from;
 		this.sending = true;
 		this.smtp.mail(this._sendsmtp(stack, this._sendrcpt), '<' + from + '>');
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendrcpt(stack) {
+	protected _sendrcpt(stack: MessageStack) {
 		if (stack.to == null || typeof stack.to === 'string') {
 			throw new TypeError('stack.to must be array');
 		}
 
-		const to = stack.to.shift().address;
+		const to = stack.to.shift()?.address;
 		this.smtp.rcpt(
 			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
 			`<${to}>`
@@ -279,23 +254,23 @@ class Client {
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_senddata(stack) {
+	protected _senddata(stack: MessageStack) {
 		this.smtp.data(this._sendsmtp(stack, this._sendmessage));
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_sendmessage(stack) {
+	protected _sendmessage(stack: MessageStack) {
 		const stream = stack.message.stream();
 
-		stream.on('data', data => this.smtp.message(data));
+		stream.on('data', (data) => this.smtp.message(data));
 		stream.on('end', () => {
 			this.smtp.data_end(
 				this._sendsmtp(stack, () => this._senddone(null, stack))
@@ -304,29 +279,21 @@ class Client {
 
 		// there is no way to cancel a message while in the DATA portion,
 		// so we have to close the socket to prevent a bad email from going out
-		stream.on('error', err => {
+		stream.on('error', (err) => {
 			this.smtp.close();
 			this._senddone(err, stack);
 		});
 	}
 
 	/**
-	 * @private
+	 * @protected
 	 * @param {Error} err err
 	 * @param {MessageStack} stack stack
 	 * @returns {void}
 	 */
-	_senddone(err, stack) {
+	protected _senddone(err: Error | null, stack: MessageStack) {
 		this.sending = false;
 		stack.callback(err, stack.message);
 		this._poll();
 	}
 }
-
-exports.Client = Client;
-
-/**
- * @param {SMTPOptions} server smtp options
- * @returns {Client} the client
- */
-exports.connect = server => new Client(server);

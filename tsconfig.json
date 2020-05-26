@@ -1,0 +1,14 @@
+{
+	"extends": "@ledge/configs/tsconfig.json",
+	"include": [
+		"*.ts",
+		"smtp/*.ts",
+		"test/*.ts"
+	],
+	"ts-node": {
+		"transpileOnly": true,
+		"compilerOptions": {
+			"module": "commonjs"
+		}
+	}
+}

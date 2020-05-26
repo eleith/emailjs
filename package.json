@@ -1,55 +1,64 @@
 {
-  "name": "emailjs",
-  "description": "send text/html emails and attachments (files, streams and strings) from node.js to any smtp server",
-  "version": "2.2.0",
-  "author": "eleith",
-  "contributors": [
-    "izuzak",
-    "Hiverness",
-    "mscdex",
-    "jimmybergman",
-    "zackschuster"
-  ],
-  "repository": {
-    "type": "git",
-    "url": "http://github.com/eleith/emailjs.git"
-  },
-  "dependencies": {
-    "addressparser": "^0.3.2",
-    "emailjs-mime-codec": "^2.0.7"
-  },
-  "devDependencies": {
-    "chai": "^4.1.2",
-    "eslint": "^5.1.0",
-    "eslint-config-prettier": "^2.9.0",
-    "eslint-plugin-mocha": "^5.1.0",
-    "eslint-plugin-prettier": "^2.6.2",
-    "mailparser": "^2.2.0",
-    "mocha": "^5.2.0",
-    "prettier": "^1.13.7",
-    "rollup": "^0.62.0",
-    "rollup-plugin-commonjs": "^9.1.3",
-    "rollup-plugin-node-resolve": "^3.3.0",
-    "smtp-server": "^3.4.6"
-  },
-  "engine": [
-    "node >= 6"
-  ],
-  "main": "email.js",
-  "scripts": {
-		"rollup": "rollup -c rollup.config.js && npm run rollup:test",
-		"rollup:test": "npm run test -- --file rollup/email.bundle.test.js",
-    "test": "mocha"
-  },
-  "license": "MIT",
-  "eslintIgnore": [
-    "rollup.config.js",
-    "rollup/email.bundle.js",
-    "email.esm.js"
-  ],
-  "prettier": {
-    "singleQuote": true,
-    "trailingComma": "es5",
-    "useTabs": true
-  }
+	"name": "emailjs",
+	"description": "send text/html emails and attachments (files, streams and strings) from node.js to any smtp server",
+	"version": "2.2.0",
+	"author": "eleith",
+	"contributors": [
+		"izuzak",
+		"Hiverness",
+		"mscdex",
+		"jimmybergman",
+		"zackschuster"
+	],
+	"repository": {
+		"type": "git",
+		"url": "http://github.com/eleith/emailjs.git"
+	},
+	"dependencies": {
+		"addressparser": "1.0.1",
+		"emailjs-mime-codec": "2.0.9"
+	},
+	"type": "module",
+	"devDependencies": {
+		"@ledge/configs": "23.0.0",
+		"@rollup/plugin-commonjs": "12.0.0",
+		"@rollup/plugin-node-resolve": "8.0.0",
+		"@rollup/plugin-typescript": "4.1.2",
+		"@types/mailparser": "2.7.3",
+		"@types/smtp-server": "3.5.4",
+		"@typescript-eslint/eslint-plugin": "3.0.1",
+		"@typescript-eslint/parser": "3.0.1",
+		"ava": "3.8.2",
+		"eslint": "7.1.0",
+		"eslint-config-prettier": "6.11.0",
+		"eslint-plugin-prettier": "3.1.3",
+		"mailparser": "2.7.7",
+		"prettier": "2.0.5",
+		"rollup": "2.10.9",
+		"smtp-server": "3.6.0",
+		"ts-node": "8.10.1",
+		"tslib": "2.0.0",
+		"typescript": "3.9.3"
+	},
+	"engine": [
+		"node >= 10"
+	],
+	"files": [
+		"email.ts",
+		"smtp",
+		"rollup"
+	],
+	"main": "./rollup/email.cjs",
+	"types": "./email.ts",
+	"exports": {
+		"import": "./rollup/email.mjs",
+		"require": "./rollup/email.cjs"
+	},
+	"scripts": {
+		"build": "rollup -c rollup.config.ts",
+		"lint": "eslint *.ts \"+(smtp|test)/*.ts\"",
+		"test": "ava --serial",
+		"test-cjs": "npm run build && npm run test -- --node-arguments='--title=cjs'"
+	},
+	"license": "MIT"
 }
