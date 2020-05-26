@@ -172,7 +172,7 @@ const options = {
 	authentication, // array of preferred authentication methods ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
 	logger, // override the built-in logger (useful for e.g. Azure Function Apps, where console.log doesn't work)
 };
-// NOTE: `host` is trimmed before being used to establish a connection.
+// NOTE: `host` is trimmed before being used to establish a connection;
 // however, the original untrimmed value will still be visible in configuration.
 ```
 
@@ -248,7 +248,7 @@ const options = {
 	authentication, // array of preferred authentication methods ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
 	logger, // override the built-in logger (useful for e.g. Azure Function Apps, where console.log doesn't work)
 };
-// NOTE: `host` is trimmed before being used to establish a connection.
+// NOTE: `host` is trimmed before being used to establish a connection;
 // however, the original untrimmed value will still be visible in configuration.
 ```
 

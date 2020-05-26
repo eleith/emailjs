@@ -120,7 +120,7 @@ export class SMTPConnection extends EventEmitter {
 	 *
 	 * To target a Message Transfer Agent (MTA), omit all options.
 	 *
-	 * NOTE: `host` is trimmed before being used to establish a connection. however, the original untrimmed value will still be visible in configuration.
+	 * NOTE: `host` is trimmed before being used to establish a connection; however, the original untrimmed value will still be visible in configuration.
 	 */
 	constructor({
 		timeout,
@@ -212,7 +212,7 @@ export class SMTPConnection extends EventEmitter {
 	/**
 	 * Establish an SMTP connection.
 	 *
-	 * NOTE: `host` is trimmed before being used to establish a connection. however, the original untrimmed value will still be visible in configuration.
+	 * NOTE: `host` is trimmed before being used to establish a connection; however, the original untrimmed value will still be visible in configuration.
 	 *
 	 * @public
 	 * @param {function(...*): void} callback function to call after response
