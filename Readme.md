@@ -22,7 +22,7 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 
 ## EXAMPLE USAGE - text only emails
 
-```javascript
+```js
 import { client as c } from 'emailjs';
 
 const client = new c.Client({
@@ -49,7 +49,7 @@ client.send(
 
 ## EXAMPLE USAGE - html emails and attachments
 
-```javascript
+```js
 import { client as c } from 'emailjs';
 
 const client = new c.Client({
@@ -84,7 +84,7 @@ client.send(message, function (err, message) {
 
 ## EXAMPLE USAGE - sending through outlook
 
-```javascript
+```js
 import { client as c, message as m } from 'emailjs';
 
 const client = new c.Client({
@@ -116,7 +116,7 @@ client.send(message, (err, message) => {
 
 ## EXAMPLE USAGE - attaching and embedding an image
 
-```javascript
+```js
 import { client as c, message as m } from 'emailjs';
 
 const client = new c.Client({
@@ -158,90 +158,95 @@ client.send(message, (err, message) => {
 
 ## new client.Client(options)
 
-    // options is an object with the following keys
-    options =
-    {
-    	user 		// username for logging into smtp
-    	password // password for logging into smtp
-    	host		// smtp host
-    	port		// smtp port (if null a standard port number will be used)
-    	ssl		// boolean or object {key, ca, cert} (if true or object, ssl connection will be made)
-    	tls		// boolean or object (if true or object, starttls will be initiated)
-    	timeout	// max number of milliseconds to wait for smtp responses (defaults to 5000)
-    	domain	// domain to greet smtp with (defaults to os.hostname)
-    authentication // array of preferred authentication methods ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
-    	logger // override the built-in logger (useful for e.g. Azure Function Apps, where console.log doesn't work)
-    }
+```js
+// options is an object with the following recognized schema:
+const options = {
+	user, // username for logging into smtp
+	password, // password for logging into smtp
+	host, // smtp host
+	port, // smtp port (if null a standard port number will be used)
+	ssl, // boolean or object {key, ca, cert} (if true or object, ssl connection will be made)
+	tls, // boolean or object (if true or object, starttls will be initiated)
+	timeout, // max number of milliseconds to wait for smtp responses (defaults to 5000)
+	domain, // domain to greet smtp with (defaults to os.hostname)
+	authentication, // array of preferred authentication methods ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
+	logger, // override the built-in logger (useful for e.g. Azure Function Apps, where console.log doesn't work)
+};
+```
 
 ## client.Client#send(message, callback)
 
-    // message can be a smtp.Message (as returned by email.message.create)
-    // or an object identical to the first argument accepted by email.message.create
+```js
+// message can be a smtp.Message (as returned by email.message.create)
+// or an object identical to the first argument accepted by email.message.create
 
-    // callback will be executed with (err, message)
-    // either when message is sent or an error has occurred
+// callback will be executed with (err, message)
+// either when message is sent or an error has occurred
+```
 
 ## new message.Message(headers)
 
-    // headers is an object ('from' and 'to' are required)
-    // returns a Message object
+```js
+// headers is an object with the following recognized keys:
+const headers = {
+	// required
+	from, // sender of the format (address or name <address> or "name" <address>)
+	to, // recipients (same format as above), multiple recipients are separated by a comma
 
-    // you can actually pass more message headers than listed, the below are just the
-    // most common ones you would want to use
-
-    headers =
-    {
-    	text		// text of the email
-    	from		// sender of the format (address or name <address> or "name" <address>)
-    	to			// recipients (same format as above), multiple recipients are separated by a comma
-    	cc			// carbon copied recipients (same format as above)
-    	bcc		// blind carbon copied recipients (same format as above)
-    	subject	// string subject of the email
-      attachment // one attachment or array of attachments
-    }
+	// optional
+	text, // text of the email
+	cc, // carbon copied recipients (same format as above)
+	bcc, // blind carbon copied recipients (same format as above)
+	subject, // string subject of the email
+	attachment, // one attachment or array of attachments
+};
+// you can also add whatever other headers you want.
+```
 
 ## message.Message#attach
 
-    // can be called multiple times, each adding a new attachment
-    // options is an object with the following possible keys:
+Can be called multiple times, each adding a new attachment.
 
-    options =
-    {
-        // one of these fields is required
-        path      // string to where the file is located
-        data      // string of the data you want to attach
-        stream    // binary stream that will provide attachment data (make sure it is in the paused state)
-                  // better performance for binary streams is achieved if buffer.length % (76*6) == 0
-                  // current max size of buffer must be no larger than Message.BUFFERSIZE
+```js
+// options is an object with the following recognized schema:
+const options = {
+	// one of these fields is required
+	path, // string to where the file is located
+	data, // string of the data you want to attach
+	stream, // binary stream that will provide attachment data (make sure it is in the paused state)
+	// better performance for binary streams is achieved if buffer.length % (76*6) == 0
+	// current max size of buffer must be no larger than Message.BUFFERSIZE
 
-        // optionally these fields are also accepted
-        type	      // string of the file mime type
-        name        // name to give the file as perceived by the recipient
-        charset     // charset to encode attatchment in
-        method      // method to send attachment as (used by calendar invites)
-        alternative // if true, will be attached inline as an alternative (also defaults type='text/html')
-        inline      // if true, will be attached inline
-        encoded     // set this to true if the data is already base64 encoded, (avoid this if possible)
-        headers     // object containing header=>value pairs for inclusion in this attachment's header
-        related     // an array of attachments that you want to be related to the parent attachment
-    }
+	// optionally these fields are also accepted
+	type, // string of the file mime type
+	name, // name to give the file as perceived by the recipient
+	charset, // charset to encode attatchment in
+	method, // method to send attachment as (used by calendar invites)
+	alternative, // if true, will be attached inline as an alternative (also defaults type='text/html')
+	inline, // if true, will be attached inline
+	encoded, // set this to true if the data is already base64 encoded, (avoid this if possible)
+	headers, // object containing header=>value pairs for inclusion in this attachment's header
+	related, // an array of attachments that you want to be related to the parent attachment
+};
+```
 
 ## new smtp.SMTPConnection(options={})
 
-    // options is an object with the following keys
-    options =
-    {
-    	user 			// username for logging into smtp
-    	password 	// password for logging into smtp
-    	host			// smtp host (defaults to 'localhost')
-    	port			// smtp port (defaults to 25 for unencrypted, 465 for `ssl`, and 587 for `tls`)
-    	ssl				// boolean or object {key, ca, cert} (if true or object, ssl connection will be made)
-    	tls				// boolean or object (if true or object, starttls will be initiated)
-    	timeout		// max number of milliseconds to wait for smtp responses (defaults to 5000)
-    	domain		// domain to greet smtp with (defaults to os.hostname)
-    authentication // array of preferred authentication methods ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
-    	logger 		// override the built-in logger (useful for e.g. Azure Function Apps, where console.log doesn't work)
-    }
+```js
+// options is an object with the following recognized schema:
+const options = {
+	user, // username for logging into smtp
+	password, // password for logging into smtp
+	host, // smtp host (defaults to 'localhost')
+	port, // smtp port (defaults to 25 for unencrypted, 465 for `ssl`, and 587 for `tls`)
+	ssl, // boolean or object {key, ca, cert} (if true or object, ssl connection will be made)
+	tls, // boolean or object (if true or object, starttls will be initiated)
+	timeout, // max number of milliseconds to wait for smtp responses (defaults to 5000)
+	domain, // domain to greet smtp with (defaults to os.hostname)
+	authentication, // array of preferred authentication methods ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
+	logger, // override the built-in logger (useful for e.g. Azure Function Apps, where console.log doesn't work)
+};
+```
 
 To target a Message Transfer Agent (MTA), omit all options.
 
