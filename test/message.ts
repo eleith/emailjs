@@ -449,3 +449,54 @@ test.cb('streams message', (t) => {
 		t.end
 	);
 });
+
+test.cb('message validation fails without `from` header', (t) => {
+	const msg = new m.Message({
+		subject: 'this is a test TEXT message from emailjs',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	});
+	msg.valid((isValid, reason) => {
+		t.false(isValid);
+		t.is(reason, 'Message must have a `from` header');
+		t.end();
+	});
+});
+
+test.cb('message validation fails without `to`, `cc`, or `bcc` header', (t) => {
+	const msg = new m.Message({
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	});
+	msg.valid((isValid, reason) => {
+		t.false(isValid);
+		t.is(reason, 'Message must have at least one `to`, `cc`, or `bcc` header');
+		t.end();
+	});
+});
+
+test.cb('message validation succeeds with only `cc` recipient header', (t) => {
+	const msg = new m.Message({
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		cc: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	});
+	msg.valid((isValid) => {
+		t.true(isValid);
+		t.end();
+	});
+});
+
+test.cb('message validation succeeds with only `bcc` recipient header', (t) => {
+	const msg = new m.Message({
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		bcc: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	});
+	msg.valid((isValid) => {
+		t.true(isValid);
+		t.end();
+	});
+});

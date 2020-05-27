@@ -184,15 +184,13 @@ export class Message {
 
 	/**
 	 * @public
-	 * @param {function(boolean, string): void} callback This callback is displayed as part of the Requester class.
+	 * @param {function(isValid: boolean, invalidReason: string): void} callback .
 	 * @returns {void}
 	 */
-	public valid(callback: (arg0: boolean, arg1?: string) => void) {
+	public valid(callback: (isValid: boolean, invalidReason?: string) => void) {
 		if (typeof this.header.from !== 'string') {
 			callback(false, 'Message must have a `from` header');
-		}
-
-		if (
+		} else if (
 			typeof this.header.to !== 'string' &&
 			typeof this.header.cc !== 'string' &&
 			typeof this.header.bcc !== 'string'
