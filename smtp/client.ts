@@ -112,12 +112,14 @@ export class Client {
 		}
 
 		if (
-			message.header['return-path'] &&
-			addressparser(message.header['return-path']).length
+			typeof message.header['return-path'] === 'string' &&
+			message.header['return-path'].length > 0
 		) {
-			stack.returnPath = addressparser(
-				message.header['return-path']
-			)[0].address;
+			const parsedReturnPath = addressparser(message.header['return-path']);
+			if (parsedReturnPath.length > 0) {
+				const [{ address: returnPathAddress }] = parsedReturnPath;
+				stack.returnPath = returnPathAddress;
+			}
 		}
 
 		return stack;
