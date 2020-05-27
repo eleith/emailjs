@@ -69,6 +69,18 @@ test.cb('authorize plain', (t) => {
 	);
 });
 
+test.cb('client rejects message without `from` header', (t) => {
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+	client.send(new m.Message(msg), (err) => {
+		t.true(err instanceof Error);
+		t.is(err?.message, 'Message must have a `from` header');
+		t.end();
+	});
+});
+
 test.cb('client rejects message without `to`, `cc`, or `bcc` header', (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
