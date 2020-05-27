@@ -39,7 +39,7 @@ export class Client {
 	/**
 	 * @public
 	 * @param {Message} msg the message to send
-	 * @param {function(err: Error, msg: Message): void} callback sss
+	 * @param {function(err: Error, msg: Message): void} callback .
 	 * @returns {void}
 	 */
 	public send(
@@ -60,57 +60,67 @@ export class Client {
 
 		message.valid((valid, why) => {
 			if (valid) {
-				const stack = {
-					message,
-					to: [] as ReturnType<typeof addressparser>,
-					from: addressparser(message.header.from)[0].address,
-					callback: (
-						callback ||
-						function () {
-							/* ø */
-						}
-					).bind(this),
-				} as MessageStack;
-
-				if (typeof message.header.to === 'string') {
-					stack.to = addressparser(message.header.to);
-				}
-
-				if (typeof message.header.cc === 'string') {
-					stack.to = stack.to.concat(
-						addressparser(message.header.cc).filter(
-							(x) => stack.to.some((y) => y.address === x.address) === false
-						)
-					);
-				}
-
-				if (typeof message.header.bcc === 'string') {
-					stack.to = stack.to.concat(
-						addressparser(message.header.bcc).filter(
-							(x) => stack.to.some((y) => y.address === x.address) === false
-						)
-					);
-				}
-
+				const stack = this.createMessageStack(message, callback);
 				if (stack.to.length === 0) {
 					return callback(new Error('No recipients found in message'), msg);
 				}
-
-				if (
-					message.header['return-path'] &&
-					addressparser(message.header['return-path']).length
-				) {
-					stack.returnPath = addressparser(
-						message.header['return-path']
-					)[0].address;
-				}
-
 				this.queue.push(stack);
 				this._poll();
 			} else {
 				callback(new Error(why), msg);
 			}
 		});
+	}
+
+	/**
+	 * @public
+	 * @param {Message} message the message to convert
+	 * @param {function(err: Error, msg: Message): void} callback .
+	 * @returns {MessageStack} stack .
+	 */
+	public createMessageStack(
+		message: Message,
+		callback: (err: Error | null, msg: Message) => void = function () {
+			/* ø */
+		}
+	) {
+		const stack = {
+			message,
+			to: [] as ReturnType<typeof addressparser>,
+			from: addressparser(message.header.from)[0].address,
+			callback: callback.bind(this),
+		} as MessageStack;
+
+		if (typeof message.header.to === 'string') {
+			stack.to = addressparser(message.header.to);
+		}
+
+		if (typeof message.header.cc === 'string') {
+			stack.to = stack.to.concat(
+				addressparser(message.header.cc).filter(
+					(x) => stack.to.some((y) => y.address === x.address) === false
+				)
+			);
+		}
+
+		if (typeof message.header.bcc === 'string') {
+			stack.to = stack.to.concat(
+				addressparser(message.header.bcc).filter(
+					(x) => stack.to.some((y) => y.address === x.address) === false
+				)
+			);
+		}
+
+		if (
+			message.header['return-path'] &&
+			addressparser(message.header['return-path']).length
+		) {
+			stack.returnPath = addressparser(
+				message.header['return-path']
+			)[0].address;
+		}
+
+		return stack;
 	}
 
 	/**
