@@ -4,8 +4,8 @@ import { hostname } from 'os';
 import { connect, createSecureContext, TLSSocket } from 'tls';
 import { EventEmitter } from 'events';
 
+import { SMTPError, SMTPErrorStates } from './error';
 import { SMTPResponse } from './response';
-import { makeSMTPError, SMTPErrorStates } from './error';
 
 /**
  * @readonly
@@ -251,7 +251,7 @@ export class SMTPConnection extends EventEmitter {
 					this.close(true);
 					caller(
 						callback,
-						makeSMTPError(
+						SMTPError.create(
 							'could not establish an ssl connection',
 							SMTPErrorStates.CONNECTIONAUTH
 						)
@@ -274,7 +274,7 @@ export class SMTPConnection extends EventEmitter {
 				this.log(err);
 				caller(
 					callback,
-					makeSMTPError(
+					SMTPError.create(
 						'could not connect',
 						SMTPErrorStates.COULDNOTCONNECT,
 						err
@@ -304,7 +304,7 @@ export class SMTPConnection extends EventEmitter {
 				this.quit(() => {
 					caller(
 						callback,
-						makeSMTPError(
+						SMTPError.create(
 							'bad response on connection',
 							SMTPErrorStates.BADRESPONSE,
 							err,
@@ -360,7 +360,7 @@ export class SMTPConnection extends EventEmitter {
 			this.close(true);
 			caller(
 				callback,
-				makeSMTPError(
+				SMTPError.create(
 					'no connection has been established',
 					SMTPErrorStates.NOCONNECTION
 				)
@@ -402,7 +402,7 @@ export class SMTPConnection extends EventEmitter {
 					}'${suffix}`;
 					caller(
 						callback,
-						makeSMTPError(
+						SMTPError.create(
 							errorMessage,
 							SMTPErrorStates.BADRESPONSE,
 							null,
@@ -763,7 +763,7 @@ export class SMTPConnection extends EventEmitter {
 				this.close(); // if auth is bad, close the connection, it won't get better by itself
 				caller(
 					callback,
-					makeSMTPError(
+					SMTPError.create(
 						'authorization.failed',
 						SMTPErrorStates.AUTHFAILED,
 						err,
@@ -855,7 +855,7 @@ export class SMTPConnection extends EventEmitter {
 					break;
 				default:
 					const msg = 'no form of authorization supported';
-					const err = makeSMTPError(
+					const err = SMTPError.create(
 						msg,
 						SMTPErrorStates.AUTHNOTSUPPORTED,
 						null,

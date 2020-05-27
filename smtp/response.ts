@@ -1,4 +1,4 @@
-import { makeSMTPError, SMTPErrorStates } from './error';
+import { SMTPError, SMTPErrorStates } from './error';
 import type { Socket } from 'net';
 import type { TLSSocket } from 'tls';
 
@@ -42,7 +42,7 @@ export class SMTPResponse {
 		const error = (err: Error) => {
 			stream.emit(
 				'response',
-				makeSMTPError(
+				SMTPError.create(
 					'connection encountered an error',
 					SMTPErrorStates.ERROR,
 					err
@@ -54,7 +54,7 @@ export class SMTPResponse {
 			stream.end();
 			stream.emit(
 				'response',
-				makeSMTPError(
+				SMTPError.create(
 					'timedout while connecting to smtp server',
 					SMTPErrorStates.TIMEDOUT,
 					err
@@ -72,7 +72,7 @@ export class SMTPResponse {
 		const close = (err: Error) => {
 			stream.emit(
 				'response',
-				makeSMTPError(
+				SMTPError.create(
 					'connection has closed',
 					SMTPErrorStates.CONNECTIONCLOSED,
 					err
@@ -83,7 +83,7 @@ export class SMTPResponse {
 		const end = (err: Error) => {
 			stream.emit(
 				'response',
-				makeSMTPError(
+				SMTPError.create(
 					'connection has ended',
 					SMTPErrorStates.CONNECTIONENDED,
 					err
