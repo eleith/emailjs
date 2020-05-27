@@ -14,7 +14,7 @@ const client = new Client({
 	password: 'honey',
 	ssl: true,
 });
-const server = new SMTPServer({ secure: true, authMethods: ['LOGIN'] });
+const server = new SMTPServer({ secure: true });
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 const send = (

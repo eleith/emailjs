@@ -2,7 +2,7 @@ import test from 'ava';
 import { simpleParser } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
-import { Client, Message, DEFAULT_TIMEOUT } from '../email';
+import { DEFAULT_TIMEOUT, Client, Message } from '../email';
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 
@@ -13,7 +13,7 @@ const client = new Client({
 	password: 'honey',
 	ssl: true,
 });
-const server = new SMTPServer({ secure: true, authMethods: ['LOGIN'] });
+const server = new SMTPServer({ secure: true });
 
 const send = (
 	message: Message,
@@ -34,7 +34,7 @@ const send = (
 test.before.cb((t) => {
 	server.listen(port, function () {
 		server.onAuth = function (auth, _session, callback) {
-			if (auth.username == 'pooh' && auth.password == 'honey') {
+			if (auth.username === 'pooh' && auth.password === 'honey') {
 				callback(null, { user: 'pooh' });
 			} else {
 				return callback(new Error('invalid user / pass'));
