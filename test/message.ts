@@ -29,8 +29,7 @@ const send = (
 		mailparser
 			.simpleParser(stream, { skipTextLinks: true } as Record<string, unknown>)
 			.then(verify)
-			.then(done)
-			.catch(done);
+			.finally(done);
 		stream.on('end', callback);
 	};
 	client.send(message, (err) => {

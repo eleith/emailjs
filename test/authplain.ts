@@ -24,7 +24,7 @@ const send = (
 	done: () => void
 ) => {
 	server.onData = (stream: Readable, _session, callback: () => void) => {
-		mailparser.simpleParser(stream).then(verify).then(done).catch(done);
+		mailparser.simpleParser(stream).then(verify).finally(done);
 		stream.on('end', callback);
 	};
 	client.send(message, (err) => {
