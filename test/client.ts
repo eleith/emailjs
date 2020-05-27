@@ -1,9 +1,8 @@
-import type { Readable } from 'stream';
 import test from 'ava';
 import mailparser from 'mailparser';
 import smtp from 'smtp-server';
 
-import { client as c, message as m } from '../email';
+import { client as c, message as m, smtp as s } from '../email';
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 
@@ -23,7 +22,7 @@ const send = (
 	) => void,
 	done: () => void
 ) => {
-	server.onData = (stream: Readable, _session, callback: () => void) => {
+	server.onData = (stream, _session, callback: () => void) => {
 		mailparser.simpleParser(stream).then(verify).finally(done);
 		stream.on('end', callback);
 	};
@@ -49,24 +48,36 @@ test.before.cb((t) => {
 
 test.after.cb((t) => server.close(t.end));
 
-test.cb('authorize plain', (t) => {
+test.cb('client invokes callback exactly once for invalid connection', (t) => {
+	t.plan(1);
+	const client = new c.Client({ host: 'bar.baz' });
 	const msg = {
-		subject: 'this is a test TEXT message from emailjs',
-		from: 'piglet@gmail.com',
-		to: 'pooh@gmail.com',
-		text: "It is hard to be brave when you're only a Very Small Animal.",
+		from: 'foo@bar.baz',
+		to: 'foo@bar.baz',
+		subject: 'hello world',
+		text: 'hello world',
 	};
+	client.send(new m.Message(msg), (err) => {
+		t.not(err, null);
+		t.end();
+	});
+});
 
-	send(
-		new m.Message(msg),
-		(mail) => {
-			t.is(mail.text, msg.text + '\n\n\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+test('client has a default connection timeout', (t) => {
+	const connectionOptions = {
+		user: 'username',
+		password: 'password',
+		host: '127.0.0.1',
+		port: 1234,
+		timeout: undefined as number | null | undefined,
+	};
+	t.is(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
+
+	connectionOptions.timeout = null;
+	t.is(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
+
+	connectionOptions.timeout = undefined;
+	t.is(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
 });
 
 test('client deduplicates recipients', (t) => {
@@ -76,7 +87,7 @@ test('client deduplicates recipients', (t) => {
 		cc: 'gannon@gmail.com',
 		bcc: 'gannon@gmail.com',
 	};
-	const stack = client.createMessageStack(new m.Message(msg));
+	const stack = new c.Client({}).createMessageStack(new m.Message(msg));
 	t.true(stack.to.length === 1);
 	t.is(stack.to[0].address, 'gannon@gmail.com');
 });
