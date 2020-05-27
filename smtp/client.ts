@@ -42,7 +42,10 @@ export class Client {
 	 * @param {function(err: Error, msg: Message): void} callback sss
 	 * @returns {void}
 	 */
-	public send(msg: Message, callback: (err: Error, msg: Message) => void) {
+	public send(
+		msg: Message,
+		callback: (err: Error | null, msg: Message) => void
+	) {
 		const message: Message | null =
 			msg instanceof Message
 				? msg
@@ -59,7 +62,7 @@ export class Client {
 			if (valid) {
 				const stack = {
 					message,
-					to: addressparser(message.header.to),
+					to: [] as ReturnType<typeof addressparser>,
 					from: addressparser(message.header.from)[0].address,
 					callback: (
 						callback ||
@@ -69,7 +72,11 @@ export class Client {
 					).bind(this),
 				} as MessageStack;
 
-				if (message.header.cc) {
+				if (typeof message.header.to === 'string') {
+					stack.to = addressparser(message.header.to);
+				}
+
+				if (typeof message.header.cc === 'string') {
 					stack.to = stack.to.concat(
 						addressparser(message.header.cc).filter(
 							(x) => stack.to.some((y) => y.address === x.address) === false
@@ -77,12 +84,16 @@ export class Client {
 					);
 				}
 
-				if (message.header.bcc) {
+				if (typeof message.header.bcc === 'string') {
 					stack.to = stack.to.concat(
 						addressparser(message.header.bcc).filter(
 							(x) => stack.to.some((y) => y.address === x.address) === false
 						)
 					);
+				}
+
+				if (stack.to.length === 0) {
+					return callback(new Error('No recipients found in message'), msg);
 				}
 
 				if (

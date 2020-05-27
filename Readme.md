@@ -189,19 +189,18 @@ const options = {
 ## new message.Message(headers)
 
 ```js
-// headers is an object with the following recognized keys:
+// headers is an object with the following recognized schema:
 const headers = {
-	// required
 	from, // sender of the format (address or name <address> or "name" <address>)
 	to, // recipients (same format as above), multiple recipients are separated by a comma
-
-	// optional
-	text, // text of the email
 	cc, // carbon copied recipients (same format as above)
 	bcc, // blind carbon copied recipients (same format as above)
+	text, // text of the email
 	subject, // string subject of the email
 	attachment, // one attachment or array of attachments
 };
+// the `from` field is required.
+// at least one `to`, `cc`, or `bcc` header is also required.
 // you can also add whatever other headers you want.
 ```
 

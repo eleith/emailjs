@@ -69,6 +69,65 @@ test.cb('authorize plain', (t) => {
 	);
 });
 
+test.cb(
+	'Client refuses to send message without `to`, `cc`, or `bcc` header',
+	(t) => {
+		const msg = {
+			subject: 'this is a test TEXT message from emailjs',
+			from: 'piglet@gmail.com',
+			text: "It is hard to be brave when you're only a Very Small Animal.",
+		};
+		client.send(new m.Message(msg), (err) => {
+			t.true(err instanceof Error);
+			t.is(
+				err?.message,
+				'Message must have at least one `to`, `cc`, or `bcc` header'
+			);
+			t.end();
+		});
+	}
+);
+
+test.cb('Client allows message with only `cc` header', (t) => {
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		cc: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+
+	send(
+		new m.Message(msg),
+		(mail) => {
+			t.is(mail.text, msg.text + '\n\n\n');
+			t.is(mail.subject, msg.subject);
+			t.is(mail.from?.text, msg.from);
+			t.is(mail.cc?.text, msg.cc);
+		},
+		t.end
+	);
+});
+
+test.cb('Client allows message with only `bcc` header', (t) => {
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		bcc: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+
+	send(
+		new m.Message(msg),
+		(mail) => {
+			t.is(mail.text, msg.text + '\n\n\n');
+			t.is(mail.subject, msg.subject);
+			t.is(mail.from?.text, msg.from);
+			t.is(mail.bcc?.text, undefined);
+		},
+		t.end
+	);
+});
+
 test('Client constructor throws if `password` supplied without `user`', (t) => {
 	t.notThrows(() => new c.Client({ user: 'anything', password: 'anything' }));
 	t.throws(() => new c.Client({ password: 'anything' }));

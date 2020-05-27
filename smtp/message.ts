@@ -116,6 +116,17 @@ export class Message {
 	public readonly text?: string;
 	public alternative: AlternateMessageAttachment | null = null;
 
+	/**
+	 * Construct an rfc2822-compliant message object.
+	 *
+	 * Special notes:
+	 * - The `from` field is required.
+	 * - At least one `to`, `cc`, or `bcc` header is also required.
+	 * - You can also add whatever other headers you want.
+	 *
+	 * @see https://tools.ietf.org/html/rfc2822
+	 * @param {Partial<MessageHeaders>} headers Message headers
+	 */
 	constructor(headers: Partial<MessageHeaders>) {
 		for (const header in headers) {
 			// allow user to override default content-type to override charset or send a single non-text message
@@ -143,7 +154,6 @@ export class Message {
 				);
 			} else {
 				// allow any headers the user wants to set??
-				// if(/cc|bcc|to|from|reply-to|sender|subject|date|message-id/i.test(header))
 				this.header[header.toLowerCase()] = headers[header];
 			}
 		}
@@ -196,12 +206,19 @@ export class Message {
 	 * @returns {void}
 	 */
 	public valid(callback: (arg0: boolean, arg1?: string) => void) {
-		if (!this.header.from) {
-			callback(false, 'message does not have a valid sender');
+		if (typeof this.header.from !== 'string') {
+			callback(false, 'Message must have a `from` header');
 		}
 
-		if (!(this.header.to || this.header.cc || this.header.bcc)) {
-			callback(false, 'message does not have a valid recipient');
+		if (
+			typeof this.header.to !== 'string' &&
+			typeof this.header.cc !== 'string' &&
+			typeof this.header.bcc !== 'string'
+		) {
+			callback(
+				false,
+				'Message must have at least one `to`, `cc`, or `bcc` header'
+			);
 		} else if (this.attachments.length === 0) {
 			callback(true, undefined);
 		} else {
