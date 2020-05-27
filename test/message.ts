@@ -5,10 +5,10 @@ import test from 'ava';
 import { simpleParser } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
-import { Client, Message, MessageAttachment } from '../email';
+import { SMTPClient, Message, MessageAttachment } from '../email';
 
 const port = 2526;
-const client = new Client({
+const client = new SMTPClient({
 	port,
 	user: 'pooh',
 	password: 'honey',

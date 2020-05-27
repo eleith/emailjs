@@ -2,12 +2,12 @@ import test from 'ava';
 import { simpleParser } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
-import { DEFAULT_TIMEOUT, Client, Message } from '../email';
+import { DEFAULT_TIMEOUT, SMTPClient, Message } from '../email';
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 
 const port = 2526;
-const client = new Client({
+const client = new SMTPClient({
 	port,
 	user: 'pooh',
 	password: 'honey',
@@ -48,7 +48,7 @@ test.after.cb((t) => server.close(t.end));
 
 test.cb('client invokes callback exactly once for invalid connection', (t) => {
 	t.plan(1);
-	const client = new Client({ host: 'bar.baz' });
+	const client = new SMTPClient({ host: 'bar.baz' });
 	const msg = {
 		from: 'foo@bar.baz',
 		to: 'foo@bar.baz',
@@ -69,13 +69,13 @@ test('client has a default connection timeout', (t) => {
 		port: 1234,
 		timeout: undefined as number | null | undefined,
 	};
-	t.is(new Client(connectionOptions).smtp.timeout, DEFAULT_TIMEOUT);
+	t.is(new SMTPClient(connectionOptions).smtp.timeout, DEFAULT_TIMEOUT);
 
 	connectionOptions.timeout = null;
-	t.is(new Client(connectionOptions).smtp.timeout, DEFAULT_TIMEOUT);
+	t.is(new SMTPClient(connectionOptions).smtp.timeout, DEFAULT_TIMEOUT);
 
 	connectionOptions.timeout = undefined;
-	t.is(new Client(connectionOptions).smtp.timeout, DEFAULT_TIMEOUT);
+	t.is(new SMTPClient(connectionOptions).smtp.timeout, DEFAULT_TIMEOUT);
 });
 
 test('client deduplicates recipients', (t) => {
@@ -85,7 +85,7 @@ test('client deduplicates recipients', (t) => {
 		cc: 'gannon@gmail.com',
 		bcc: 'gannon@gmail.com',
 	};
-	const stack = new Client({}).createMessageStack(new Message(msg));
+	const stack = new SMTPClient({}).createMessageStack(new Message(msg));
 	t.true(stack.to.length === 1);
 	t.is(stack.to[0].address, 'gannon@gmail.com');
 });
@@ -159,11 +159,11 @@ test.cb('client allows message with only `bcc` recipient header', (t) => {
 });
 
 test('client constructor throws if `password` supplied without `user`', (t) => {
-	t.notThrows(() => new Client({ user: 'anything', password: 'anything' }));
-	t.throws(() => new Client({ password: 'anything' }));
+	t.notThrows(() => new SMTPClient({ user: 'anything', password: 'anything' }));
+	t.throws(() => new SMTPClient({ password: 'anything' }));
 	t.throws(
 		() =>
-			new Client({ username: 'anything', password: 'anything' } as Record<
+			new SMTPClient({ username: 'anything', password: 'anything' } as Record<
 				string,
 				unknown
 			>)

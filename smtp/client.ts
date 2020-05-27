@@ -16,7 +16,7 @@ export interface MessageStack {
 	bcc: string[];
 }
 
-export class Client {
+export class SMTPClient {
 	public readonly smtp: SMTPConnection;
 	public readonly queue: MessageStack[] = [];
 

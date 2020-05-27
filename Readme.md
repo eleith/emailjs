@@ -23,9 +23,9 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 ## EXAMPLE USAGE - text only emails
 
 ```js
-import { Client } from 'emailjs';
+import { SMTPClient } from 'emailjs';
 
-const client = new Client({
+const client = new SMTPClient({
 	user: 'user',
 	password: 'password',
 	host: 'smtp.your-email.com',
@@ -50,9 +50,9 @@ client.send(
 ## EXAMPLE USAGE - html emails and attachments
 
 ```js
-import { Client } from 'emailjs';
+import { SMTPClient } from 'emailjs';
 
-const client = new Client({
+const client = new SMTPClient({
 	user: 'user',
 	password: 'password',
 	host: 'smtp.your-email.com',
@@ -85,9 +85,9 @@ client.send(message, function (err, message) {
 ## EXAMPLE USAGE - sending through outlook
 
 ```js
-import { Client, Message } from 'emailjs';
+import { SMTPClient, Message } from 'emailjs';
 
-const client = new Client({
+const client = new SMTPClient({
 	user: 'user',
 	password: 'password',
 	host: 'smtp-mail.outlook.com',
@@ -117,9 +117,9 @@ client.send(message, (err, message) => {
 ## EXAMPLE USAGE - attaching and embedding an image
 
 ```js
-import { Client, Message } from 'emailjs';
+import { SMTPClient, Message } from 'emailjs';
 
-const client = new Client({
+const client = new SMTPClient({
 	user: 'user',
 	password: 'password',
 	host: 'smtp-mail.outlook.com',
@@ -156,7 +156,7 @@ client.send(message, (err, message) => {
 
 # API
 
-## new Client(options)
+## new SMTPClient(options)
 
 ```js
 // options is an object with the following recognized schema:
@@ -176,7 +176,7 @@ const options = {
 // however, the original untrimmed value will still be visible in configuration.
 ```
 
-## Client#send(message, callback)
+## SMTPClient#send(message, callback)
 
 ```js
 // message can be a smtp.Message (as returned by email.message.create)

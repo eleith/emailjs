@@ -7,7 +7,7 @@ import {
 	SMTPServerSession,
 } from 'smtp-server';
 
-import { AUTH_METHODS, Client, Message } from '../email';
+import { AUTH_METHODS, SMTPClient, Message } from '../email';
 
 function onAuth(
 	auth: SMTPServerAuthentication,
@@ -60,7 +60,7 @@ test.cb('no authentication (unencrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new Client({ port }).send(new Message(msg), (err) => {
+		new SMTPClient({ port }).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
 			}
@@ -92,7 +92,7 @@ test.cb('no authentication (encrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new Client({ port, ssl: true }).send(new Message(msg), (err) => {
+		new SMTPClient({ port, ssl: true }).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
 			}
@@ -124,7 +124,7 @@ test.cb('PLAIN authentication (unencrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new Client({
+		new SMTPClient({
 			port,
 			user: 'pooh',
 			password: 'honey',
@@ -161,7 +161,7 @@ test.cb('PLAIN authentication (encrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new Client({
+		new SMTPClient({
 			port,
 			user: 'pooh',
 			password: 'honey',
@@ -199,7 +199,7 @@ test.cb('LOGIN authentication (unencrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new Client({
+		new SMTPClient({
 			port,
 			user: 'pooh',
 			password: 'honey',
@@ -236,7 +236,7 @@ test.cb('LOGIN authentication (encrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new Client({
+		new SMTPClient({
 			port,
 			user: 'pooh',
 			password: 'honey',
@@ -274,7 +274,7 @@ test.cb('XOAUTH2 authentication (unencrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new Client({
+		new SMTPClient({
 			port,
 			user: 'pooh',
 			password: 'honey',
@@ -311,7 +311,7 @@ test.cb('XOAUTH2 authentication (encrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new Client({
+		new SMTPClient({
 			port,
 			user: 'pooh',
 			password: 'honey',
