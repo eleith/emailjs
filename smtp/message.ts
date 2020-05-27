@@ -183,24 +183,6 @@ export class Message {
 	}
 
 	/**
-	 * legacy support, will remove eventually...
-	 * should use Message.attach() instead
-	 * @param {string} html html data
-	 * @param {string} [charset='utf-8'] the charset to encode as
-	 * @returns {Message} the current Message instance
-	 */
-	attach_alternative(html: string, charset: string): Message {
-		this.alternative = {
-			data: html,
-			charset: charset || 'utf-8',
-			type: 'text/html',
-			inline: true,
-		};
-
-		return this;
-	}
-
-	/**
 	 * @public
 	 * @param {function(boolean, string): void} callback This callback is displayed as part of the Requester class.
 	 * @returns {void}
