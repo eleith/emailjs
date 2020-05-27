@@ -23,9 +23,9 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 ## EXAMPLE USAGE - text only emails
 
 ```js
-import { client as c } from 'emailjs';
+import { Client } from 'emailjs';
 
-const client = new c.Client({
+const client = new Client({
 	user: 'user',
 	password: 'password',
 	host: 'smtp.your-email.com',
@@ -50,9 +50,9 @@ client.send(
 ## EXAMPLE USAGE - html emails and attachments
 
 ```js
-import { client as c } from 'emailjs';
+import { Client } from 'emailjs';
 
-const client = new c.Client({
+const client = new Client({
 	user: 'user',
 	password: 'password',
 	host: 'smtp.your-email.com',
@@ -85,9 +85,9 @@ client.send(message, function (err, message) {
 ## EXAMPLE USAGE - sending through outlook
 
 ```js
-import { client as c, message as m } from 'emailjs';
+import { Client, Message } from 'emailjs';
 
-const client = new c.Client({
+const client = new Client({
 	user: 'user',
 	password: 'password',
 	host: 'smtp-mail.outlook.com',
@@ -96,7 +96,7 @@ const client = new c.Client({
 	},
 });
 
-const message = new m.Message({
+const message = new Message({
 	text: 'i hope this works',
 	from: 'you <username@outlook.com>',
 	to: 'someone <someone@your-email.com>, another <another@your-email.com>',
@@ -117,9 +117,9 @@ client.send(message, (err, message) => {
 ## EXAMPLE USAGE - attaching and embedding an image
 
 ```js
-import { client as c, message as m } from 'emailjs';
+import { Client, Message } from 'emailjs';
 
-const client = new c.Client({
+const client = new Client({
 	user: 'user',
 	password: 'password',
 	host: 'smtp-mail.outlook.com',
@@ -128,7 +128,7 @@ const client = new c.Client({
 	},
 });
 
-const message = new m.Message({
+const message = new Message({
 	text: 'i hope this works',
 	from: 'you <username@outlook.com>',
 	to: 'someone <someone@your-email.com>, another <another@your-email.com>',
@@ -156,7 +156,7 @@ client.send(message, (err, message) => {
 
 # API
 
-## new client.Client(options)
+## new Client(options)
 
 ```js
 // options is an object with the following recognized schema:
@@ -176,7 +176,7 @@ const options = {
 // however, the original untrimmed value will still be visible in configuration.
 ```
 
-## client.Client#send(message, callback)
+## Client#send(message, callback)
 
 ```js
 // message can be a smtp.Message (as returned by email.message.create)
@@ -186,7 +186,7 @@ const options = {
 // either when message is sent or an error has occurred
 ```
 
-## new message.Message(headers)
+## new Message(headers)
 
 ```js
 // headers is an object with the following recognized schema:
@@ -204,7 +204,7 @@ const headers = {
 // you can also add whatever other headers you want.
 ```
 
-## message.Message#attach
+## Message#attach(options)
 
 Can be called multiple times, each adding a new attachment.
 
@@ -231,7 +231,7 @@ const options = {
 };
 ```
 
-## new smtp.SMTPConnection(options={})
+## new SMTPConnection(options={})
 
 ```js
 // options is an object with the following recognized schema:
@@ -253,7 +253,7 @@ const options = {
 
 To target a Message Transfer Agent (MTA), omit all options.
 
-## smtp.SMTPConnection#authentication
+## SMTPConnection#authentication
 
 associative array of currently supported SMTP authentication mechanisms
 
