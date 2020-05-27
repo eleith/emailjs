@@ -20,17 +20,11 @@ function onAuth(
 }
 
 const port = 2526;
-const client = new c.Client({
-	port,
-	user: 'pooh',
-	password: 'honey',
-	ssl: true,
-});
 let server: smtp.SMTPServer | null = null;
 
 test.afterEach.cb((t) => server?.close(t.end));
 
-test.cb('no authentication should succeed', (t) => {
+test.cb('no authentication (unencrypted) should succeed', (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'piglet@gmail.com',
@@ -62,7 +56,7 @@ test.cb('no authentication should succeed', (t) => {
 	});
 });
 
-test.cb('PLAIN authentication should succeed', (t) => {
+test.cb('no authentication (encrypted) should succeed', (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'piglet@gmail.com',
@@ -70,9 +64,9 @@ test.cb('PLAIN authentication should succeed', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 	server = new smtp.SMTPServer({
+		authMethods: [],
+		authOptional: true,
 		secure: true,
-		authMethods: ['PLAIN'],
-		onAuth,
 		onData(stream, _session, callback: () => void) {
 			mailparser
 				.simpleParser(stream)
@@ -87,7 +81,7 @@ test.cb('PLAIN authentication should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		client.send(new m.Message(msg), (err) => {
+		new c.Client({ port, ssl: true }).send(new m.Message(msg), (err) => {
 			if (err) {
 				throw err;
 			}
@@ -95,7 +89,7 @@ test.cb('PLAIN authentication should succeed', (t) => {
 	});
 });
 
-test.cb('LOGIN authentication should succeed', (t) => {
+test.cb('PLAIN authentication (unencrypted) should succeed', (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'piglet@gmail.com',
@@ -103,8 +97,8 @@ test.cb('LOGIN authentication should succeed', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 	server = new smtp.SMTPServer({
-		secure: true,
-		authMethods: ['LOGIN'],
+		authMethods: ['PLAIN'],
+		hideSTARTTLS: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
 			mailparser
@@ -120,7 +114,128 @@ test.cb('LOGIN authentication should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		client.send(new m.Message(msg), (err) => {
+		new c.Client({
+			port,
+			user: 'pooh',
+			password: 'honey',
+			authentication: ['PLAIN'],
+		}).send(new m.Message(msg), (err) => {
+			if (err) {
+				throw err;
+			}
+		});
+	});
+});
+
+test.cb('PLAIN authentication (encrypted) should succeed', (t) => {
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		to: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+	server = new smtp.SMTPServer({
+		authMethods: ['PLAIN'],
+		secure: true,
+		onAuth,
+		onData(stream, _session, callback: () => void) {
+			mailparser
+				.simpleParser(stream)
+				.then((mail) => {
+					t.is(mail.text, msg.text + '\n\n\n');
+					t.is(mail.subject, msg.subject);
+					t.is(mail.from?.text, msg.from);
+					t.is(mail.to?.text, msg.to);
+				})
+				.finally(t.end);
+			stream.on('end', callback);
+		},
+	});
+	server.listen(port, () => {
+		new c.Client({
+			port,
+			user: 'pooh',
+			password: 'honey',
+			authentication: ['PLAIN'],
+			ssl: true,
+		}).send(new m.Message(msg), (err) => {
+			if (err) {
+				throw err;
+			}
+		});
+	});
+});
+
+test.cb('LOGIN authentication (unencrypted) should succeed', (t) => {
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		to: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+	server = new smtp.SMTPServer({
+		authMethods: ['LOGIN'],
+		hideSTARTTLS: true,
+		onAuth,
+		onData(stream, _session, callback: () => void) {
+			mailparser
+				.simpleParser(stream)
+				.then((mail) => {
+					t.is(mail.text, msg.text + '\n\n\n');
+					t.is(mail.subject, msg.subject);
+					t.is(mail.from?.text, msg.from);
+					t.is(mail.to?.text, msg.to);
+				})
+				.finally(t.end);
+			stream.on('end', callback);
+		},
+	});
+	server.listen(port, () => {
+		new c.Client({
+			port,
+			user: 'pooh',
+			password: 'honey',
+			authentication: ['LOGIN'],
+		}).send(new m.Message(msg), (err) => {
+			if (err) {
+				throw err;
+			}
+		});
+	});
+});
+
+test.cb('LOGIN authentication (encrypted) should succeed', (t) => {
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		to: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+	server = new smtp.SMTPServer({
+		authMethods: ['LOGIN'],
+		secure: true,
+		onAuth,
+		onData(stream, _session, callback: () => void) {
+			mailparser
+				.simpleParser(stream)
+				.then((mail) => {
+					t.is(mail.text, msg.text + '\n\n\n');
+					t.is(mail.subject, msg.subject);
+					t.is(mail.from?.text, msg.from);
+					t.is(mail.to?.text, msg.to);
+				})
+				.finally(t.end);
+			stream.on('end', callback);
+		},
+	});
+	server.listen(port, () => {
+		new c.Client({
+			port,
+			user: 'pooh',
+			password: 'honey',
+			ssl: true,
+			authentication: ['LOGIN'],
+		}).send(new m.Message(msg), (err) => {
 			if (err) {
 				throw err;
 			}
