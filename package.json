@@ -14,10 +14,6 @@
 		"type": "git",
 		"url": "http://github.com/eleith/emailjs.git"
 	},
-	"dependencies": {
-		"addressparser": "1.0.1",
-		"emailjs-mime-codec": "2.0.9"
-	},
 	"type": "module",
 	"devDependencies": {
 		"@ledge/configs": "23.0.0",
@@ -28,7 +24,9 @@
 		"@types/smtp-server": "3.5.4",
 		"@typescript-eslint/eslint-plugin": "3.0.1",
 		"@typescript-eslint/parser": "3.0.1",
+		"addressparser": "1.0.1",
 		"ava": "3.8.2",
+		"emailjs-mime-codec": "2.0.9",
 		"eslint": "7.1.0",
 		"eslint-config-prettier": "6.11.0",
 		"eslint-plugin-prettier": "3.1.3",
