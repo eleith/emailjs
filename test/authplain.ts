@@ -69,6 +69,18 @@ test.cb('authorize plain', (t) => {
 	);
 });
 
+test('client deduplicates recipients', (t) => {
+	const msg = {
+		from: 'zelda@gmail.com',
+		to: 'gannon@gmail.com',
+		cc: 'gannon@gmail.com',
+		bcc: 'gannon@gmail.com',
+	};
+	const stack = client.createMessageStack(new m.Message(msg));
+	t.true(stack.to.length === 1);
+	t.is(stack.to[0].address, 'gannon@gmail.com');
+});
+
 test.cb('client rejects message without `from` header', (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
