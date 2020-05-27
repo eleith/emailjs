@@ -84,10 +84,11 @@ export class Client {
 			/* ø */
 		}
 	) {
+		const [{ address: from }] = addressparser(message.header.from);
 		const stack = {
 			message,
 			to: [] as ReturnType<typeof addressparser>,
-			from: addressparser(message.header.from)[0].address,
+			from,
 			callback: callback.bind(this),
 		} as MessageStack;
 
