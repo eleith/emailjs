@@ -1,7 +1,5 @@
-import type { Readable } from 'stream';
 import { readFileSync, createReadStream } from 'fs';
 import { join } from 'path';
-
 import test from 'ava';
 import mailparser from 'mailparser';
 import smtp from 'smtp-server';
@@ -25,7 +23,7 @@ const send = (
 	) => void,
 	done: () => void
 ) => {
-	server.onData = (stream: Readable, _session, callback: () => void) => {
+	server.onData = (stream, _session, callback: () => void) => {
 		mailparser
 			.simpleParser(stream, { skipTextLinks: true } as Record<string, unknown>)
 			.then(verify)

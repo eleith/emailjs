@@ -33,7 +33,6 @@ export class Client {
 	 */
 	constructor(server: Partial<SMTPConnectionOptions>) {
 		this.smtp = new SMTPConnection(server);
-		//this.smtp.debug(1);
 	}
 
 	/**
