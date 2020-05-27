@@ -69,26 +69,23 @@ test.cb('authorize plain', (t) => {
 	);
 });
 
-test.cb(
-	'Client refuses to send message without `to`, `cc`, or `bcc` header',
-	(t) => {
-		const msg = {
-			subject: 'this is a test TEXT message from emailjs',
-			from: 'piglet@gmail.com',
-			text: "It is hard to be brave when you're only a Very Small Animal.",
-		};
-		client.send(new m.Message(msg), (err) => {
-			t.true(err instanceof Error);
-			t.is(
-				err?.message,
-				'Message must have at least one `to`, `cc`, or `bcc` header'
-			);
-			t.end();
-		});
-	}
-);
+test.cb('client rejects message without `to`, `cc`, or `bcc` header', (t) => {
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+	client.send(new m.Message(msg), (err) => {
+		t.true(err instanceof Error);
+		t.is(
+			err?.message,
+			'Message must have at least one `to`, `cc`, or `bcc` header'
+		);
+		t.end();
+	});
+});
 
-test.cb('Client allows message with only `cc` header', (t) => {
+test.cb('client allows message with only `cc` recipient header', (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'piglet@gmail.com',
@@ -108,7 +105,7 @@ test.cb('Client allows message with only `cc` header', (t) => {
 	);
 });
 
-test.cb('Client allows message with only `bcc` header', (t) => {
+test.cb('client allows message with only `bcc` recipient header', (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'piglet@gmail.com',
@@ -128,7 +125,7 @@ test.cb('Client allows message with only `bcc` header', (t) => {
 	);
 });
 
-test('Client constructor throws if `password` supplied without `user`', (t) => {
+test('client constructor throws if `password` supplied without `user`', (t) => {
 	t.notThrows(() => new c.Client({ user: 'anything', password: 'anything' }));
 	t.throws(() => new c.Client({ password: 'anything' }));
 	t.throws(
