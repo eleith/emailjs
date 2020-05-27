@@ -154,7 +154,7 @@ test.cb('client allows message with only `bcc` recipient header', (t) => {
 			t.is(mail.text, msg.text + '\n\n\n');
 			t.is(mail.subject, msg.subject);
 			t.is(mail.from?.text, msg.from);
-			t.is(mail.bcc?.text, undefined);
+			t.is(mail.bcc, undefined);
 		},
 		t.end
 	);
