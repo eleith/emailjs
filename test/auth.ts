@@ -7,7 +7,7 @@ import {
 	SMTPServerSession,
 } from 'smtp-server';
 
-import { Client, Message } from '../email';
+import { AUTH_METHODS, Client, Message } from '../email';
 
 function onAuth(
 	auth: SMTPServerAuthentication,
@@ -100,7 +100,7 @@ test.cb('PLAIN authentication (unencrypted) should succeed', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 	server = new SMTPServer({
-		authMethods: ['PLAIN'],
+		authMethods: [AUTH_METHODS.PLAIN],
 		hideSTARTTLS: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
@@ -120,7 +120,7 @@ test.cb('PLAIN authentication (unencrypted) should succeed', (t) => {
 			port,
 			user: 'pooh',
 			password: 'honey',
-			authentication: ['PLAIN'],
+			authentication: [AUTH_METHODS.PLAIN],
 		}).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
@@ -137,7 +137,7 @@ test.cb('PLAIN authentication (encrypted) should succeed', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 	server = new SMTPServer({
-		authMethods: ['PLAIN'],
+		authMethods: [AUTH_METHODS.PLAIN],
 		secure: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
@@ -157,7 +157,7 @@ test.cb('PLAIN authentication (encrypted) should succeed', (t) => {
 			port,
 			user: 'pooh',
 			password: 'honey',
-			authentication: ['PLAIN'],
+			authentication: [AUTH_METHODS.PLAIN],
 			ssl: true,
 		}).send(new Message(msg), (err) => {
 			if (err) {
@@ -175,7 +175,7 @@ test.cb('LOGIN authentication (unencrypted) should succeed', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 	server = new SMTPServer({
-		authMethods: ['LOGIN'],
+		authMethods: [AUTH_METHODS.LOGIN],
 		hideSTARTTLS: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
@@ -195,7 +195,7 @@ test.cb('LOGIN authentication (unencrypted) should succeed', (t) => {
 			port,
 			user: 'pooh',
 			password: 'honey',
-			authentication: ['LOGIN'],
+			authentication: [AUTH_METHODS.LOGIN],
 		}).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
@@ -212,7 +212,7 @@ test.cb('LOGIN authentication (encrypted) should succeed', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 	server = new SMTPServer({
-		authMethods: ['LOGIN'],
+		authMethods: [AUTH_METHODS.LOGIN],
 		secure: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
@@ -233,7 +233,7 @@ test.cb('LOGIN authentication (encrypted) should succeed', (t) => {
 			user: 'pooh',
 			password: 'honey',
 			ssl: true,
-			authentication: ['LOGIN'],
+			authentication: [AUTH_METHODS.LOGIN],
 		}).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
