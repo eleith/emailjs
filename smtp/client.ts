@@ -74,9 +74,10 @@ export class Client {
 
 	/**
 	 * @public
-	 * @param {Message} message the message to convert
-	 * @param {function(err: Error, msg: Message): void} callback .
-	 * @returns {MessageStack} stack .
+	 * @description Converts a message to the raw object used by the internal stack.
+	 * @param {Message} message message to convert
+	 * @param {function(err: Error, msg: Message): void} callback errback
+	 * @returns {MessageStack} raw message object
 	 */
 	public createMessageStack(
 		message: Message,
