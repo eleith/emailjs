@@ -1,15 +1,20 @@
 import test from 'ava';
-import mailparser from 'mailparser';
-import smtp from 'smtp-server';
+import { simpleParser } from 'mailparser';
+import {
+	SMTPServer,
+	SMTPServerAuthentication,
+	SMTPServerAuthenticationResponse,
+	SMTPServerSession,
+} from 'smtp-server';
 
 import { Client, Message } from '../email';
 
 function onAuth(
-	auth: smtp.SMTPServerAuthentication,
-	_session: smtp.SMTPServerSession,
+	auth: SMTPServerAuthentication,
+	_session: SMTPServerSession,
 	callback: (
 		err: Error | null | undefined,
-		response?: smtp.SMTPServerAuthenticationResponse | undefined
+		response?: SMTPServerAuthenticationResponse | undefined
 	) => void
 ) {
 	if (auth.username == 'pooh' && auth.password == 'honey') {
@@ -20,7 +25,7 @@ function onAuth(
 }
 
 const port = 2526;
-let server: smtp.SMTPServer | null = null;
+let server: SMTPServer | null = null;
 
 test.afterEach.cb((t) => server?.close(t.end));
 
@@ -31,12 +36,11 @@ test.cb('no authentication (unencrypted) should succeed', (t) => {
 		to: 'pooh@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	server = new smtp.SMTPServer({
+	server = new SMTPServer({
 		authMethods: [],
 		authOptional: true,
 		onData(stream, _session, callback: () => void) {
-			mailparser
-				.simpleParser(stream)
+			simpleParser(stream)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -63,13 +67,12 @@ test.cb('no authentication (encrypted) should succeed', (t) => {
 		to: 'pooh@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	server = new smtp.SMTPServer({
+	server = new SMTPServer({
 		authMethods: [],
 		authOptional: true,
 		secure: true,
 		onData(stream, _session, callback: () => void) {
-			mailparser
-				.simpleParser(stream)
+			simpleParser(stream)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -96,13 +99,12 @@ test.cb('PLAIN authentication (unencrypted) should succeed', (t) => {
 		to: 'pooh@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	server = new smtp.SMTPServer({
+	server = new SMTPServer({
 		authMethods: ['PLAIN'],
 		hideSTARTTLS: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
-			mailparser
-				.simpleParser(stream)
+			simpleParser(stream)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -134,13 +136,12 @@ test.cb('PLAIN authentication (encrypted) should succeed', (t) => {
 		to: 'pooh@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	server = new smtp.SMTPServer({
+	server = new SMTPServer({
 		authMethods: ['PLAIN'],
 		secure: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
-			mailparser
-				.simpleParser(stream)
+			simpleParser(stream)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -173,13 +174,12 @@ test.cb('LOGIN authentication (unencrypted) should succeed', (t) => {
 		to: 'pooh@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	server = new smtp.SMTPServer({
+	server = new SMTPServer({
 		authMethods: ['LOGIN'],
 		hideSTARTTLS: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
-			mailparser
-				.simpleParser(stream)
+			simpleParser(stream)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -211,13 +211,12 @@ test.cb('LOGIN authentication (encrypted) should succeed', (t) => {
 		to: 'pooh@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	server = new smtp.SMTPServer({
+	server = new SMTPServer({
 		authMethods: ['LOGIN'],
 		secure: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
-			mailparser
-				.simpleParser(stream)
+			simpleParser(stream)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);

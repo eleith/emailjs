@@ -1,8 +1,9 @@
 import { readFileSync, createReadStream } from 'fs';
 import { join } from 'path';
+
 import test from 'ava';
-import mailparser from 'mailparser';
-import smtp from 'smtp-server';
+import { simpleParser } from 'mailparser';
+import { SMTPServer } from 'smtp-server';
 
 import { Client, Message, MessageAttachment } from '../email';
 
@@ -13,19 +14,16 @@ const client = new Client({
 	password: 'honey',
 	ssl: true,
 });
-const server = new smtp.SMTPServer({ secure: true, authMethods: ['LOGIN'] });
+const server = new SMTPServer({ secure: true, authMethods: ['LOGIN'] });
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 const send = (
 	message: Message,
-	verify: (
-		mail: UnPromisify<ReturnType<typeof mailparser.simpleParser>>
-	) => void,
+	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void,
 	done: () => void
 ) => {
 	server.onData = (stream, _session, callback: () => void) => {
-		mailparser
-			.simpleParser(stream, { skipTextLinks: true } as Record<string, unknown>)
+		simpleParser(stream, { skipTextLinks: true } as Record<string, unknown>)
 			.then(verify)
 			.finally(done);
 		stream.on('end', callback);
