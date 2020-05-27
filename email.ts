@@ -1,5 +1,5 @@
-export * as client from './smtp/client';
-export * as message from './smtp/message';
-export * as date from './smtp/date';
-export * as smtp from './smtp/smtp';
-export * as error from './smtp/error';
+export * from './smtp/client';
+export * from './smtp/message';
+export * from './smtp/date';
+export * from './smtp/smtp';
+export * from './smtp/error';

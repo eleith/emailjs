@@ -2,7 +2,7 @@ import test from 'ava';
 import mailparser from 'mailparser';
 import smtp from 'smtp-server';
 
-import { client as c, message as m } from '../email';
+import { Client, Message } from '../email';
 
 function onAuth(
 	auth: smtp.SMTPServerAuthentication,
@@ -48,7 +48,7 @@ test.cb('no authentication (unencrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new c.Client({ port }).send(new m.Message(msg), (err) => {
+		new Client({ port }).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
 			}
@@ -81,7 +81,7 @@ test.cb('no authentication (encrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new c.Client({ port, ssl: true }).send(new m.Message(msg), (err) => {
+		new Client({ port, ssl: true }).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
 			}
@@ -114,12 +114,12 @@ test.cb('PLAIN authentication (unencrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new c.Client({
+		new Client({
 			port,
 			user: 'pooh',
 			password: 'honey',
 			authentication: ['PLAIN'],
-		}).send(new m.Message(msg), (err) => {
+		}).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
 			}
@@ -152,13 +152,13 @@ test.cb('PLAIN authentication (encrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new c.Client({
+		new Client({
 			port,
 			user: 'pooh',
 			password: 'honey',
 			authentication: ['PLAIN'],
 			ssl: true,
-		}).send(new m.Message(msg), (err) => {
+		}).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
 			}
@@ -191,12 +191,12 @@ test.cb('LOGIN authentication (unencrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new c.Client({
+		new Client({
 			port,
 			user: 'pooh',
 			password: 'honey',
 			authentication: ['LOGIN'],
-		}).send(new m.Message(msg), (err) => {
+		}).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
 			}
@@ -229,13 +229,13 @@ test.cb('LOGIN authentication (encrypted) should succeed', (t) => {
 		},
 	});
 	server.listen(port, () => {
-		new c.Client({
+		new Client({
 			port,
 			user: 'pooh',
 			password: 'honey',
 			ssl: true,
 			authentication: ['LOGIN'],
-		}).send(new m.Message(msg), (err) => {
+		}).send(new Message(msg), (err) => {
 			if (err) {
 				throw err;
 			}

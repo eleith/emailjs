@@ -4,10 +4,10 @@ import test from 'ava';
 import mailparser from 'mailparser';
 import smtp from 'smtp-server';
 
-import { client as c, message as m } from '../email';
+import { Client, Message, MessageAttachment } from '../email';
 
 const port = 2526;
-const client = new c.Client({
+const client = new Client({
 	port,
 	user: 'pooh',
 	password: 'honey',
@@ -17,7 +17,7 @@ const server = new smtp.SMTPServer({ secure: true, authMethods: ['LOGIN'] });
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 const send = (
-	message: m.Message,
+	message: Message,
 	verify: (
 		mail: UnPromisify<ReturnType<typeof mailparser.simpleParser>>
 	) => void,
@@ -64,7 +64,7 @@ test.cb('simple text message', (t) => {
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.text, msg.text + '\n\n\n');
 			t.is(mail.subject, msg.subject);
@@ -86,7 +86,7 @@ test.cb('null text message', (t) => {
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.text, '\n\n\n');
 		},
@@ -104,7 +104,7 @@ test.cb('empty text message', (t) => {
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.text, '\n\n\n');
 		},
@@ -121,7 +121,7 @@ test.cb('simple unicode text message', (t) => {
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.text, msg.text + '\n\n\n');
 			t.is(mail.subject, msg.subject);
@@ -142,7 +142,7 @@ test.cb('very large text message', (t) => {
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.text, msg.text.replace(/\r/g, '') + '\n\n\n');
 			t.is(mail.subject, msg.subject);
@@ -168,11 +168,11 @@ test.cb('very large text data message', (t) => {
 		attachment: ({
 			data: text,
 			alternative: true,
-		} as unknown) as m.MessageAttachment,
+		} as unknown) as MessageAttachment,
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.html, text.replace(/\r/g, ''));
 			t.is(mail.text, msg.text + '\n');
@@ -193,11 +193,11 @@ test.cb('html data message', (t) => {
 		attachment: ({
 			data: html,
 			alternative: true,
-		} as unknown) as m.MessageAttachment,
+		} as unknown) as MessageAttachment,
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.html, html.replace(/\r/g, ''));
 			t.is(mail.text, '\n');
@@ -218,11 +218,11 @@ test.cb('html file message', (t) => {
 		attachment: ({
 			path: join(__dirname, 'attachments/smtp.html'),
 			alternative: true,
-		} as unknown) as m.MessageAttachment,
+		} as unknown) as MessageAttachment,
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.html, html.replace(/\r/g, ''));
 			t.is(mail.text, '\n');
@@ -252,11 +252,11 @@ test.cb('html with image embed message', (t) => {
 					headers: { 'Content-ID': '<smtp-diagram@local>' },
 				},
 			],
-		} as unknown) as m.MessageAttachment,
+		} as unknown) as MessageAttachment,
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(
 				mail.attachments[0].content.toString('base64'),
@@ -281,11 +281,11 @@ test.cb('html data and attachment message', (t) => {
 		attachment: [
 			{ path: join(__dirname, 'attachments/smtp.html'), alternative: true },
 			{ path: join(__dirname, 'attachments/smtp.gif') },
-		] as m.MessageAttachment[],
+		] as MessageAttachment[],
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.html, html.replace(/\r/g, ''));
 			t.is(mail.text, '\n');
@@ -308,11 +308,11 @@ test.cb('attachment message', (t) => {
 			path: join(__dirname, 'attachments/smtp.pdf'),
 			type: 'application/pdf',
 			name: 'smtp-info.pdf',
-		} as m.MessageAttachment,
+		} as MessageAttachment,
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(
 				mail.attachments[0].content.toString('base64'),
@@ -338,11 +338,11 @@ test.cb('attachment sent with unicode filename message', (t) => {
 			path: join(__dirname, 'attachments/smtp.pdf'),
 			type: 'application/pdf',
 			name: 'smtp-✓-info.pdf',
-		} as m.MessageAttachment,
+		} as MessageAttachment,
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(
 				mail.attachments[0].content.toString('base64'),
@@ -377,11 +377,11 @@ test.cb('attachments message', (t) => {
 				type: 'application/tar-gz',
 				name: 'postfix.source.2.8.7.tar.gz',
 			},
-		] as m.MessageAttachment[],
+		] as MessageAttachment[],
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(
 				mail.attachments[0].content.toString('base64'),
@@ -421,14 +421,14 @@ test.cb('streams message', (t) => {
 				type: 'application/x-gzip',
 				name: 'postfix.source.2.8.7.tar.gz',
 			},
-		] as unknown) as m.MessageAttachment[],
+		] as unknown) as MessageAttachment[],
 	};
 
 	stream.pause();
 	stream2.pause();
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(
 				mail.attachments[0].content.toString('base64'),
@@ -448,7 +448,7 @@ test.cb('streams message', (t) => {
 });
 
 test.cb('message validation fails without `from` header', (t) => {
-	const msg = new m.Message({});
+	const msg = new Message({});
 	msg.valid((isValid, reason) => {
 		t.false(isValid);
 		t.is(reason, 'Message must have a `from` header');
@@ -457,7 +457,7 @@ test.cb('message validation fails without `from` header', (t) => {
 });
 
 test.cb('message validation fails without `to`, `cc`, or `bcc` header', (t) => {
-	const msg = new m.Message({
+	const msg = new Message({
 		from: 'piglet@gmail.com',
 	});
 	msg.valid((isValid, reason) => {
@@ -468,7 +468,7 @@ test.cb('message validation fails without `to`, `cc`, or `bcc` header', (t) => {
 });
 
 test.cb('message validation succeeds with only `cc` recipient header', (t) => {
-	const msg = new m.Message({
+	const msg = new Message({
 		from: 'piglet@gmail.com',
 		cc: 'pooh@gmail.com',
 	});
@@ -479,7 +479,7 @@ test.cb('message validation succeeds with only `cc` recipient header', (t) => {
 });
 
 test.cb('message validation succeeds with only `bcc` recipient header', (t) => {
-	const msg = new m.Message({
+	const msg = new Message({
 		from: 'piglet@gmail.com',
 		bcc: 'pooh@gmail.com',
 	});

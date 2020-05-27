@@ -2,12 +2,12 @@ import test from 'ava';
 import mailparser from 'mailparser';
 import smtp from 'smtp-server';
 
-import { client as c, message as m, smtp as s } from '../email';
+import { Client, Message, DEFAULT_TIMEOUT } from '../email';
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 
 const port = 2526;
-const client = new c.Client({
+const client = new Client({
 	port,
 	user: 'pooh',
 	password: 'honey',
@@ -16,7 +16,7 @@ const client = new c.Client({
 const server = new smtp.SMTPServer({ secure: true, authMethods: ['LOGIN'] });
 
 const send = (
-	message: m.Message,
+	message: Message,
 	verify: (
 		mail: UnPromisify<ReturnType<typeof mailparser.simpleParser>>
 	) => void,
@@ -50,14 +50,14 @@ test.after.cb((t) => server.close(t.end));
 
 test.cb('client invokes callback exactly once for invalid connection', (t) => {
 	t.plan(1);
-	const client = new c.Client({ host: 'bar.baz' });
+	const client = new Client({ host: 'bar.baz' });
 	const msg = {
 		from: 'foo@bar.baz',
 		to: 'foo@bar.baz',
 		subject: 'hello world',
 		text: 'hello world',
 	};
-	client.send(new m.Message(msg), (err) => {
+	client.send(new Message(msg), (err) => {
 		t.not(err, null);
 		t.end();
 	});
@@ -71,13 +71,13 @@ test('client has a default connection timeout', (t) => {
 		port: 1234,
 		timeout: undefined as number | null | undefined,
 	};
-	t.is(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
+	t.is(new Client(connectionOptions).smtp.timeout, DEFAULT_TIMEOUT);
 
 	connectionOptions.timeout = null;
-	t.is(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
+	t.is(new Client(connectionOptions).smtp.timeout, DEFAULT_TIMEOUT);
 
 	connectionOptions.timeout = undefined;
-	t.is(new c.Client(connectionOptions).smtp.timeout, s.DEFAULT_TIMEOUT);
+	t.is(new Client(connectionOptions).smtp.timeout, DEFAULT_TIMEOUT);
 });
 
 test('client deduplicates recipients', (t) => {
@@ -87,7 +87,7 @@ test('client deduplicates recipients', (t) => {
 		cc: 'gannon@gmail.com',
 		bcc: 'gannon@gmail.com',
 	};
-	const stack = new c.Client({}).createMessageStack(new m.Message(msg));
+	const stack = new Client({}).createMessageStack(new Message(msg));
 	t.true(stack.to.length === 1);
 	t.is(stack.to[0].address, 'gannon@gmail.com');
 });
@@ -97,7 +97,7 @@ test.cb('client rejects message without `from` header', (t) => {
 		subject: 'this is a test TEXT message from emailjs',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	client.send(new m.Message(msg), (err) => {
+	client.send(new Message(msg), (err) => {
 		t.true(err instanceof Error);
 		t.is(err?.message, 'Message must have a `from` header');
 		t.end();
@@ -110,7 +110,7 @@ test.cb('client rejects message without `to`, `cc`, or `bcc` header', (t) => {
 		from: 'piglet@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	client.send(new m.Message(msg), (err) => {
+	client.send(new Message(msg), (err) => {
 		t.true(err instanceof Error);
 		t.is(
 			err?.message,
@@ -129,7 +129,7 @@ test.cb('client allows message with only `cc` recipient header', (t) => {
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.text, msg.text + '\n\n\n');
 			t.is(mail.subject, msg.subject);
@@ -149,7 +149,7 @@ test.cb('client allows message with only `bcc` recipient header', (t) => {
 	};
 
 	send(
-		new m.Message(msg),
+		new Message(msg),
 		(mail) => {
 			t.is(mail.text, msg.text + '\n\n\n');
 			t.is(mail.subject, msg.subject);
@@ -161,11 +161,11 @@ test.cb('client allows message with only `bcc` recipient header', (t) => {
 });
 
 test('client constructor throws if `password` supplied without `user`', (t) => {
-	t.notThrows(() => new c.Client({ user: 'anything', password: 'anything' }));
-	t.throws(() => new c.Client({ password: 'anything' }));
+	t.notThrows(() => new Client({ user: 'anything', password: 'anything' }));
+	t.throws(() => new Client({ password: 'anything' }));
 	t.throws(
 		() =>
-			new c.Client({ username: 'anything', password: 'anything' } as Record<
+			new Client({ username: 'anything', password: 'anything' } as Record<
 				string,
 				unknown
 			>)

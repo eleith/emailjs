@@ -1,8 +1,7 @@
 import test from 'ava';
 
-import { date as d } from '../email';
+import { getRFC2822Date, getRFC2822DateUTC } from '../email';
 
-const { getRFC2822Date, getRFC2822DateUTC } = d;
 const toD_utc = (dt: number) => getRFC2822DateUTC(new Date(dt));
 const toD = (dt: number, utc = false) => getRFC2822Date(new Date(dt), utc);
 
