@@ -2,7 +2,7 @@ import { SMTPError, SMTPErrorStates } from './error';
 import type { Socket } from 'net';
 import type { TLSSocket } from 'tls';
 
-export class SMTPResponse {
+export class SMTPResponseMonitor {
 	public readonly stop: (err?: Error) => void;
 
 	constructor(

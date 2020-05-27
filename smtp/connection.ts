@@ -5,7 +5,7 @@ import { connect, createSecureContext, TLSSocket } from 'tls';
 import { EventEmitter } from 'events';
 
 import { SMTPError, SMTPErrorStates } from './error';
-import { SMTPResponse } from './response';
+import { SMTPResponseMonitor } from './response';
 
 /**
  * @readonly
@@ -108,7 +108,7 @@ export class SMTPConnection extends EventEmitter {
 
 	protected sock: Socket | TLSSocket | null = null;
 	protected features: { [index: string]: string | boolean } | null = null;
-	protected monitor: SMTPResponse | null = null;
+	protected monitor: SMTPResponseMonitor | null = null;
 	protected domain = hostname();
 	protected host = 'localhost';
 	protected ssl: boolean | SMTPSocketOptions = false;
@@ -330,7 +330,7 @@ export class SMTPConnection extends EventEmitter {
 			this.sock.connect(this.port, this.host.trim(), connectedErrBack);
 		}
 
-		this.monitor = new SMTPResponse(this.sock, this.timeout, () =>
+		this.monitor = new SMTPResponseMonitor(this.sock, this.timeout, () =>
 			this.close(true)
 		);
 		this.sock.once('response', response);
@@ -469,7 +469,9 @@ export class SMTPConnection extends EventEmitter {
 				this._secure = true;
 				this.sock = secureSocket;
 
-				new SMTPResponse(this.sock, this.timeout, () => this.close(true));
+				new SMTPResponseMonitor(this.sock, this.timeout, () =>
+					this.close(true)
+				);
 				caller(callback, msg.data);
 			}
 		};
