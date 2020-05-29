@@ -14528,12 +14528,6 @@ function getRFC2822DateUTC(date = new Date()) {
     return dates.join(' ');
 }
 
-var date = {
-    __proto__: null,
-    getRFC2822Date: getRFC2822Date,
-    getRFC2822DateUTC: getRFC2822DateUTC
-};
-
 const CRLF = '\r\n';
 /**
  * MIME standard wants 76 char chunks when sending out.
@@ -14571,6 +14565,17 @@ function convertDashDelimitedTextToSnakeCase(text) {
         .replace(/^(.)|-(.)/g, (match) => match.toUpperCase());
 }
 class Message {
+    /**
+     * Construct an rfc2822-compliant message object.
+     *
+     * Special notes:
+     * - The `from` field is required.
+     * - At least one `to`, `cc`, or `bcc` header is also required.
+     * - You can also add whatever other headers you want.
+     *
+     * @see https://tools.ietf.org/html/rfc2822
+     * @param {Partial<MessageHeaders>} headers Message headers
+     */
     constructor(headers) {
         this.attachments = [];
         this.header = {
@@ -14607,12 +14612,15 @@ class Message {
             }
             else {
                 // allow any headers the user wants to set??
-                // if(/cc|bcc|to|from|reply-to|sender|subject|date|message-id/i.test(header))
                 this.header[header.toLowerCase()] = headers[header];
             }
         }
     }
     /**
+     * Attach a file to the message.
+     *
+     * Can be called multiple times, each adding a new attachment.
+     *
      * @public
      * @param {MessageAttachment} options attachment options
      * @returns {Message} the current instance for chaining
@@ -14631,32 +14639,18 @@ class Message {
         return this;
     }
     /**
-     * legacy support, will remove eventually...
-     * should use Message.attach() instead
-     * @param {string} html html data
-     * @param {string} [charset='utf-8'] the charset to encode as
-     * @returns {Message} the current Message instance
-     */
-    attach_alternative(html, charset) {
-        this.alternative = {
-            data: html,
-            charset: charset || 'utf-8',
-            type: 'text/html',
-            inline: true,
-        };
-        return this;
-    }
-    /**
      * @public
-     * @param {function(boolean, string): void} callback This callback is displayed as part of the Requester class.
+     * @param {function(isValid: boolean, invalidReason: string): void} callback .
      * @returns {void}
      */
     valid(callback) {
-        if (!this.header.from) {
-            callback(false, 'message does not have a valid sender');
+        if (typeof this.header.from !== 'string') {
+            callback(false, 'Message must have a `from` header');
         }
-        if (!(this.header.to || this.header.cc || this.header.bcc)) {
-            callback(false, 'message does not have a valid recipient');
+        else if (typeof this.header.to !== 'string' &&
+            typeof this.header.cc !== 'string' &&
+            typeof this.header.bcc !== 'string') {
+            callback(false, 'Message must have at least one `to`, `cc`, or `bcc` header');
         }
         else if (this.attachments.length === 0) {
             callback(true, undefined);
@@ -15092,14 +15086,6 @@ class MessageStream extends stream.Stream {
     }
 }
 
-var message = {
-    __proto__: null,
-    MIMECHUNK: MIMECHUNK,
-    MIME64CHUNK: MIME64CHUNK,
-    BUFFERSIZE: BUFFERSIZE,
-    Message: Message
-};
-
 /**
  * @readonly
  * @enum
@@ -15117,31 +15103,37 @@ const SMTPErrorStates = {
     CONNECTIONAUTH: 10,
 };
 class SMTPError extends Error {
+    /**
+     * @protected
+     * @param {string} message error message
+     */
     constructor(message) {
         super(message);
         this.code = null;
         this.smtp = null;
         this.previous = null;
     }
-}
-function makeSMTPError(message, code, error, smtp) {
-    const msg = (error === null || error === void 0 ? void 0 : error.message) ? `${message} (${error.message})` : message;
-    const err = new SMTPError(msg);
-    err.code = code;
-    err.smtp = smtp;
-    if (error) {
-        err.previous = error;
+    /**
+     *
+     * @param {string} message error message
+     * @param {number} code smtp error state
+     * @param {Error | null} error previous error
+     * @param {unknown} smtp arbitrary data
+     * @returns {SMTPError} error
+     */
+    static create(message, code, error, smtp) {
+        const msg = (error === null || error === void 0 ? void 0 : error.message) ? `${message} (${error.message})` : message;
+        const err = new SMTPError(msg);
+        err.code = code;
+        err.smtp = smtp;
+        if (error) {
+            err.previous = error;
+        }
+        return err;
     }
-    return err;
 }
 
-var error = {
-    __proto__: null,
-    SMTPErrorStates: SMTPErrorStates,
-    makeSMTPError: makeSMTPError
-};
-
-class SMTPResponse {
+class SMTPResponseMonitor {
     constructor(stream, timeout, onerror) {
         let buffer = '';
         const notify = () => {
@@ -15164,11 +15156,11 @@ class SMTPResponse {
             }
         };
         const error = (err) => {
-            stream.emit('response', makeSMTPError('connection encountered an error', SMTPErrorStates.ERROR, err));
+            stream.emit('response', SMTPError.create('connection encountered an error', SMTPErrorStates.ERROR, err));
         };
         const timedout = (err) => {
             stream.end();
-            stream.emit('response', makeSMTPError('timedout while connecting to smtp server', SMTPErrorStates.TIMEDOUT, err));
+            stream.emit('response', SMTPError.create('timedout while connecting to smtp server', SMTPErrorStates.TIMEDOUT, err));
         };
         const watch = (data) => {
             if (data !== null) {
@@ -15177,10 +15169,10 @@ class SMTPResponse {
             }
         };
         const close = (err) => {
-            stream.emit('response', makeSMTPError('connection has closed', SMTPErrorStates.CONNECTIONCLOSED, err));
+            stream.emit('response', SMTPError.create('connection has closed', SMTPErrorStates.CONNECTIONCLOSED, err));
         };
         const end = (err) => {
-            stream.emit('response', makeSMTPError('connection has ended', SMTPErrorStates.CONNECTIONENDED, err));
+            stream.emit('response', SMTPError.create('connection has ended', SMTPErrorStates.CONNECTIONENDED, err));
         };
         this.stop = (err) => {
             stream.removeAllListeners('response');
@@ -15250,9 +15242,14 @@ const caller = (callback, ...args) => {
 };
 class SMTPConnection extends events.EventEmitter {
     /**
-     * SMTP class written using python's (2.7) smtplib.py as a base
+     * SMTP class written using python's (2.7) smtplib.py as a base.
+     *
+     * To target a Message Transfer Agent (MTA), omit all options.
+     *
+     * NOTE: `host` is trimmed before being used to establish a connection; however, the original untrimmed value will still be visible in configuration.
      */
     constructor({ timeout, host, user, password, domain, port, ssl, tls, logger, authentication, } = {}) {
+        var _a;
         super();
         this.timeout = DEFAULT_TIMEOUT;
         this.log = log;
@@ -15296,6 +15293,9 @@ class SMTPConnection extends events.EventEmitter {
         }
         this.port = port || (ssl ? SMTP_SSL_PORT : tls ? SMTP_TLS_PORT : SMTP_PORT);
         this.loggedin = user && password ? false : true;
+        if (!user && ((_a = password === null || password === void 0 ? void 0 : password.length) !== null && _a !== void 0 ? _a : 0) > 0) {
+            throw new Error('`password` cannot be set without `user`');
+        }
         // keep these strings hidden when quicky debugging/logging
         this.user = () => user;
         this.password = () => password;
@@ -15326,6 +15326,10 @@ class SMTPConnection extends events.EventEmitter {
         return this.loggedin;
     }
     /**
+     * Establish an SMTP connection.
+     *
+     * NOTE: `host` is trimmed before being used to establish a connection; however, the original untrimmed value will still be visible in configuration.
+     *
      * @public
      * @param {function(...*): void} callback function to call after response
      * @param {number} [port] the port to use for the connection
@@ -15351,7 +15355,7 @@ class SMTPConnection extends events.EventEmitter {
                     this.sock instanceof tls.TLSSocket &&
                     !this.sock.authorized) {
                     this.close(true);
-                    caller(callback, makeSMTPError('could not establish an ssl connection', SMTPErrorStates.CONNECTIONAUTH));
+                    caller(callback, SMTPError.create('could not establish an ssl connection', SMTPErrorStates.CONNECTIONAUTH));
                 }
                 else {
                     this._secure = true;
@@ -15369,7 +15373,7 @@ class SMTPConnection extends events.EventEmitter {
             else {
                 this.close(true);
                 this.log(err);
-                caller(callback, makeSMTPError('could not connect', SMTPErrorStates.COULDNOTCONNECT, err));
+                caller(callback, SMTPError.create('could not connect', SMTPErrorStates.COULDNOTCONNECT, err));
             }
         };
         const response = (err, msg) => {
@@ -15389,20 +15393,20 @@ class SMTPConnection extends events.EventEmitter {
             else {
                 this.log(`response (data): ${msg.data}`);
                 this.quit(() => {
-                    caller(callback, makeSMTPError('bad response on connection', SMTPErrorStates.BADRESPONSE, err, msg.data));
+                    caller(callback, SMTPError.create('bad response on connection', SMTPErrorStates.BADRESPONSE, err, msg.data));
                 });
             }
         };
         this._state = SMTPState.CONNECTING;
         this.log(`connecting: ${this.host}:${this.port}`);
         if (this.ssl) {
-            this.sock = tls.connect(this.port, this.host, typeof this.ssl === 'object' ? this.ssl : {}, connected);
+            this.sock = tls.connect(this.port, this.host.trim(), typeof this.ssl === 'object' ? this.ssl : {}, connected);
         }
         else {
             this.sock = new net.Socket();
-            this.sock.connect(this.port, this.host, connectedErrBack);
+            this.sock.connect(this.port, this.host.trim(), connectedErrBack);
         }
-        this.monitor = new SMTPResponse(this.sock, this.timeout, () => this.close(true));
+        this.monitor = new SMTPResponseMonitor(this.sock, this.timeout, () => this.close(true));
         this.sock.once('response', response);
         this.sock.once('error', response); // the socket could reset or throw, so let's handle it and let the user know
     }
@@ -15428,7 +15432,7 @@ class SMTPConnection extends events.EventEmitter {
         }
         else {
             this.close(true);
-            caller(callback, makeSMTPError('no connection has been established', SMTPErrorStates.NOCONNECTION));
+            caller(callback, SMTPError.create('no connection has been established', SMTPErrorStates.NOCONNECTION));
         }
     }
     /**
@@ -15455,7 +15459,7 @@ class SMTPConnection extends events.EventEmitter {
                 else {
                     const suffix = msg.message ? `: ${msg.message}` : '';
                     const errorMessage = `bad response on command '${cmd.split(' ')[0]}'${suffix}`;
-                    caller(callback, makeSMTPError(errorMessage, SMTPErrorStates.BADRESPONSE, null, msg.data));
+                    caller(callback, SMTPError.create(errorMessage, SMTPErrorStates.BADRESPONSE, null, msg.data));
                 }
             }
         };
@@ -15467,6 +15471,9 @@ class SMTPConnection extends events.EventEmitter {
      *
      * Hostname to send for self command defaults to the FQDN of the local
      * host.
+     *
+     * As this command was deprecated by rfc2821, it should only be used for compatibility with non-compliant servers.
+     * @see https://tools.ietf.org/html/rfc2821#appendix-F.3
      *
      * @param {function(...*): void} callback function to call after response
      * @param {string} domain the domain to associate with the 'helo' request
@@ -15506,7 +15513,7 @@ class SMTPConnection extends events.EventEmitter {
                 });
                 this._secure = true;
                 this.sock = secureSocket;
-                new SMTPResponse(this.sock, this.timeout, () => this.close(true));
+                new SMTPResponseMonitor(this.sock, this.timeout, () => this.close(true));
                 caller(callback, msg.data);
             }
         };
@@ -15758,7 +15765,7 @@ class SMTPConnection extends events.EventEmitter {
             const failed = (err, data) => {
                 this.loggedin = false;
                 this.close(); // if auth is bad, close the connection, it won't get better by itself
-                caller(callback, makeSMTPError('authorization.failed', SMTPErrorStates.AUTHFAILED, err, data));
+                caller(callback, SMTPError.create('authorization.failed', SMTPErrorStates.AUTHFAILED, err, data));
             };
             /**
              * @param {Error} err err
@@ -15824,7 +15831,7 @@ class SMTPConnection extends events.EventEmitter {
                     break;
                 default:
                     const msg = 'no form of authorization supported';
-                    const err = makeSMTPError(msg, SMTPErrorStates.AUTHNOTSUPPORTED, null, data);
+                    const err = SMTPError.create(msg, SMTPErrorStates.AUTHNOTSUPPORTED, null, data);
                     caller(callback, err);
                     break;
             }
@@ -15870,16 +15877,12 @@ class SMTPConnection extends events.EventEmitter {
     }
 }
 
-var smtp = {
-    __proto__: null,
-    AUTH_METHODS: AUTH_METHODS,
-    SMTPState: SMTPState,
-    DEFAULT_TIMEOUT: DEFAULT_TIMEOUT,
-    SMTPConnection: SMTPConnection
-};
-
-class Client {
+class SMTPClient {
     /**
+     * Create a standard SMTP client backed by a self-managed SMTP connection.
+     *
+     * NOTE: `host` is trimmed before being used to establish a connection; however, the original untrimmed value will still be visible in configuration.
+     *
      * @param {SMTPConnectionOptions} server smtp options
      */
     constructor(server) {
@@ -15888,12 +15891,11 @@ class Client {
         this.ready = false;
         this.timer = null;
         this.smtp = new SMTPConnection(server);
-        //this.smtp.debug(1);
     }
     /**
      * @public
      * @param {Message} msg the message to send
-     * @param {function(err: Error, msg: Message): void} callback sss
+     * @param {function(err: Error, msg: Message): void} callback .
      * @returns {void}
      */
     send(msg, callback) {
@@ -15908,24 +15910,9 @@ class Client {
         }
         message.valid((valid, why) => {
             if (valid) {
-                const stack = {
-                    message,
-                    to: addressparser_1(message.header.to),
-                    from: addressparser_1(message.header.from)[0].address,
-                    callback: (callback ||
-                        function () {
-                            /* ø */
-                        }).bind(this),
-                };
-                if (message.header.cc) {
-                    stack.to = stack.to.concat(addressparser_1(message.header.cc));
-                }
-                if (message.header.bcc) {
-                    stack.to = stack.to.concat(addressparser_1(message.header.bcc));
-                }
-                if (message.header['return-path'] &&
-                    addressparser_1(message.header['return-path']).length) {
-                    stack.returnPath = addressparser_1(message.header['return-path'])[0].address;
+                const stack = this.createMessageStack(message, callback);
+                if (stack.to.length === 0) {
+                    return callback(new Error('No recipients found in message'), msg);
                 }
                 this.queue.push(stack);
                 this._poll();
@@ -15934,6 +15921,42 @@ class Client {
                 callback(new Error(why), msg);
             }
         });
+    }
+    /**
+     * @public
+     * @description Converts a message to the raw object used by the internal stack.
+     * @param {Message} message message to convert
+     * @param {function(err: Error, msg: Message): void} callback errback
+     * @returns {MessageStack} raw message object
+     */
+    createMessageStack(message, callback = function () {
+        /* ø */
+    }) {
+        const [{ address: from }] = addressparser_1(message.header.from);
+        const stack = {
+            message,
+            to: [],
+            from,
+            callback: callback.bind(this),
+        };
+        if (typeof message.header.to === 'string') {
+            stack.to = addressparser_1(message.header.to);
+        }
+        if (typeof message.header.cc === 'string') {
+            stack.to = stack.to.concat(addressparser_1(message.header.cc).filter((x) => stack.to.some((y) => y.address === x.address) === false));
+        }
+        if (typeof message.header.bcc === 'string') {
+            stack.to = stack.to.concat(addressparser_1(message.header.bcc).filter((x) => stack.to.some((y) => y.address === x.address) === false));
+        }
+        if (typeof message.header['return-path'] === 'string' &&
+            message.header['return-path'].length > 0) {
+            const parsedReturnPath = addressparser_1(message.header['return-path']);
+            if (parsedReturnPath.length > 0) {
+                const [{ address: returnPathAddress }] = parsedReturnPath;
+                stack.returnPath = returnPathAddress;
+            }
+        }
+        return stack;
     }
     /**
      * @protected
@@ -16119,14 +16142,18 @@ class Client {
     }
 }
 
-var client = {
-    __proto__: null,
-    Client: Client
-};
-
-exports.client = client;
-exports.date = date;
-exports.error = error;
-exports.message = message;
-exports.smtp = smtp;
+exports.AUTH_METHODS = AUTH_METHODS;
+exports.BUFFERSIZE = BUFFERSIZE;
+exports.DEFAULT_TIMEOUT = DEFAULT_TIMEOUT;
+exports.MIME64CHUNK = MIME64CHUNK;
+exports.MIMECHUNK = MIMECHUNK;
+exports.Message = Message;
+exports.SMTPClient = SMTPClient;
+exports.SMTPConnection = SMTPConnection;
+exports.SMTPError = SMTPError;
+exports.SMTPErrorStates = SMTPErrorStates;
+exports.SMTPResponseMonitor = SMTPResponseMonitor;
+exports.SMTPState = SMTPState;
+exports.getRFC2822Date = getRFC2822Date;
+exports.getRFC2822DateUTC = getRFC2822DateUTC;
 //# sourceMappingURL=email.cjs.map
