@@ -1,8 +1,9 @@
-import { Socket } from 'net';
 import { createHmac } from 'crypto';
+import { EventEmitter } from 'events';
+import { Socket } from 'net';
 import { hostname } from 'os';
 import { connect, createSecureContext, TLSSocket } from 'tls';
-import { EventEmitter } from 'events';
+import type { ConnectionOptions } from 'tls';
 
 import { SMTPError, SMTPErrorStates } from './error';
 import { SMTPResponseMonitor } from './response';
@@ -66,11 +67,10 @@ const caller = (callback?: (...rest: any[]) => void, ...args: any[]) => {
 	}
 };
 
-export interface SMTPSocketOptions {
-	key: string;
-	ca: string;
-	cert: string;
-}
+export type SMTPSocketOptions = Omit<
+	ConnectionOptions,
+	'port' | 'host' | 'path' | 'socket' | 'timeout' | 'secureContext'
+>;
 
 export interface SMTPConnectionOptions {
 	timeout: number | null;
