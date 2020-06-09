@@ -525,7 +525,7 @@ class MessageStream extends Stream {
 				output_message(boundary, this.message.attachments, 0, close);
 			} else {
 				output_alternative(
-					// typescript bug; should narrow to { alternative: AlternateMessageAttachment }
+					// typescript bug; should narrow to { alternative: MessageAttachment }
 					this.message as Parameters<typeof output_alternative>[0],
 					() => output_message(boundary, this.message.attachments, 0, close)
 				);
