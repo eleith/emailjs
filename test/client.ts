@@ -85,9 +85,47 @@ test('client deduplicates recipients', (t) => {
 		cc: 'gannon@gmail.com',
 		bcc: 'gannon@gmail.com',
 	};
-	const stack = new SMTPClient({}).createMessageStack(new Message(msg));
+	const stack = client.createMessageStack(new Message(msg));
 	t.true(stack.to.length === 1);
 	t.is(stack.to[0].address, 'gannon@gmail.com');
+});
+
+test.cb('client accepts array recipients', (t) => {
+	const msg = new Message({
+		from: 'zelda@gmail.com',
+		to: ['gannon1@gmail.com'],
+		cc: ['gannon2@gmail.com'],
+		bcc: ['gannon3@gmail.com'],
+	});
+
+	msg.header.to = [msg.header.to as string];
+	msg.header.cc = [msg.header.cc as string];
+	msg.header.bcc = [msg.header.bcc as string];
+
+	msg.valid((isValid) => {
+		t.true(isValid);
+		const stack = client.createMessageStack(msg);
+		t.is(stack.to.length, 3);
+		t.deepEqual(
+			stack.to.map((x) => x.address),
+			['gannon1@gmail.com', 'gannon2@gmail.com', 'gannon3@gmail.com']
+		);
+		t.end();
+	});
+});
+
+test.cb('client accepts array sender', (t) => {
+	const msg = new Message({
+		from: ['zelda@gmail.com'],
+		to: ['gannon1@gmail.com'],
+	});
+
+	msg.header.from = [msg.header.from as string];
+
+	msg.valid((isValid) => {
+		t.true(isValid);
+		t.end();
+	});
 });
 
 test.cb('client rejects message without `from` header', (t) => {

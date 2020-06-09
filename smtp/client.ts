@@ -92,31 +92,32 @@ export class SMTPClient {
 			callback: callback.bind(this),
 		} as MessageStack;
 
-		if (typeof message.header.to === 'string') {
-			stack.to = addressparser(message.header.to);
+		const {
+			header: { to, cc, bcc, 'return-path': returnPath },
+		} = message;
+
+		if ((typeof to === 'string' || Array.isArray(to)) && to.length > 0) {
+			stack.to = addressparser(to);
 		}
 
-		if (typeof message.header.cc === 'string') {
+		if ((typeof cc === 'string' || Array.isArray(cc)) && cc.length > 0) {
 			stack.to = stack.to.concat(
-				addressparser(message.header.cc).filter(
+				addressparser(cc).filter(
 					(x) => stack.to.some((y) => y.address === x.address) === false
 				)
 			);
 		}
 
-		if (typeof message.header.bcc === 'string') {
+		if ((typeof bcc === 'string' || Array.isArray(bcc)) && bcc.length > 0) {
 			stack.to = stack.to.concat(
-				addressparser(message.header.bcc).filter(
+				addressparser(bcc).filter(
 					(x) => stack.to.some((y) => y.address === x.address) === false
 				)
 			);
 		}
 
-		if (
-			typeof message.header['return-path'] === 'string' &&
-			message.header['return-path'].length > 0
-		) {
-			const parsedReturnPath = addressparser(message.header['return-path']);
+		if (typeof returnPath === 'string' && returnPath.length > 0) {
+			const parsedReturnPath = addressparser(returnPath);
 			if (parsedReturnPath.length > 0) {
 				const [{ address: returnPathAddress }] = parsedReturnPath;
 				stack.returnPath = returnPathAddress;

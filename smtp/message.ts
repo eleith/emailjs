@@ -57,15 +57,21 @@ export interface MessageAttachment {
 }
 
 export interface MessageHeaders {
-	[index: string]: string | null | MessageAttachment | MessageAttachment[];
+	[index: string]:
+		| boolean
+		| string
+		| string[]
+		| null
+		| MessageAttachment
+		| MessageAttachment[];
 	'content-type': string;
 	'message-id': string;
 	'return-path': string | null;
 	date: string;
-	from: string;
-	to: string;
-	cc: string;
-	bcc: string;
+	from: string | string[];
+	to: string | string[];
+	cc: string | string[];
+	bcc: string | string[];
 	subject: string;
 	text: string | null;
 	attachment: MessageAttachment | MessageAttachment[];
@@ -85,7 +91,7 @@ function generate_boundary() {
 	return text;
 }
 
-function convertPersonToAddress(person: string) {
+function convertPersonToAddress(person: string | string[]) {
 	return addressparser(person)
 		.map(({ name, address }) => {
 			return name
@@ -147,7 +153,7 @@ export class Message {
 				this.header.subject = mimeWordEncode(headers.subject);
 			} else if (/^(cc|bcc|to|from)/i.test(header)) {
 				this.header[header.toLowerCase()] = convertPersonToAddress(
-					headers[header] as string
+					headers[header] as string | string[]
 				);
 			} else {
 				// allow any headers the user wants to set??
@@ -185,12 +191,18 @@ export class Message {
 	 * @returns {void}
 	 */
 	public valid(callback: (isValid: boolean, invalidReason?: string) => void) {
-		if (typeof this.header.from !== 'string') {
+		if (
+			typeof this.header.from !== 'string' &&
+			Array.isArray(this.header.from) === false
+		) {
 			callback(false, 'Message must have a `from` header');
 		} else if (
 			typeof this.header.to !== 'string' &&
+			Array.isArray(this.header.to) === false &&
 			typeof this.header.cc !== 'string' &&
-			typeof this.header.bcc !== 'string'
+			Array.isArray(this.header.cc) === false &&
+			typeof this.header.bcc !== 'string' &&
+			Array.isArray(this.header.bcc) === false
 		) {
 			callback(
 				false,
