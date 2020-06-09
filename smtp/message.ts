@@ -1,8 +1,8 @@
 import fs from 'fs';
-import type { PathLike } from 'fs';
+import type { PathLike, ReadStream } from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
-import type { Duplex } from 'stream';
+
 import addressparser from 'addressparser';
 import { mimeWordEncode } from 'emailjs-mime-codec';
 
@@ -32,31 +32,28 @@ export interface MessageAttachmentHeaders {
 	'content-disposition'?: string;
 }
 
-export interface AlternateMessageAttachment {
+export interface MessageAttachment {
 	[index: string]:
 		| string
 		| boolean
 		| MessageAttachment
 		| MessageAttachment[]
 		| MessageAttachmentHeaders
-		| Duplex
+		| ReadStream
 		| PathLike
 		| undefined;
 	name?: string;
 	headers?: MessageAttachmentHeaders;
-	inline: boolean;
+	inline?: boolean;
 	alternative?: MessageAttachment | boolean;
 	related?: MessageAttachment[];
-	data: string;
+	data?: string;
 	encoded?: boolean;
-	stream?: Duplex;
+	stream?: ReadStream;
 	path?: PathLike;
-}
-
-export interface MessageAttachment extends AlternateMessageAttachment {
-	type: string;
-	charset: string;
-	method: string;
+	type?: string;
+	charset?: string;
+	method?: string;
 }
 
 export interface MessageHeaders {
@@ -114,7 +111,7 @@ export class Message {
 	};
 	public readonly content: string = 'text/plain; charset=utf-8';
 	public readonly text?: string;
-	public alternative: AlternateMessageAttachment | null = null;
+	public alternative: MessageAttachment | null = null;
 
 	/**
 	 * Construct an rfc2822-compliant message object.
@@ -312,12 +309,10 @@ class MessageStream extends Stream {
 		};
 
 		/**
-		 * @param {MessageAttachment | AlternateMessageAttachment} [attachment] the attachment whose headers you would like to output
+		 * @param {MessageAttachment} [attachment] the attachment whose headers you would like to output
 		 * @returns {void}
 		 */
-		const output_attachment_headers = (
-			attachment: MessageAttachment | AlternateMessageAttachment
-		) => {
+		const output_attachment_headers = (attachment: MessageAttachment) => {
 			let data: string[] = [];
 			const headers: Partial<MessageHeaders> = {
 				'content-type':
@@ -369,7 +364,7 @@ class MessageStream extends Stream {
 		};
 
 		const output_file = (
-			attachment: MessageAttachment | AlternateMessageAttachment,
+			attachment: MessageAttachment,
 			next: (err: NodeJS.ErrnoException | null) => void
 		) => {
 			const chunk = MIME64CHUNK * 16;
@@ -431,7 +426,7 @@ class MessageStream extends Stream {
 		 * @returns {void}
 		 */
 		const output_stream = (
-			attachment: MessageAttachment | AlternateMessageAttachment,
+			attachment: MessageAttachment,
 			callback: () => void
 		) => {
 			if (attachment.stream != null && attachment.stream.readable) {
@@ -477,7 +472,7 @@ class MessageStream extends Stream {
 		};
 
 		const output_attachment = (
-			attachment: MessageAttachment | AlternateMessageAttachment,
+			attachment: MessageAttachment,
 			callback: () => void
 		) => {
 			const build = attachment.path
@@ -543,13 +538,13 @@ class MessageStream extends Stream {
 		 * @returns {void}
 		 */
 		const output_data = (
-			attachment: MessageAttachment | AlternateMessageAttachment,
+			attachment: MessageAttachment,
 			callback: () => void
 		) => {
 			output_base64(
 				attachment.encoded
-					? attachment.data
-					: Buffer.from(attachment.data).toString('base64'),
+					? attachment.data ?? ''
+					: Buffer.from(attachment.data ?? '').toString('base64'),
 				callback
 			);
 		};
@@ -580,7 +575,7 @@ class MessageStream extends Stream {
 		 * @returns {void}
 		 */
 		const output_related = (
-			message: AlternateMessageAttachment,
+			message: MessageAttachment,
 			callback: () => void
 		) => {
 			const boundary = generate_boundary();
@@ -601,7 +596,7 @@ class MessageStream extends Stream {
 		 * @returns {void}
 		 */
 		const output_alternative = (
-			message: Message & { alternative: AlternateMessageAttachment },
+			message: Message & { alternative: MessageAttachment },
 			callback: () => void
 		) => {
 			const boundary = generate_boundary();

@@ -163,10 +163,10 @@ test.cb('very large text data message', (t) => {
 		to: 'lizards@gmail.com',
 		text:
 			'hello friend if you are seeing this, you can not view html emails. it is attached inline.',
-		attachment: ({
+		attachment: {
 			data: text,
 			alternative: true,
-		} as unknown) as MessageAttachment,
+		},
 	};
 
 	send(
@@ -188,10 +188,10 @@ test.cb('html data message', (t) => {
 		subject: 'this is a test TEXT+HTML+DATA message from emailjs',
 		from: 'obama@gmail.com',
 		to: 'mitt@gmail.com',
-		attachment: ({
+		attachment: {
 			data: html,
 			alternative: true,
-		} as unknown) as MessageAttachment,
+		},
 	};
 
 	send(
@@ -213,10 +213,10 @@ test.cb('html file message', (t) => {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
 		from: 'thomas@gmail.com',
 		to: 'nikolas@gmail.com',
-		attachment: ({
+		attachment: {
 			path: join(__dirname, 'attachments/smtp.html'),
 			alternative: true,
-		} as unknown) as MessageAttachment,
+		},
 	};
 
 	send(
@@ -239,7 +239,7 @@ test.cb('html with image embed message', (t) => {
 		subject: 'this is a test TEXT+HTML+IMAGE message from emailjs',
 		from: 'ninja@gmail.com',
 		to: 'pirate@gmail.com',
-		attachment: ({
+		attachment: {
 			path: join(__dirname, 'attachments/smtp2.html'),
 			alternative: true,
 			related: [
@@ -250,7 +250,7 @@ test.cb('html with image embed message', (t) => {
 					headers: { 'Content-ID': '<smtp-diagram@local>' },
 				},
 			],
-		} as unknown) as MessageAttachment,
+		},
 	};
 
 	send(
@@ -412,14 +412,14 @@ test.cb('streams message', (t) => {
 		to: 'mit@gmail.com',
 		text:
 			'hello friend, i hope this message and streamed attachments finds you well.',
-		attachment: ([
+		attachment: [
 			{ stream, type: 'application/pdf', name: 'smtp-info.pdf' },
 			{
 				stream: stream2,
 				type: 'application/x-gzip',
 				name: 'postfix.source.2.8.7.tar.gz',
 			},
-		] as unknown) as MessageAttachment[],
+		],
 	};
 
 	stream.pause();
