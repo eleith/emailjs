@@ -134,7 +134,11 @@ function checkRanges(nr: number) {
  * byte value in hex. This function does not convert linebreaks etc. it
  * only escapes character sequences
  *
+ * NOTE: Encoding support depends on util.TextDecoder, which is severely limited
+ * prior to Node.js 13.
+ *
  * @see https://nodejs.org/api/util.html#util_whatwg_supported_encodings
+ * @see https://github.com/nodejs/node/issues/19214
  *
  * @param {string|Uint8Array} data Either a string or an Uint8Array
  * @param {string} encoding WHATWG supported encoding
@@ -168,8 +172,12 @@ export function mimeEncode(data: string | Uint8Array = '', encoding = 'utf-8') {
 /**
  * Encodes a string or an Uint8Array to an UTF-8 MIME Word
  *
+ * NOTE: Encoding support depends on util.TextDecoder, which is severely limited
+ * prior to Node.js 13.
+ *
  * @see https://tools.ietf.org/html/rfc2047
  * @see https://nodejs.org/api/util.html#util_whatwg_supported_encodings
+ * @see https://github.com/nodejs/node/issues/19214
  *
  * @param {string|Uint8Array} data String to be encoded
  * @param {'Q' | 'B'} mimeWordEncoding='Q' Encoding for the mime word, either Q or B

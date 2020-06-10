@@ -11,7 +11,7 @@ test('mimeEncode should encode trailing whitespace', (t) => {
 });
 
 test('mimeEncode should encode non UTF-8', (t) => {
-	t.is(mimeEncode(new Uint8Array([0xbd, 0xc5]), 'ks_c_5601-1987'), '=EC=8B=A0');
+	t.is(mimeEncode(new Uint8Array([0xbd, 0xc5]), 'utf-16be'), '=EB=B7=85');
 });
 
 test('mimeWordEncode should encode', (t) => {
@@ -20,11 +20,11 @@ test('mimeWordEncode should encode', (t) => {
 
 test('mimeWordEncode should QP-encode mime word', (t) => {
 	t.is(
-		'=?UTF-8?Q?J=C3=B5ge-va=C5=BD?=',
+		'=?UTF-8?Q?=E4=AB=B5=E6=9D=A5=E2=B5=B6=E6=87=9E?=',
 		mimeWordEncode(
 			new Uint8Array([0x4a, 0xf5, 0x67, 0x65, 0x2d, 0x76, 0x61, 0xde]),
 			'Q',
-			'iso-8859-13'
+			'utf-16be'
 		)
 	);
 });
