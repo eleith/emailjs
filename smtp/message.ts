@@ -4,9 +4,9 @@ import { hostname } from 'os';
 import { Stream } from 'stream';
 
 import addressparser from 'addressparser';
-import { mimeWordEncode } from 'emailjs-mime-codec';
 
 import { getRFC2822Date } from './date';
+import { mimeWordEncode } from './mime';
 
 const CRLF = '\r\n' as const;
 
@@ -150,7 +150,7 @@ export class Message {
 					this.attach(attachment);
 				}
 			} else if (header === 'subject') {
-				this.header.subject = mimeWordEncode(headers.subject);
+				this.header.subject = mimeWordEncode(headers.subject as string);
 			} else if (/^(cc|bcc|to|from)/i.test(header)) {
 				this.header[header.toLowerCase()] = convertPersonToAddress(
 					headers[header] as string | string[]

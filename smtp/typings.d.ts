@@ -5,10 +5,3 @@ declare module 'addressparser' {
 	) => { name: string; address: string }[];
 	export = addressparser;
 }
-
-declare module 'emailjs-mime-codec' {
-	var codec: {
-		mimeWordEncode: (word?: string) => string;
-	};
-	export = codec;
-}
