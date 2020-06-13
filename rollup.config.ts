@@ -25,6 +25,6 @@ export default {
 	plugins: [
 		resolve(),
 		commonjs(),
-		typescript({ removeComments: false, include: ['email.ts', 'smtp/*.ts'] }),
+		typescript({ removeComments: false, include: ['email.ts', 'smtp/**/*'] }),
 	],
 };
