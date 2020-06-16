@@ -1,7 +1,7 @@
-/* eslint-disable no-var */
 declare module 'addressparser' {
-	var addressparser: (
-		address?: string | string[]
+	const addressparser: (
+		address?: string | string[],
+		options?: { flatten: boolean }
 	) => { name: string; address: string }[];
 	export = addressparser;
 }
