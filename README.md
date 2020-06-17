@@ -20,15 +20,6 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 
 - auth access to an SMTP Server
 - if your service (ex: gmail) uses two-step authentication, use an application specific password
-- if you use typescript, add the following to `compilerOptions` in your `tsconfig.json`:
-```
-"typeRoots": [
-	"./node_modules/@types",
-	"./node_modules/emailjs/smtp"
-]
-```
-this will tell `tsc` where to find our custom types for `addressparser`.
-
 
 ## EXAMPLE USAGE - text only emails
 

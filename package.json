@@ -57,8 +57,5 @@
 		"test": "ava --serial",
 		"test-cjs": "npm run build && npm run test -- --node-arguments='--title=cjs'"
 	},
-	"license": "MIT",
-	"dependencies": {
-		"addressparser": "^1.0.1"
-	}
+	"license": "MIT"
 }
