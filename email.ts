@@ -1,3 +1,4 @@
+export * from './smtp/address';
 export * from './smtp/client';
 export * from './smtp/connection';
 export * from './smtp/date';
