@@ -1,4 +1,4 @@
-import addressparser from 'addressparser';
+import { addressparser } from './address';
 import { Message } from './message';
 import type { MessageAttachment, MessageHeaders } from './message';
 import { SMTPConnection, SMTPState } from './connection';
@@ -120,7 +120,7 @@ export class SMTPClient {
 			const parsedReturnPath = addressparser(returnPath);
 			if (parsedReturnPath.length > 0) {
 				const [{ address: returnPathAddress }] = parsedReturnPath;
-				stack.returnPath = returnPathAddress;
+				stack.returnPath = returnPathAddress as string;
 			}
 		}
 

@@ -3,8 +3,7 @@ import type { PathLike, ReadStream } from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
 
-import addressparser from 'addressparser';
-
+import { addressparser } from './address';
 import { getRFC2822Date } from './date';
 import { mimeWordEncode } from './mime';
 
