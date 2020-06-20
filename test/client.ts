@@ -21,7 +21,13 @@ const send = (
 	done: () => void
 ) => {
 	server.onData = (stream, _session, callback: () => void) => {
-		simpleParser(stream).then(verify).finally(done);
+		simpleParser(stream, {
+			skipHtmlToText: true,
+			skipTextToHtml: true,
+			skipImageLinks: true,
+		} as Record<string, unknown>)
+			.then(verify)
+			.finally(done);
 		stream.on('end', callback);
 	};
 	client.send(message, (err) => {

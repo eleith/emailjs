@@ -48,7 +48,11 @@ test.cb('no authentication (unencrypted) should succeed', (t) => {
 		authMethods: [],
 		authOptional: true,
 		onData(stream, _session, callback: () => void) {
-			simpleParser(stream)
+			simpleParser(stream, {
+				skipHtmlToText: true,
+				skipTextToHtml: true,
+				skipImageLinks: true,
+			} as Record<string, unknown>)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -80,7 +84,11 @@ test.cb('no authentication (encrypted) should succeed', (t) => {
 		authOptional: true,
 		secure: true,
 		onData(stream, _session, callback: () => void) {
-			simpleParser(stream)
+			simpleParser(stream, {
+				skipHtmlToText: true,
+				skipTextToHtml: true,
+				skipImageLinks: true,
+			} as Record<string, unknown>)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -112,7 +120,11 @@ test.cb('PLAIN authentication (unencrypted) should succeed', (t) => {
 		hideSTARTTLS: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
-			simpleParser(stream)
+			simpleParser(stream, {
+				skipHtmlToText: true,
+				skipTextToHtml: true,
+				skipImageLinks: true,
+			} as Record<string, unknown>)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -149,7 +161,11 @@ test.cb('PLAIN authentication (encrypted) should succeed', (t) => {
 		secure: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
-			simpleParser(stream)
+			simpleParser(stream, {
+				skipHtmlToText: true,
+				skipTextToHtml: true,
+				skipImageLinks: true,
+			} as Record<string, unknown>)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -187,7 +203,11 @@ test.cb('LOGIN authentication (unencrypted) should succeed', (t) => {
 		hideSTARTTLS: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
-			simpleParser(stream)
+			simpleParser(stream, {
+				skipHtmlToText: true,
+				skipTextToHtml: true,
+				skipImageLinks: true,
+			} as Record<string, unknown>)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -224,7 +244,11 @@ test.cb('LOGIN authentication (encrypted) should succeed', (t) => {
 		secure: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
-			simpleParser(stream)
+			simpleParser(stream, {
+				skipHtmlToText: true,
+				skipTextToHtml: true,
+				skipImageLinks: true,
+			} as Record<string, unknown>)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -262,7 +286,11 @@ test.cb('XOAUTH2 authentication (unencrypted) should succeed', (t) => {
 		hideSTARTTLS: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
-			simpleParser(stream)
+			simpleParser(stream, {
+				skipHtmlToText: true,
+				skipTextToHtml: true,
+				skipImageLinks: true,
+			} as Record<string, unknown>)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
@@ -299,7 +327,11 @@ test.cb('XOAUTH2 authentication (encrypted) should succeed', (t) => {
 		secure: true,
 		onAuth,
 		onData(stream, _session, callback: () => void) {
-			simpleParser(stream)
+			simpleParser(stream, {
+				skipHtmlToText: true,
+				skipTextToHtml: true,
+				skipImageLinks: true,
+			} as Record<string, unknown>)
 				.then((mail) => {
 					t.is(mail.text, msg.text + '\n\n\n');
 					t.is(mail.subject, msg.subject);
