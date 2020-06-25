@@ -1,7 +1,8 @@
 import fs from 'fs';
-import type { PathLike, ReadStream } from 'fs';
+import type { PathLike } from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
+import type { Readable } from 'stream';
 
 import { addressparser } from './address';
 import { getRFC2822Date } from './date';
@@ -38,7 +39,7 @@ export interface MessageAttachment {
 		| MessageAttachment
 		| MessageAttachment[]
 		| MessageAttachmentHeaders
-		| ReadStream
+		| Readable
 		| PathLike
 		| undefined;
 	name?: string;
@@ -48,7 +49,7 @@ export interface MessageAttachment {
 	related?: MessageAttachment[];
 	data?: string;
 	encoded?: boolean;
-	stream?: ReadStream;
+	stream?: Readable;
 	path?: PathLike;
 	type?: string;
 	charset?: string;
