@@ -80,7 +80,7 @@ function encodeBase64(data: Uint8Array) {
 function splitMimeEncodedString(str: string, maxlen = 12) {
 	const minWordLength = 12; // require at least 12 symbols to fit possible 4 octet UTF-8 sequences
 	const maxWordLength = Math.max(maxlen, minWordLength);
-	const lines = [];
+	const lines = [] as string[];
 
 	while (str.length) {
 		let curLine = str.substr(0, maxWordLength);
