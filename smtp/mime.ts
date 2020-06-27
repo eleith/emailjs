@@ -189,7 +189,7 @@ export function mimeWordEncode(
 	mimeWordEncoding: 'Q' | 'B' = 'Q',
 	encoding = 'utf-8'
 ) {
-	let parts = [];
+	let parts = [] as string[];
 	const decoder = new TextDecoder(encoding);
 	const str = typeof data === 'string' ? data : decoder.decode(data);
 
