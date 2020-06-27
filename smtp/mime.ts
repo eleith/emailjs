@@ -80,7 +80,7 @@ function encodeBase64(data: Uint8Array) {
 function splitMimeEncodedString(str: string, maxlen = 12) {
 	const minWordLength = 12; // require at least 12 symbols to fit possible 4 octet UTF-8 sequences
 	const maxWordLength = Math.max(maxlen, minWordLength);
-	const lines = [] as string[];
+	const lines: string[] = [];
 
 	while (str.length) {
 		let curLine = str.substr(0, maxWordLength);
@@ -189,7 +189,7 @@ export function mimeWordEncode(
 	mimeWordEncoding: 'Q' | 'B' = 'Q',
 	encoding = 'utf-8'
 ) {
-	let parts = [] as string[];
+	let parts: string[] = [];
 	const decoder = new TextDecoder(encoding);
 	const str = typeof data === 'string' ? data : decoder.decode(data);
 
