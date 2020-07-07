@@ -213,3 +213,26 @@ test('client constructor throws if `password` supplied without `user`', (t) => {
 			>)
 	);
 });
+
+test.cb('client supports greylisting', (t) => {
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		bcc: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+
+	const { onRcptTo } = server;
+	server.onRcptTo = () => {
+		const [connection] = server.connections;
+		connection.send(450, 'greylist');
+		server.onRcptTo = onRcptTo;
+	};
+
+	client.send(new Message(msg), (err) => {
+		if (err) {
+			t.fail();
+		}
+		t.end();
+	});
+});

@@ -386,6 +386,7 @@ export class SMTPConnection extends EventEmitter {
 			? [codes]
 			: [250];
 
+		let hasResentForGreylist = false;
 		const response = (
 			err: Error | null | undefined,
 			msg: { code: string | number; data: string; message: string }
@@ -393,8 +394,19 @@ export class SMTPConnection extends EventEmitter {
 			if (err) {
 				caller(callback, err);
 			} else {
-				if (codesArray.indexOf(Number(msg.code)) !== -1) {
+				const code = Number(msg.code);
+				if (codesArray.indexOf(code) !== -1) {
 					caller(callback, err, msg.data, msg.message);
+				} else if (
+					hasResentForGreylist === false &&
+					code === 450 &&
+					(msg.message?.toLowerCase().includes('greylist') ?? false)
+				) {
+					// wait 300ms, then try again
+					hasResentForGreylist = true;
+					setTimeout(() => {
+						this.send(cmd + CRLF, response);
+					}, 300);
 				} else {
 					const suffix = msg.message ? `: ${msg.message}` : '';
 					const errorMessage = `bad response on command '${
