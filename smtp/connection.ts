@@ -115,6 +115,11 @@ export class SMTPConnection extends EventEmitter {
 	protected tls: boolean | SMTPSocketOptions = false;
 	protected port: number;
 
+	private greylistResponseTracker = new WeakMap<
+		(...rest: any[]) => void,
+		boolean
+	>();
+
 	/**
 	 * SMTP class written using python's (2.7) smtplib.py as a base.
 	 *
@@ -386,7 +391,6 @@ export class SMTPConnection extends EventEmitter {
 			? [codes]
 			: [250];
 
-		let hasResentForGreylist = false;
 		const response = (
 			err: Error | null | undefined,
 			msg: { code: string | number; data: string; message: string }
@@ -398,12 +402,12 @@ export class SMTPConnection extends EventEmitter {
 				if (codesArray.indexOf(code) !== -1) {
 					caller(callback, err, msg.data, msg.message);
 				} else if (
-					hasResentForGreylist === false &&
+					this.greylistResponseTracker.get(response) === false &&
 					code === 450 &&
 					(msg.message?.toLowerCase().includes('greylist') ?? false)
 				) {
+					this.greylistResponseTracker.set(response, true);
 					// wait 300ms, then try again
-					hasResentForGreylist = true;
 					setTimeout(() => {
 						this.send(cmd + CRLF, response);
 					}, 300);
@@ -425,6 +429,7 @@ export class SMTPConnection extends EventEmitter {
 			}
 		};
 
+		this.greylistResponseTracker.set(response, false);
 		this.send(cmd + CRLF, response);
 	}
 
