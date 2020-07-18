@@ -403,9 +403,9 @@ export class SMTPConnection extends EventEmitter {
 				if (codesArray.indexOf(code) !== -1) {
 					caller(callback, err, msg.data, msg.message);
 				} else if (
-					this.greylistResponseTracker.get(response) === false &&
 					(code === 450 || code === 451) &&
-					msg.message.toLowerCase().includes('greylist')
+					msg.message.toLowerCase().includes('greylist') &&
+					this.greylistResponseTracker.get(response) === false
 				) {
 					this.greylistResponseTracker.set(response, true);
 					setTimeout(() => {
