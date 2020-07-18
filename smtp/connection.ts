@@ -35,6 +35,7 @@ const SMTP_PORT = 25 as const;
 const SMTP_SSL_PORT = 465 as const;
 const SMTP_TLS_PORT = 587 as const;
 const CRLF = '\r\n' as const;
+const GREYLIST_DELAY = 300 as const;
 
 let DEBUG: 0 | 1 = 0;
 
@@ -404,13 +405,12 @@ export class SMTPConnection extends EventEmitter {
 				} else if (
 					this.greylistResponseTracker.get(response) === false &&
 					code === 450 &&
-					(msg.message?.toLowerCase().includes('greylist') ?? false)
+					msg.message.toLowerCase().includes('greylist')
 				) {
 					this.greylistResponseTracker.set(response, true);
-					// wait 300ms, then try again
 					setTimeout(() => {
 						this.send(cmd + CRLF, response);
-					}, 300);
+					}, GREYLIST_DELAY);
 				} else {
 					const suffix = msg.message ? `: ${msg.message}` : '';
 					const errorMessage = `bad response on command '${
