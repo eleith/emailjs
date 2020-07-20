@@ -226,14 +226,14 @@ test.cb('client supports greylisting', (t) => {
 
 	const { onRcptTo } = server;
 	server.onRcptTo = (_address, _session, callback) => {
-		const [connection] = server.connections;
-		connection.send(450, 'greylist');
-
 		server.onRcptTo = (a, s, cb) => {
 			t.pass();
 			onRcptTo(a, s, cb);
 		};
-		callback();
+
+		const err = new Error('greylist');
+		((err as never) as { responseCode: number }).responseCode = 450;
+		callback(err);
 	};
 
 	client.send(new Message(msg), (err) => {
@@ -242,5 +242,51 @@ test.cb('client supports greylisting', (t) => {
 		}
 		t.pass();
 		t.end();
+	});
+});
+
+test.cb('client only responds once to greylisting', (t) => {
+	t.plan(3);
+
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		bcc: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+
+	const greylistPort = 2527;
+	const greylistClient = new SMTPClient({
+		port: greylistPort,
+		user: 'pooh',
+		password: 'honey',
+		ssl: true,
+	});
+	const greylistServer = new SMTPServer({
+		secure: true,
+		onRcptTo(_address, _session, callback) {
+			t.pass();
+			const err = new Error('greylist');
+			((err as never) as { responseCode: number }).responseCode = 450;
+			callback(err);
+		},
+		onAuth(auth, _session, callback) {
+			if (auth.username === 'pooh' && auth.password === 'honey') {
+				callback(null, { user: 'pooh' });
+			} else {
+				return callback(new Error('invalid user / pass'));
+			}
+		},
+	});
+
+	greylistServer.listen(greylistPort, () => {
+		greylistClient.send(new Message(msg), (err) => {
+			if (err) {
+				t.pass();
+				t.end();
+			} else {
+				t.fail();
+			}
+		});
 	});
 });
