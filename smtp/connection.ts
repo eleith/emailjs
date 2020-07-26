@@ -35,6 +35,7 @@ const SMTP_PORT = 25 as const;
 const SMTP_SSL_PORT = 465 as const;
 const SMTP_TLS_PORT = 587 as const;
 const CRLF = '\r\n' as const;
+const GREYLIST_DELAY = 300 as const;
 
 let DEBUG: 0 | 1 = 0;
 
@@ -114,6 +115,11 @@ export class SMTPConnection extends EventEmitter {
 	protected ssl: boolean | SMTPSocketOptions = false;
 	protected tls: boolean | SMTPSocketOptions = false;
 	protected port: number;
+
+	private greylistResponseTracker = new WeakMap<
+		(...rest: any[]) => void,
+		boolean
+	>();
 
 	/**
 	 * SMTP class written using python's (2.7) smtplib.py as a base.
@@ -393,8 +399,18 @@ export class SMTPConnection extends EventEmitter {
 			if (err) {
 				caller(callback, err);
 			} else {
-				if (codesArray.indexOf(Number(msg.code)) !== -1) {
+				const code = Number(msg.code);
+				if (codesArray.indexOf(code) !== -1) {
 					caller(callback, err, msg.data, msg.message);
+				} else if (
+					(code === 450 || code === 451) &&
+					msg.message.toLowerCase().includes('greylist') &&
+					this.greylistResponseTracker.get(response) === false
+				) {
+					this.greylistResponseTracker.set(response, true);
+					setTimeout(() => {
+						this.send(cmd + CRLF, response);
+					}, GREYLIST_DELAY);
 				} else {
 					const suffix = msg.message ? `: ${msg.message}` : '';
 					const errorMessage = `bad response on command '${
@@ -413,6 +429,7 @@ export class SMTPConnection extends EventEmitter {
 			}
 		};
 
+		this.greylistResponseTracker.set(response, false);
 		this.send(cmd + CRLF, response);
 	}
 

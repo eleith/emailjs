@@ -15,6 +15,7 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 - attachments can be added as strings, streams or file paths
 - supports utf-8 headers and body
 - built-in type declarations
+- automatically handles [greylisting](http://projects.puremagic.com/greylisting/whitepaper.html)
 
 ## REQUIRES
 
