@@ -1,4 +1,5 @@
 import { promisify } from 'util';
+
 import test, { CbExecutionContext } from 'ava';
 import { simpleParser } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
@@ -7,14 +8,14 @@ import { DEFAULT_TIMEOUT, SMTPClient, Message } from '../email';
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 
-let port = 2000;
-let greylistPort = 3000;
+let port = 3000;
+let greylistPort = 4000;
 
-const send = (
+function send(
 	t: CbExecutionContext,
 	message: Message,
 	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void
-) => {
+) {
 	const server = new SMTPServer({
 		secure: true,
 		onAuth(auth, _session, callback) {
@@ -24,13 +25,14 @@ const send = (
 				return callback(new Error('invalid user / pass'));
 			}
 		},
-		onData(stream, _session, callback: () => void) {
-			simpleParser(stream, {
+		async onData(stream, _session, callback: () => void) {
+			const mail = await simpleParser(stream, {
 				skipHtmlToText: true,
 				skipTextToHtml: true,
 				skipImageLinks: true,
-			} as Record<string, unknown>).then(verify);
-			stream.on('end', callback);
+			} as Record<string, unknown>);
+			verify(mail);
+			callback();
 		},
 	});
 
@@ -46,7 +48,7 @@ const send = (
 			t.end(err);
 		});
 	});
-};
+}
 
 test('client invokes callback exactly once for invalid connection', async (t) => {
 	t.plan(1);

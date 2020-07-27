@@ -1,5 +1,4 @@
 import test from 'ava';
-
 import { getRFC2822Date, getRFC2822DateUTC } from '../email';
 
 const toD_utc = (dt: number) => getRFC2822DateUTC(new Date(dt));
