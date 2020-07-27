@@ -350,7 +350,7 @@ export class SMTPConnection extends EventEmitter {
 	 * @returns {void}
 	 */
 	public send(str: string, callback: (...args: any[]) => void) {
-		if (this.sock && this._state === SMTPState.CONNECTED) {
+		if (this.sock != null && this._state === SMTPState.CONNECTED) {
 			this.log(str);
 
 			this.sock.once('response', (err, msg) => {
@@ -361,7 +361,9 @@ export class SMTPConnection extends EventEmitter {
 					caller(callback, null, msg);
 				}
 			});
-			this.sock.write(str);
+			if (this.sock.writable) {
+				this.sock.write(str);
+			}
 		} else {
 			this.close(true);
 			caller(
