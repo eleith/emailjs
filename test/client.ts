@@ -1,13 +1,12 @@
 import { promisify } from 'util';
 
-import test, { CbExecutionContext } from 'ava';
-import { simpleParser } from 'mailparser';
+import test from 'ava';
+import { simpleParser, ParsedMail } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
-import { DEFAULT_TIMEOUT, SMTPClient, Message } from '../email';
+import { DEFAULT_TIMEOUT, SMTPClient, Message, MessageHeaders } from '../email';
 
-type UnPromisify<T> = T extends Promise<infer U> ? U : T;
-
+const parseMap = new Map<string, ParsedMail>();
 const port = 3000;
 let greylistPort = 4000;
 
@@ -26,36 +25,27 @@ const server = new SMTPServer({
 			return callback(new Error('invalid user / pass'));
 		}
 	},
-});
-
-const sendAsync = promisify(client.send.bind(client));
-const { onData } = server;
-
-function send(
-	t: CbExecutionContext,
-	message: Message,
-	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void
-) {
-	server.onData = async (stream, _session, callback: () => void) => {
+	async onData(stream, _session, callback: () => void) {
 		const mail = await simpleParser(stream, {
 			skipHtmlToText: true,
 			skipTextToHtml: true,
 			skipImageLinks: true,
 		} as Record<string, unknown>);
-		verify(mail);
+
+		parseMap.set(mail.subject as string, mail);
 		callback();
-	};
-	client.send(message, (err) => {
-		t.end(err);
-	});
+	},
+});
+
+const clientSendAsync = promisify(client.send.bind(client));
+
+async function send(headers: Partial<MessageHeaders>) {
+	await clientSendAsync(new Message(headers));
+	return parseMap.get(headers.subject as string) as ParsedMail;
 }
 
 test.before(async (t) => {
 	server.listen(port, t.pass);
-});
-
-test.afterEach(async () => {
-	server.onData = onData;
 });
 
 test('client invokes callback exactly once for invalid connection', async (t) => {
@@ -104,7 +94,7 @@ test('client deduplicates recipients', async (t) => {
 	t.is(stack.to[0].address, 'gannon@gmail.com');
 });
 
-test.cb('client accepts array recipients', (t) => {
+test('client accepts array recipients', async (t) => {
 	const msg = new Message({
 		from: 'zelda@gmail.com',
 		to: ['gannon1@gmail.com'],
@@ -116,19 +106,18 @@ test.cb('client accepts array recipients', (t) => {
 	msg.header.cc = [msg.header.cc as string];
 	msg.header.bcc = [msg.header.bcc as string];
 
-	msg.valid((isValid) => {
-		t.true(isValid);
-		const stack = client.createMessageStack(msg);
-		t.is(stack.to.length, 3);
-		t.deepEqual(
-			stack.to.map((x) => x.address),
-			['gannon1@gmail.com', 'gannon2@gmail.com', 'gannon3@gmail.com']
-		);
-		t.end();
-	});
+	const isValid = await new Promise((r) => msg.valid(r));
+	const stack = client.createMessageStack(msg);
+
+	t.true(isValid);
+	t.is(stack.to.length, 3);
+	t.deepEqual(
+		stack.to.map((x) => x.address),
+		['gannon1@gmail.com', 'gannon2@gmail.com', 'gannon3@gmail.com']
+	);
 });
 
-test.cb('client accepts array sender', (t) => {
+test('client accepts array sender', async (t) => {
 	const msg = new Message({
 		from: ['zelda@gmail.com'],
 		to: ['gannon1@gmail.com'],
@@ -136,10 +125,8 @@ test.cb('client accepts array sender', (t) => {
 
 	msg.header.from = [msg.header.from as string];
 
-	msg.valid((isValid) => {
-		t.true(isValid);
-		t.end();
-	});
+	const isValid = await new Promise((r) => msg.valid(r));
+	t.true(isValid);
 });
 
 test('client rejects message without `from` header', async (t) => {
@@ -147,7 +134,9 @@ test('client rejects message without `from` header', async (t) => {
 		subject: 'this is a test TEXT message from emailjs',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	const { message: error } = await t.throwsAsync(sendAsync(new Message(msg)));
+	const { message: error } = await t.throwsAsync(
+		clientSendAsync(new Message(msg))
+	);
 	t.is(error, 'Message must have a `from` header');
 });
 
@@ -157,11 +146,13 @@ test('client rejects message without `to`, `cc`, or `bcc` header', async (t) => 
 		from: 'piglet@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	const { message: error } = await t.throwsAsync(sendAsync(new Message(msg)));
+	const { message: error } = await t.throwsAsync(
+		clientSendAsync(new Message(msg))
+	);
 	t.is(error, 'Message must have at least one `to`, `cc`, or `bcc` header');
 });
 
-test.cb('client allows message with only `cc` recipient header', (t) => {
+test('client allows message with only `cc` recipient header', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'piglet@gmail.com',
@@ -169,15 +160,14 @@ test.cb('client allows message with only `cc` recipient header', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.text, msg.text + '\n\n\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.cc?.text, msg.cc);
-	});
+	const mail = await send(msg);
+	t.is(mail.text, msg.text + '\n\n\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.cc?.text, msg.cc);
 });
 
-test.cb('client allows message with only `bcc` recipient header', (t) => {
+test('client allows message with only `bcc` recipient header', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'piglet@gmail.com',
@@ -185,12 +175,11 @@ test.cb('client allows message with only `bcc` recipient header', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.text, msg.text + '\n\n\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.bcc, undefined);
-	});
+	const mail = await send(msg);
+	t.is(mail.text, msg.text + '\n\n\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.bcc, undefined);
 });
 
 test('client constructor throws if `password` supplied without `user`', async (t) => {
@@ -205,7 +194,7 @@ test('client constructor throws if `password` supplied without `user`', async (t
 	);
 });
 
-test.cb('client supports greylisting', (t) => {
+test('client supports greylisting', async (t) => {
 	t.plan(3);
 
 	const msg = {
@@ -246,25 +235,29 @@ test.cb('client supports greylisting', (t) => {
 	};
 
 	const p = greylistPort++;
-	greylistServer.listen(p, () => {
-		new SMTPClient({
-			port: p,
-			user: 'pooh',
-			password: 'honey',
-			ssl: true,
-		}).send(new Message(msg), (err) => {
-			greylistServer.close();
-			if (err) {
-				t.fail();
-			}
-			t.pass();
-			t.end();
-		});
-	});
+	await t.notThrowsAsync(
+		new Promise((resolve, reject) => {
+			greylistServer.listen(p, () => {
+				new SMTPClient({
+					port: p,
+					user: 'pooh',
+					password: 'honey',
+					ssl: true,
+				}).send(new Message(msg), (err) => {
+					greylistServer.close();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
+				});
+			});
+		})
+	);
 });
 
-test.cb('client only responds once to greylisting', (t) => {
-	t.plan(3);
+test('client only responds once to greylisting', async (t) => {
+	t.plan(4);
 
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
@@ -291,20 +284,24 @@ test.cb('client only responds once to greylisting', (t) => {
 	});
 
 	const p = greylistPort++;
-	greylistServer.listen(p, () => {
-		new SMTPClient({
-			port: p,
-			user: 'pooh',
-			password: 'honey',
-			ssl: true,
-		}).send(new Message(msg), (err) => {
-			greylistServer.close();
-			if (err) {
-				t.pass();
-				t.end();
-			} else {
-				t.fail();
-			}
-		});
-	});
+	const { message: error } = await t.throwsAsync(
+		new Promise((resolve, reject) => {
+			greylistServer.listen(p, () => {
+				new SMTPClient({
+					port: p,
+					user: 'pooh',
+					password: 'honey',
+					ssl: true,
+				}).send(new Message(msg), (err) => {
+					greylistServer.close();
+					if (err) {
+						reject(err);
+					} else {
+						resolve();
+					}
+				});
+			});
+		})
+	);
+	t.is(error, "bad response on command 'RCPT': greylist");
 });

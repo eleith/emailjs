@@ -1,15 +1,16 @@
 import { readFileSync, createReadStream } from 'fs';
 import { join } from 'path';
 
-import test, { CbExecutionContext } from 'ava';
+import test from 'ava';
 import { simpleParser } from 'mailparser';
+import type { ParsedMail } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
 import { SMTPClient, Message, MessageAttachment } from '../email';
-
-type UnPromisify<T> = T extends Promise<infer U> ? U : T;
+import { MessageHeaders } from '../smtp/message';
 
 const port = 5000;
+const parseMap = new Map<string, ParsedMail>();
 
 const client = new SMTPClient({
 	port,
@@ -26,26 +27,52 @@ const server = new SMTPServer({
 			return callback(new Error('invalid user / pass'));
 		}
 	},
-});
-
-const { onData } = server;
-
-function send(
-	t: CbExecutionContext,
-	message: Message,
-	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void
-) {
-	server.onData = async (stream, _session, callback: () => void) => {
+	async onData(stream, _session, callback: () => void) {
 		const mail = await simpleParser(stream, {
 			skipHtmlToText: true,
 			skipTextToHtml: true,
 			skipImageLinks: true,
 		} as Record<string, unknown>);
-		verify(mail);
+
+		parseMap.set(mail.subject as string, mail);
 		callback();
-	};
-	client.send(message, (err) => {
-		t.end(err);
+	},
+});
+
+function send(headers: Partial<MessageHeaders>) {
+	return new Promise<ParsedMail>((resolve, reject) => {
+		client.send(new Message(headers), (err) => {
+			if (err) {
+				reject(err);
+			} else {
+				resolve(parseMap.get(headers.subject as string));
+			}
+		});
+	});
+}
+
+function validate(headers: Partial<MessageHeaders>) {
+	const { to, cc, bcc } = headers;
+	const msg = new Message(headers);
+
+	if (Array.isArray(to)) {
+		msg.header.to = to;
+	}
+	if (Array.isArray(cc)) {
+		msg.header.to = to;
+	}
+	if (Array.isArray(bcc)) {
+		msg.header.to = to;
+	}
+
+	return new Promise((resolve, reject) => {
+		msg.valid((isValid, reason) => {
+			if (isValid) {
+				resolve(isValid);
+			} else {
+				reject(new Error(reason));
+			}
+		});
 	});
 }
 
@@ -53,11 +80,7 @@ test.before(async (t) => {
 	server.listen(port, t.pass);
 });
 
-test.afterEach(async () => {
-	server.onData = onData;
-});
-
-test.cb('simple text message', (t) => {
+test('simple text message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'zelda@gmail.com',
@@ -68,16 +91,15 @@ test.cb('simple text message', (t) => {
 		'message-id': 'this is a special id',
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.text, msg.text + '\n\n\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-		t.is(mail.messageId, '<' + msg['message-id'] + '>');
-	});
+	const mail = await send(msg);
+	t.is(mail.text, msg.text + '\n\n\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
+	t.is(mail.messageId, '<' + msg['message-id'] + '>');
 });
 
-test.cb('null text message', (t) => {
+test('null text message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'zelda@gmail.com',
@@ -86,12 +108,11 @@ test.cb('null text message', (t) => {
 		'message-id': 'this is a special id',
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.text, '\n\n\n');
-	});
+	const mail = await send(msg);
+	t.is(mail.text, '\n\n\n');
 });
 
-test.cb('empty text message', (t) => {
+test('empty text message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'zelda@gmail.com',
@@ -100,12 +121,11 @@ test.cb('empty text message', (t) => {
 		'message-id': 'this is a special id',
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.text, '\n\n\n');
-	});
+	const mail = await send(msg);
+	t.is(mail.text, '\n\n\n');
 });
 
-test.cb('simple unicode text message', (t) => {
+test('simple unicode text message', async (t) => {
 	const msg = {
 		subject: 'this ✓ is a test ✓ TEXT message from emailjs',
 		from: 'zelda✓ <zelda@gmail.com>',
@@ -113,15 +133,14 @@ test.cb('simple unicode text message', (t) => {
 		text: 'hello ✓ friend, i hope this message finds you well.',
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.text, msg.text + '\n\n\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(mail.text, msg.text + '\n\n\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('very large text message', (t) => {
+test('very large text message', async (t) => {
 	// thanks to jart+loberstech for this one!
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
@@ -130,15 +149,14 @@ test.cb('very large text message', (t) => {
 		text: readFileSync(join(__dirname, 'attachments/smtp.txt'), 'utf-8'),
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.text, msg.text.replace(/\r/g, '') + '\n\n\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(mail.text, msg.text.replace(/\r/g, '') + '\n\n\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('very large text data message', (t) => {
+test('very large text data message', async (t) => {
 	const text =
 		'<html><body><pre>' +
 		readFileSync(join(__dirname, 'attachments/smtp.txt'), 'utf-8') +
@@ -156,16 +174,15 @@ test.cb('very large text data message', (t) => {
 		},
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.html, text.replace(/\r/g, ''));
-		t.is(mail.text, msg.text + '\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(mail.html, text.replace(/\r/g, ''));
+	t.is(mail.text, msg.text + '\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('html data message', (t) => {
+test('html data message', async (t) => {
 	const html = readFileSync(join(__dirname, 'attachments/smtp.html'), 'utf-8');
 	const msg = {
 		subject: 'this is a test TEXT+HTML+DATA message from emailjs',
@@ -177,16 +194,15 @@ test.cb('html data message', (t) => {
 		},
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.html, html.replace(/\r/g, ''));
-		t.is(mail.text, '\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(mail.html, html.replace(/\r/g, ''));
+	t.is(mail.text, '\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('html file message', (t) => {
+test('html file message', async (t) => {
 	const html = readFileSync(join(__dirname, 'attachments/smtp.html'), 'utf-8');
 	const msg = {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
@@ -198,16 +214,15 @@ test.cb('html file message', (t) => {
 		},
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.html, html.replace(/\r/g, ''));
-		t.is(mail.text, '\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(mail.html, html.replace(/\r/g, ''));
+	t.is(mail.text, '\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('html with image embed message', (t) => {
+test('html with image embed message', async (t) => {
 	const html = readFileSync(join(__dirname, 'attachments/smtp2.html'), 'utf-8');
 	const image = readFileSync(join(__dirname, 'attachments/smtp.gif'));
 	const msg = {
@@ -228,20 +243,19 @@ test.cb('html with image embed message', (t) => {
 		},
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(
-			mail.attachments[0].content.toString('base64'),
-			image.toString('base64')
-		);
-		t.is(mail.html, html.replace(/\r/g, ''));
-		t.is(mail.text, '\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(
+		mail.attachments[0].content.toString('base64'),
+		image.toString('base64')
+	);
+	t.is(mail.html, html.replace(/\r/g, ''));
+	t.is(mail.text, '\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('html data and attachment message', (t) => {
+test('html data and attachment message', async (t) => {
 	const html = readFileSync(join(__dirname, 'attachments/smtp.html'), 'utf-8');
 	const msg = {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
@@ -253,16 +267,15 @@ test.cb('html data and attachment message', (t) => {
 		] as MessageAttachment[],
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(mail.html, html.replace(/\r/g, ''));
-		t.is(mail.text, '\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(mail.html, html.replace(/\r/g, ''));
+	t.is(mail.text, '\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('attachment message', (t) => {
+test('attachment message', async (t) => {
 	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
 	const msg = {
 		subject: 'this is a test TEXT+ATTACHMENT message from emailjs',
@@ -276,19 +289,15 @@ test.cb('attachment message', (t) => {
 		} as MessageAttachment,
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(
-			mail.attachments[0].content.toString('base64'),
-			pdf.toString('base64')
-		);
-		t.is(mail.text, msg.text + '\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
+	t.is(mail.text, msg.text + '\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('attachment sent with unicode filename message', (t) => {
+test('attachment sent with unicode filename message', async (t) => {
 	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
 	const msg = {
 		subject: 'this is a test TEXT+ATTACHMENT message from emailjs',
@@ -302,20 +311,16 @@ test.cb('attachment sent with unicode filename message', (t) => {
 		} as MessageAttachment,
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(
-			mail.attachments[0].content.toString('base64'),
-			pdf.toString('base64')
-		);
-		t.is(mail.attachments[0].filename, 'smtp-✓-info.pdf');
-		t.is(mail.text, msg.text + '\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
+	t.is(mail.attachments[0].filename, 'smtp-✓-info.pdf');
+	t.is(mail.text, msg.text + '\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('attachments message', (t) => {
+test('attachments message', async (t) => {
 	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
 	const tar = readFileSync(join(__dirname, 'attachments/postfix-2.8.7.tar.gz'));
 	const msg = {
@@ -337,23 +342,16 @@ test.cb('attachments message', (t) => {
 		] as MessageAttachment[],
 	};
 
-	send(t, new Message(msg), (mail) => {
-		t.is(
-			mail.attachments[0].content.toString('base64'),
-			pdf.toString('base64')
-		);
-		t.is(
-			mail.attachments[1].content.toString('base64'),
-			tar.toString('base64')
-		);
-		t.is(mail.text, msg.text + '\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
+	t.is(mail.attachments[1].content.toString('base64'), tar.toString('base64'));
+	t.is(mail.text, msg.text + '\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('streams message', (t) => {
+test('streams message', async (t) => {
 	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
 	const tar = readFileSync(join(__dirname, 'attachments/postfix-2.8.7.tar.gz'));
 	const stream = createReadStream(join(__dirname, 'attachments/smtp.pdf'));
@@ -380,131 +378,79 @@ test.cb('streams message', (t) => {
 	stream.pause();
 	stream2.pause();
 
-	send(t, new Message(msg), (mail) => {
-		t.is(
-			mail.attachments[0].content.toString('base64'),
-			pdf.toString('base64')
-		);
-		t.is(
-			mail.attachments[1].content.toString('base64'),
-			tar.toString('base64')
-		);
-		t.is(mail.text, msg.text + '\n');
-		t.is(mail.subject, msg.subject);
-		t.is(mail.from?.text, msg.from);
-		t.is(mail.to?.text, msg.to);
-	});
+	const mail = await send(msg);
+	t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
+	t.is(mail.attachments[1].content.toString('base64'), tar.toString('base64'));
+	t.is(mail.text, msg.text + '\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test.cb('message validation fails without `from` header', (t) => {
-	const msg = new Message({});
-	msg.valid((isValid, reason) => {
-		t.false(isValid);
-		t.is(reason, 'Message must have a `from` header');
-		t.end();
-	});
+test('message validation fails without `from` header', async (t) => {
+	const { message: error } = await t.throwsAsync(validate({}));
+	t.is(error, 'Message must have a `from` header');
 });
 
-test.cb('message validation fails without `to`, `cc`, or `bcc` header', (t) => {
-	const msg = new Message({
+test('message validation fails without `to`, `cc`, or `bcc` header', async (t) => {
+	const { message: error } = await t.throwsAsync(
+		validate({
+			from: 'piglet@gmail.com',
+		})
+	);
+	t.is(error, 'Message must have at least one `to`, `cc`, or `bcc` header');
+});
+
+test('message validation succeeds with only `to` recipient header (string)', async (t) => {
+	const isValid = validate({
 		from: 'piglet@gmail.com',
+		to: 'pooh@gmail.com',
 	});
-	msg.valid((isValid, reason) => {
-		t.false(isValid);
-		t.is(reason, 'Message must have at least one `to`, `cc`, or `bcc` header');
-		t.end();
-	});
+	await t.notThrowsAsync(isValid);
+	t.true(await isValid);
 });
 
-test.cb(
-	'message validation succeeds with only `to` recipient header (string)',
-	(t) => {
-		const msg = new Message({
-			from: 'piglet@gmail.com',
-			to: 'pooh@gmail.com',
-		});
-		msg.valid((isValid) => {
-			t.true(isValid);
-			t.end();
-		});
-	}
-);
+test('message validation succeeds with only `to` recipient header (array)', async (t) => {
+	const isValid = validate({
+		from: 'piglet@gmail.com',
+		to: ['pooh@gmail.com'],
+	});
+	await t.notThrowsAsync(isValid);
+	t.true(await isValid);
+});
 
-test.cb(
-	'message validation succeeds with only `to` recipient header (array)',
-	(t) => {
-		const msg = new Message({
-			from: 'piglet@gmail.com',
-			to: ['pooh@gmail.com'],
-		});
-		msg.header.to = [msg.header.to as string];
-		msg.header.cc = [];
-		msg.header.bcc = [];
-		msg.valid((isValid) => {
-			t.true(isValid);
-			t.end();
-		});
-	}
-);
+test('message validation succeeds with only `cc` recipient header (string)', async (t) => {
+	const isValid = validate({
+		from: 'piglet@gmail.com',
+		cc: 'pooh@gmail.com',
+	});
+	await t.notThrowsAsync(isValid);
+	t.true(await isValid);
+});
 
-test.cb(
-	'message validation succeeds with only `cc` recipient header (string)',
-	(t) => {
-		const msg = new Message({
-			from: 'piglet@gmail.com',
-			cc: 'pooh@gmail.com',
-		});
-		msg.valid((isValid) => {
-			t.true(isValid);
-			t.end();
-		});
-	}
-);
+test('message validation succeeds with only `cc` recipient header (array)', async (t) => {
+	const isValid = validate({
+		from: 'piglet@gmail.com',
+		cc: ['pooh@gmail.com'],
+	});
+	await t.notThrowsAsync(isValid);
+	t.true(await isValid);
+});
 
-test.cb(
-	'message validation succeeds with only `cc` recipient header (array)',
-	(t) => {
-		const msg = new Message({
-			from: 'piglet@gmail.com',
-			cc: ['pooh@gmail.com'],
-		});
-		msg.header.to = [];
-		msg.header.cc = [msg.header.cc as string];
-		msg.header.bcc = [];
-		msg.valid((isValid) => {
-			t.true(isValid);
-			t.end();
-		});
-	}
-);
+test('message validation succeeds with only `bcc` recipient header (string)', async (t) => {
+	const isValid = validate({
+		from: 'piglet@gmail.com',
+		bcc: 'pooh@gmail.com',
+	});
+	await t.notThrowsAsync(isValid);
+	t.true(await isValid);
+});
 
-test.cb(
-	'message validation succeeds with only `bcc` recipient header (string)',
-	(t) => {
-		const msg = new Message({
-			from: 'piglet@gmail.com',
-			bcc: 'pooh@gmail.com',
-		});
-		msg.valid((isValid) => {
-			t.true(isValid);
-			t.end();
-		});
-	}
-);
-
-test.cb(
-	'message validation succeeds with only `bcc` recipient header (array)',
-	(t) => {
-		const msg = new Message({
-			from: 'piglet@gmail.com',
-			bcc: ['pooh@gmail.com'],
-		});
-		msg.header.to = [];
-		msg.header.cc = [];
-		msg.header.bcc = [msg.header.bcc as string];
-		msg.valid((isValid) => {
-			t.true(isValid);
-			t.end();
-		});
-	}
-);
+test('message validation succeeds with only `bcc` recipient header (array)', async (t) => {
+	const isValid = validate({
+		from: 'piglet@gmail.com',
+		bcc: ['pooh@gmail.com'],
+	});
+	await t.notThrowsAsync(isValid);
+	t.true(await isValid);
+});
