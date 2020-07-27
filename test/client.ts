@@ -52,6 +52,9 @@ async function send(headers: Partial<MessageHeaders>) {
 test.before(async (t) => {
 	server.listen(port, t.pass);
 });
+test.after(async (t) => {
+	server.close(t.pass);
+});
 
 test('client invokes callback exactly once for invalid connection', async (t) => {
 	t.plan(1);

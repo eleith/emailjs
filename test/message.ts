@@ -79,6 +79,9 @@ function validate(headers: Partial<MessageHeaders>) {
 test.before(async (t) => {
 	server.listen(port, t.pass);
 });
+test.after(async (t) => {
+	server.close(t.pass);
+});
 
 test('simple text message', async (t) => {
 	const msg = {
