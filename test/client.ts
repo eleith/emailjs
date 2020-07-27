@@ -1,3 +1,4 @@
+import { promisify } from 'util';
 import test, { CbExecutionContext } from 'ava';
 import { simpleParser } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
@@ -47,19 +48,21 @@ const send = (
 	});
 };
 
-test.cb('client invokes callback exactly once for invalid connection', (t) => {
+test('client invokes callback exactly once for invalid connection', async (t) => {
 	t.plan(1);
-	const client = new SMTPClient({ host: 'bar.baz' });
 	const msg = {
 		from: 'foo@bar.baz',
 		to: 'foo@bar.baz',
 		subject: 'hello world',
 		text: 'hello world',
 	};
-	client.send(new Message(msg), (err) => {
+	const client = new SMTPClient({ host: 'bar.baz' });
+	const sendAsync = promisify(client.send.bind(client));
+	try {
+		await sendAsync(new Message(msg));
+	} catch (err) {
 		t.true(err instanceof Error);
-		t.end();
-	});
+	}
 });
 
 test('client has a default connection timeout', (t) => {
@@ -129,16 +132,20 @@ test.cb('client accepts array sender', (t) => {
 	});
 });
 
-test.cb('client rejects message without `from` header', (t) => {
+test('client rejects message without `from` header', async (t) => {
+	t.plan(2);
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	new SMTPClient({}).send(new Message(msg), (err) => {
+	const client = new SMTPClient({});
+	const sendAsync = promisify(client.send.bind(client));
+	try {
+		await sendAsync(new Message(msg));
+	} catch (err) {
 		t.true(err instanceof Error);
 		t.is(err?.message, 'Message must have a `from` header');
-		t.end();
-	});
+	}
 });
 
 test.cb('client rejects message without `to`, `cc`, or `bcc` header', (t) => {
