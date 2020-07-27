@@ -236,7 +236,6 @@ export class Message {
 	 * @returns {*} a stream of the current message
 	 */
 	public stream() {
-		// eslint-disable-next-line @typescript-eslint/no-use-before-define
 		return new MessageStream(this);
 	}
 
@@ -441,22 +440,20 @@ class MessageStream extends Stream {
 			attachment: MessageAttachment,
 			callback: () => void
 		) => {
-			if (attachment.stream != null && attachment.stream.readable) {
+			const { stream } = attachment;
+			if (stream?.readable) {
 				let previous = Buffer.alloc(0);
 
-				attachment.stream.resume();
+				stream.resume();
 
-				attachment.stream.on('end', () => {
+				stream.on('end', () => {
 					output_base64(previous.toString('base64'), callback);
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					this.removeListener('pause', attachment.stream!.pause);
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					this.removeListener('resume', attachment.stream!.resume);
-					// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-					this.removeListener('error', attachment.stream!.resume);
+					this.removeListener('pause', stream.pause);
+					this.removeListener('resume', stream.resume);
+					this.removeListener('error', stream.resume);
 				});
 
-				attachment.stream.on('data', (buff) => {
+				stream.on('data', (buff) => {
 					// do we have bytes from a previous stream data event?
 					let buffer = Buffer.isBuffer(buff) ? buff : Buffer.from(buff);
 
@@ -475,9 +472,9 @@ class MessageStream extends Stream {
 					output_base64(buffer.toString('base64', 0, buffer.length - padded));
 				});
 
-				this.on('pause', attachment.stream.pause);
-				this.on('resume', attachment.stream.resume);
-				this.on('error', attachment.stream.resume);
+				this.on('pause', stream.pause);
+				this.on('resume', stream.resume);
+				this.on('error', stream.resume);
 			} else {
 				this.emit('error', { message: 'stream not readable' });
 			}
