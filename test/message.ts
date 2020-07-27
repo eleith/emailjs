@@ -9,43 +9,50 @@ import { SMTPClient, Message, MessageAttachment } from '../email';
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 
-let port = 5000;
+const port = 5000;
+
+const client = new SMTPClient({
+	port,
+	user: 'pooh',
+	password: 'honey',
+	ssl: true,
+});
+const server = new SMTPServer({
+	secure: true,
+	onAuth(auth, _session, callback) {
+		if (auth.username == 'pooh' && auth.password == 'honey') {
+			callback(null, { user: 'pooh' });
+		} else {
+			return callback(new Error('invalid user / pass'));
+		}
+	},
+});
+
+test.before.cb((t) => {
+	server.listen(port, () => t.end());
+});
+
+const { onData } = server;
+test.afterEach(async () => {
+	server.onData = onData;
+});
 
 function send(
 	t: CbExecutionContext,
 	message: Message,
 	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void
 ) {
-	const server = new SMTPServer({
-		secure: true,
-		onAuth(auth, _session, callback) {
-			if (auth.username == 'pooh' && auth.password == 'honey') {
-				callback(null, { user: 'pooh' });
-			} else {
-				return callback(new Error('invalid user / pass'));
-			}
-		},
-		async onData(stream, _session, callback: () => void) {
-			const mail = await simpleParser(stream, {
-				skipHtmlToText: true,
-				skipTextToHtml: true,
-				skipImageLinks: true,
-			} as Record<string, unknown>);
-			verify(mail);
-			callback();
-		},
-	});
-	const p = port++;
-	server.listen(p, () => {
-		new SMTPClient({
-			port: p,
-			user: 'pooh',
-			password: 'honey',
-			ssl: true,
-		}).send(message, (err) => {
-			server.close();
-			t.end(err);
-		});
+	server.onData = async (stream, _session, callback: () => void) => {
+		const mail = await simpleParser(stream, {
+			skipHtmlToText: true,
+			skipTextToHtml: true,
+			skipImageLinks: true,
+		} as Record<string, unknown>);
+		verify(mail);
+		callback();
+	};
+	client.send(message, (err) => {
+		t.end(err);
 	});
 }
 
