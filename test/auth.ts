@@ -1,38 +1,11 @@
 import test, { CbExecutionContext } from 'ava';
 import { simpleParser } from 'mailparser';
-import {
-	SMTPServer,
-	SMTPServerAuthentication,
-	SMTPServerAuthenticationResponse,
-	SMTPServerSession,
-} from 'smtp-server';
+import { SMTPServer } from 'smtp-server';
 
 import { AUTH_METHODS, SMTPClient, Message } from '../email';
 
-function onAuth(
-	auth: SMTPServerAuthentication,
-	_session: SMTPServerSession,
-	callback: (
-		err: Error | null | undefined,
-		response?: SMTPServerAuthenticationResponse | undefined
-	) => void
-) {
-	const { accessToken, method, username, password } = auth;
-	if (
-		(method === AUTH_METHODS.XOAUTH2 && password != null
-			? accessToken === 'pooh'
-			: username === 'pooh') &&
-		(method === AUTH_METHODS.XOAUTH2 && password == null
-			? accessToken === 'honey'
-			: password === 'honey')
-	) {
-		callback(null, { user: 'pooh' });
-	} else {
-		return callback(new Error('invalid user / pass'));
-	}
-}
+let port = 2000;
 
-let port = 5000;
 function send(
 	t: CbExecutionContext,
 	{
@@ -56,19 +29,34 @@ function send(
 		secure: secure,
 		hideSTARTTLS: !secure,
 		authOptional,
-		onAuth,
-		onData(stream, _session, callback: () => void) {
-			simpleParser(stream, {
+		onAuth(auth, _session, callback) {
+			const { accessToken, method, username, password } = auth;
+			if (
+				(method === AUTH_METHODS.XOAUTH2 && password != null
+					? accessToken === 'pooh'
+					: username === 'pooh') &&
+				(method === AUTH_METHODS.XOAUTH2 && password == null
+					? accessToken === 'honey'
+					: password === 'honey')
+			) {
+				callback(null, { user: 'pooh' });
+			} else {
+				return callback(new Error('invalid user / pass'));
+			}
+		},
+		async onData(stream, _session, callback: () => void) {
+			const mail = await simpleParser(stream, {
 				skipHtmlToText: true,
 				skipTextToHtml: true,
 				skipImageLinks: true,
-			} as Record<string, unknown>).then((mail) => {
-				t.is(mail.text, msg.text + '\n\n\n');
-				t.is(mail.subject, msg.subject);
-				t.is(mail.from?.text, msg.from);
-				t.is(mail.to?.text, msg.to);
-			});
-			stream.on('end', callback);
+			} as Record<string, unknown>);
+
+			t.is(mail.text, msg.text + '\n\n\n');
+			t.is(mail.subject, msg.subject);
+			t.is(mail.from?.text, msg.from);
+			t.is(mail.to?.text, msg.to);
+
+			callback();
 		},
 	});
 	const p = port++;

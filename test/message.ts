@@ -9,7 +9,7 @@ import { SMTPClient, Message, MessageAttachment } from '../email';
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 
-let port = 4000;
+let port = 5000;
 
 function send(
 	t: CbExecutionContext,
@@ -25,13 +25,14 @@ function send(
 				return callback(new Error('invalid user / pass'));
 			}
 		},
-		onData(stream, _session, callback: () => void) {
-			simpleParser(stream, {
+		async onData(stream, _session, callback: () => void) {
+			const mail = await simpleParser(stream, {
 				skipHtmlToText: true,
 				skipTextToHtml: true,
 				skipImageLinks: true,
-			} as Record<string, unknown>).then(verify);
-			stream.on('end', callback);
+			} as Record<string, unknown>);
+			verify(mail);
+			callback();
 		},
 	});
 	const p = port++;
