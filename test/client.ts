@@ -37,10 +37,16 @@ const server = new SMTPServer({
 	},
 });
 
-const _clientSendAsync = promisify(client.send.bind(client));
 async function send(headers: Partial<MessageHeaders>) {
-	await _clientSendAsync(new Message(headers));
-	return parseMap.get(headers.subject as string) as ParsedMail;
+	return new Promise<ParsedMail>((resolve, reject) => {
+		client.send(new Message(headers), (err) => {
+			if (err) {
+				reject(err);
+			} else {
+				resolve(parseMap.get(headers.subject as string));
+			}
+		});
+	});
 }
 
 test.before(async (t) => {
@@ -55,10 +61,9 @@ test('client invokes callback exactly once for invalid connection', async (t) =>
 		subject: 'hello world',
 		text: 'hello world',
 	};
-	const invalidHostClient = new SMTPClient({ host: 'bar.baz' });
-	const sendAsync = promisify(invalidHostClient.send.bind(invalidHostClient));
 	try {
-		await sendAsync(new Message(msg));
+		const invalidClient = new SMTPClient({ host: 'bar.baz' });
+		await promisify(invalidClient.send.bind(invalidClient))(new Message(msg));
 	} catch (err) {
 		t.true(err instanceof Error);
 	}
