@@ -28,6 +28,8 @@ const server = new SMTPServer({
 	},
 });
 
+const sendAsync = promisify(client.send.bind(client));
+
 test.before.cb((t) => {
 	server.listen(port, () => t.end());
 });
@@ -36,7 +38,6 @@ const { onData } = server;
 test.afterEach(async () => {
 	server.onData = onData;
 });
-
 function send(
 	t: CbExecutionContext,
 	message: Message,
@@ -64,8 +65,8 @@ test('client invokes callback exactly once for invalid connection', async (t) =>
 		subject: 'hello world',
 		text: 'hello world',
 	};
-	const client = new SMTPClient({ host: 'bar.baz' });
-	const sendAsync = promisify(client.send.bind(client));
+	const invalidHostClient = new SMTPClient({ host: 'bar.baz' });
+	const sendAsync = promisify(invalidHostClient.send.bind(invalidHostClient));
 	try {
 		await sendAsync(new Message(msg));
 	} catch (err) {
@@ -97,7 +98,7 @@ test('client deduplicates recipients', (t) => {
 		cc: 'gannon@gmail.com',
 		bcc: 'gannon@gmail.com',
 	};
-	const stack = new SMTPClient({}).createMessageStack(new Message(msg));
+	const stack = client.createMessageStack(new Message(msg));
 	t.true(stack.to.length === 1);
 	t.is(stack.to[0].address, 'gannon@gmail.com');
 });
@@ -116,7 +117,7 @@ test.cb('client accepts array recipients', (t) => {
 
 	msg.valid((isValid) => {
 		t.true(isValid);
-		const stack = new SMTPClient({}).createMessageStack(msg);
+		const stack = client.createMessageStack(msg);
 		t.is(stack.to.length, 3);
 		t.deepEqual(
 			stack.to.map((x) => x.address),
@@ -146,7 +147,6 @@ test('client rejects message without `from` header', async (t) => {
 		subject: 'this is a test TEXT message from emailjs',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	const client = new SMTPClient({});
 	const sendAsync = promisify(client.send.bind(client));
 	try {
 		await sendAsync(new Message(msg));
@@ -156,20 +156,22 @@ test('client rejects message without `from` header', async (t) => {
 	}
 });
 
-test.cb('client rejects message without `to`, `cc`, or `bcc` header', (t) => {
+test('client rejects message without `to`, `cc`, or `bcc` header', async (t) => {
+	t.plan(2);
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'piglet@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	new SMTPClient({}).send(new Message(msg), (err) => {
+	try {
+		await sendAsync(new Message(msg));
+	} catch (err) {
 		t.true(err instanceof Error);
 		t.is(
 			err?.message,
 			'Message must have at least one `to`, `cc`, or `bcc` header'
 		);
-		t.end();
-	});
+	}
 });
 
 test.cb('client allows message with only `cc` recipient header', (t) => {
