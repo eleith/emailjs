@@ -1,58 +1,52 @@
 import { readFileSync, createReadStream } from 'fs';
 import { join } from 'path';
 
-import test from 'ava';
+import test, { CbExecutionContext } from 'ava';
 import { simpleParser } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
 import { SMTPClient, Message, MessageAttachment } from '../email';
 
-const port = 2526;
-const client = new SMTPClient({
-	port,
-	user: 'pooh',
-	password: 'honey',
-	ssl: true,
-});
-const server = new SMTPServer({ secure: true });
-
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
-const send = (
-	message: Message,
-	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void,
-	done: () => void
-) => {
-	server.onData = (stream, _session, callback: () => void) => {
-		simpleParser(stream, {
-			skipHtmlToText: true,
-			skipTextToHtml: true,
-			skipImageLinks: true,
-		} as Record<string, unknown>)
-			.then(verify)
-			.finally(done);
-		stream.on('end', callback);
-	};
-	client.send(message, (err) => {
-		if (err) {
-			throw err;
-		}
-	});
-};
 
-test.before.cb((t) => {
-	server.listen(port, function () {
-		server.onAuth = function (auth, _session, callback) {
+let port = 4000;
+
+function send(
+	t: CbExecutionContext,
+	message: Message,
+	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void
+) {
+	const server = new SMTPServer({
+		secure: true,
+		onAuth(auth, _session, callback) {
 			if (auth.username == 'pooh' && auth.password == 'honey') {
 				callback(null, { user: 'pooh' });
 			} else {
 				return callback(new Error('invalid user / pass'));
 			}
-		};
-		t.end();
+		},
+		onData(stream, _session, callback: () => void) {
+			simpleParser(stream, {
+				skipHtmlToText: true,
+				skipTextToHtml: true,
+				skipImageLinks: true,
+			} as Record<string, unknown>).then(verify);
+			stream.on('end', callback);
+		},
 	});
-});
-
-test.after.cb((t) => server.close(t.end));
+	const p = port++;
+	server.listen(p, () => {
+		new SMTPClient({
+			port: p,
+			user: 'pooh',
+			password: 'honey',
+			ssl: true,
+		}).send(message, (err) => {
+			server.close();
+			t.end(err);
+		});
+	});
+}
 
 test.cb('simple text message', (t) => {
 	const msg = {
@@ -65,17 +59,13 @@ test.cb('simple text message', (t) => {
 		'message-id': 'this is a special id',
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.text, msg.text + '\n\n\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-			t.is(mail.messageId, '<' + msg['message-id'] + '>');
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.text, msg.text + '\n\n\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+		t.is(mail.messageId, '<' + msg['message-id'] + '>');
+	});
 });
 
 test.cb('null text message', (t) => {
@@ -87,13 +77,9 @@ test.cb('null text message', (t) => {
 		'message-id': 'this is a special id',
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.text, '\n\n\n');
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.text, '\n\n\n');
+	});
 });
 
 test.cb('empty text message', (t) => {
@@ -105,13 +91,9 @@ test.cb('empty text message', (t) => {
 		'message-id': 'this is a special id',
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.text, '\n\n\n');
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.text, '\n\n\n');
+	});
 });
 
 test.cb('simple unicode text message', (t) => {
@@ -122,16 +104,12 @@ test.cb('simple unicode text message', (t) => {
 		text: 'hello ✓ friend, i hope this message finds you well.',
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.text, msg.text + '\n\n\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.text, msg.text + '\n\n\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('very large text message', (t) => {
@@ -143,16 +121,12 @@ test.cb('very large text message', (t) => {
 		text: readFileSync(join(__dirname, 'attachments/smtp.txt'), 'utf-8'),
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.text, msg.text.replace(/\r/g, '') + '\n\n\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.text, msg.text.replace(/\r/g, '') + '\n\n\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('very large text data message', (t) => {
@@ -173,17 +147,13 @@ test.cb('very large text data message', (t) => {
 		},
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.html, text.replace(/\r/g, ''));
-			t.is(mail.text, msg.text + '\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.html, text.replace(/\r/g, ''));
+		t.is(mail.text, msg.text + '\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('html data message', (t) => {
@@ -198,17 +168,13 @@ test.cb('html data message', (t) => {
 		},
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.html, html.replace(/\r/g, ''));
-			t.is(mail.text, '\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.html, html.replace(/\r/g, ''));
+		t.is(mail.text, '\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('html file message', (t) => {
@@ -223,17 +189,13 @@ test.cb('html file message', (t) => {
 		},
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.html, html.replace(/\r/g, ''));
-			t.is(mail.text, '\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.html, html.replace(/\r/g, ''));
+		t.is(mail.text, '\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('html with image embed message', (t) => {
@@ -257,21 +219,17 @@ test.cb('html with image embed message', (t) => {
 		},
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(
-				mail.attachments[0].content.toString('base64'),
-				image.toString('base64')
-			);
-			t.is(mail.html, html.replace(/\r/g, ''));
-			t.is(mail.text, '\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(
+			mail.attachments[0].content.toString('base64'),
+			image.toString('base64')
+		);
+		t.is(mail.html, html.replace(/\r/g, ''));
+		t.is(mail.text, '\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('html data and attachment message', (t) => {
@@ -286,17 +244,13 @@ test.cb('html data and attachment message', (t) => {
 		] as MessageAttachment[],
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.html, html.replace(/\r/g, ''));
-			t.is(mail.text, '\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.html, html.replace(/\r/g, ''));
+		t.is(mail.text, '\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('attachment message', (t) => {
@@ -313,20 +267,16 @@ test.cb('attachment message', (t) => {
 		} as MessageAttachment,
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(
-				mail.attachments[0].content.toString('base64'),
-				pdf.toString('base64')
-			);
-			t.is(mail.text, msg.text + '\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(
+			mail.attachments[0].content.toString('base64'),
+			pdf.toString('base64')
+		);
+		t.is(mail.text, msg.text + '\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('attachment sent with unicode filename message', (t) => {
@@ -343,21 +293,17 @@ test.cb('attachment sent with unicode filename message', (t) => {
 		} as MessageAttachment,
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(
-				mail.attachments[0].content.toString('base64'),
-				pdf.toString('base64')
-			);
-			t.is(mail.attachments[0].filename, 'smtp-✓-info.pdf');
-			t.is(mail.text, msg.text + '\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(
+			mail.attachments[0].content.toString('base64'),
+			pdf.toString('base64')
+		);
+		t.is(mail.attachments[0].filename, 'smtp-✓-info.pdf');
+		t.is(mail.text, msg.text + '\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('attachments message', (t) => {
@@ -382,24 +328,20 @@ test.cb('attachments message', (t) => {
 		] as MessageAttachment[],
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(
-				mail.attachments[0].content.toString('base64'),
-				pdf.toString('base64')
-			);
-			t.is(
-				mail.attachments[1].content.toString('base64'),
-				tar.toString('base64')
-			);
-			t.is(mail.text, msg.text + '\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(
+			mail.attachments[0].content.toString('base64'),
+			pdf.toString('base64')
+		);
+		t.is(
+			mail.attachments[1].content.toString('base64'),
+			tar.toString('base64')
+		);
+		t.is(mail.text, msg.text + '\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('streams message', (t) => {
@@ -429,24 +371,20 @@ test.cb('streams message', (t) => {
 	stream.pause();
 	stream2.pause();
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(
-				mail.attachments[0].content.toString('base64'),
-				pdf.toString('base64')
-			);
-			t.is(
-				mail.attachments[1].content.toString('base64'),
-				tar.toString('base64')
-			);
-			t.is(mail.text, msg.text + '\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.to?.text, msg.to);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(
+			mail.attachments[0].content.toString('base64'),
+			pdf.toString('base64')
+		);
+		t.is(
+			mail.attachments[1].content.toString('base64'),
+			tar.toString('base64')
+		);
+		t.is(mail.text, msg.text + '\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.to?.text, msg.to);
+	});
 });
 
 test.cb('message validation fails without `from` header', (t) => {
