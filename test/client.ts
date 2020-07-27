@@ -1,4 +1,4 @@
-import test from 'ava';
+import test, { CbExecutionContext } from 'ava';
 import { simpleParser } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
@@ -6,51 +6,46 @@ import { DEFAULT_TIMEOUT, SMTPClient, Message } from '../email';
 
 type UnPromisify<T> = T extends Promise<infer U> ? U : T;
 
-const port = 2526;
-const client = new SMTPClient({
-	port,
-	user: 'pooh',
-	password: 'honey',
-	ssl: true,
-});
-const server = new SMTPServer({ secure: true });
+let port = 2000;
+let greylistPort = 3000;
 
 const send = (
+	t: CbExecutionContext,
 	message: Message,
-	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void,
-	done: () => void
+	verify: (mail: UnPromisify<ReturnType<typeof simpleParser>>) => void
 ) => {
-	server.onData = (stream, _session, callback: () => void) => {
-		simpleParser(stream, {
-			skipHtmlToText: true,
-			skipTextToHtml: true,
-			skipImageLinks: true,
-		} as Record<string, unknown>)
-			.then(verify)
-			.finally(done);
-		stream.on('end', callback);
-	};
-	client.send(message, (err) => {
-		if (err) {
-			throw err;
-		}
-	});
-};
-
-test.before.cb((t) => {
-	server.listen(port, function () {
-		server.onAuth = function (auth, _session, callback) {
+	const server = new SMTPServer({
+		secure: true,
+		onAuth(auth, _session, callback) {
 			if (auth.username === 'pooh' && auth.password === 'honey') {
 				callback(null, { user: 'pooh' });
 			} else {
 				return callback(new Error('invalid user / pass'));
 			}
-		};
-		t.end();
+		},
+		onData(stream, _session, callback: () => void) {
+			simpleParser(stream, {
+				skipHtmlToText: true,
+				skipTextToHtml: true,
+				skipImageLinks: true,
+			} as Record<string, unknown>).then(verify);
+			stream.on('end', callback);
+		},
 	});
-});
 
-test.after.cb((t) => server.close(t.end));
+	const p = port++;
+	server.listen(p, () => {
+		new SMTPClient({
+			port: p,
+			user: 'pooh',
+			password: 'honey',
+			ssl: true,
+		}).send(message, (err) => {
+			server.close();
+			t.end(err);
+		});
+	});
+};
 
 test.cb('client invokes callback exactly once for invalid connection', (t) => {
 	t.plan(1);
@@ -62,7 +57,7 @@ test.cb('client invokes callback exactly once for invalid connection', (t) => {
 		text: 'hello world',
 	};
 	client.send(new Message(msg), (err) => {
-		t.not(err, null);
+		t.true(err instanceof Error);
 		t.end();
 	});
 });
@@ -91,7 +86,7 @@ test('client deduplicates recipients', (t) => {
 		cc: 'gannon@gmail.com',
 		bcc: 'gannon@gmail.com',
 	};
-	const stack = client.createMessageStack(new Message(msg));
+	const stack = new SMTPClient({}).createMessageStack(new Message(msg));
 	t.true(stack.to.length === 1);
 	t.is(stack.to[0].address, 'gannon@gmail.com');
 });
@@ -110,7 +105,7 @@ test.cb('client accepts array recipients', (t) => {
 
 	msg.valid((isValid) => {
 		t.true(isValid);
-		const stack = client.createMessageStack(msg);
+		const stack = new SMTPClient({}).createMessageStack(msg);
 		t.is(stack.to.length, 3);
 		t.deepEqual(
 			stack.to.map((x) => x.address),
@@ -139,7 +134,7 @@ test.cb('client rejects message without `from` header', (t) => {
 		subject: 'this is a test TEXT message from emailjs',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	client.send(new Message(msg), (err) => {
+	new SMTPClient({}).send(new Message(msg), (err) => {
 		t.true(err instanceof Error);
 		t.is(err?.message, 'Message must have a `from` header');
 		t.end();
@@ -152,7 +147,7 @@ test.cb('client rejects message without `to`, `cc`, or `bcc` header', (t) => {
 		from: 'piglet@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	client.send(new Message(msg), (err) => {
+	new SMTPClient({}).send(new Message(msg), (err) => {
 		t.true(err instanceof Error);
 		t.is(
 			err?.message,
@@ -170,16 +165,12 @@ test.cb('client allows message with only `cc` recipient header', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.text, msg.text + '\n\n\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.cc?.text, msg.cc);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.text, msg.text + '\n\n\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.cc?.text, msg.cc);
+	});
 });
 
 test.cb('client allows message with only `bcc` recipient header', (t) => {
@@ -190,16 +181,12 @@ test.cb('client allows message with only `bcc` recipient header', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 
-	send(
-		new Message(msg),
-		(mail) => {
-			t.is(mail.text, msg.text + '\n\n\n');
-			t.is(mail.subject, msg.subject);
-			t.is(mail.from?.text, msg.from);
-			t.is(mail.bcc, undefined);
-		},
-		t.end
-	);
+	send(t, new Message(msg), (mail) => {
+		t.is(mail.text, msg.text + '\n\n\n');
+		t.is(mail.subject, msg.subject);
+		t.is(mail.from?.text, msg.from);
+		t.is(mail.bcc, undefined);
+	});
 });
 
 test('client constructor throws if `password` supplied without `user`', (t) => {
@@ -215,7 +202,7 @@ test('client constructor throws if `password` supplied without `user`', (t) => {
 });
 
 test.cb('client supports greylisting', (t) => {
-	t.plan(2);
+	t.plan(3);
 
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
@@ -224,10 +211,28 @@ test.cb('client supports greylisting', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 
-	const { onRcptTo } = server;
-	server.onRcptTo = (_address, _session, callback) => {
-		server.onRcptTo = (a, s, cb) => {
+	const greylistServer = new SMTPServer({
+		secure: true,
+		onRcptTo(_address, _session, callback) {
 			t.pass();
+			callback();
+		},
+		onAuth(auth, _session, callback) {
+			if (auth.username === 'pooh' && auth.password === 'honey') {
+				callback(null, { user: 'pooh' });
+			} else {
+				return callback(new Error('invalid user / pass'));
+			}
+		},
+	});
+
+	const { onRcptTo } = greylistServer;
+	greylistServer.onRcptTo = (_address, _session, callback) => {
+		greylistServer.onRcptTo = (a, s, cb) => {
+			t.pass();
+			const err = new Error('greylist');
+			((err as never) as { responseCode: number }).responseCode = 450;
+			greylistServer.onRcptTo = onRcptTo;
 			onRcptTo(a, s, cb);
 		};
 
@@ -236,12 +241,21 @@ test.cb('client supports greylisting', (t) => {
 		callback(err);
 	};
 
-	client.send(new Message(msg), (err) => {
-		if (err) {
-			t.fail();
-		}
-		t.pass();
-		t.end();
+	const p = greylistPort++;
+	greylistServer.listen(p, () => {
+		new SMTPClient({
+			port: p,
+			user: 'pooh',
+			password: 'honey',
+			ssl: true,
+		}).send(new Message(msg), (err) => {
+			greylistServer.close();
+			if (err) {
+				t.fail();
+			}
+			t.pass();
+			t.end();
+		});
 	});
 });
 
@@ -255,13 +269,6 @@ test.cb('client only responds once to greylisting', (t) => {
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
 
-	const greylistPort = 2527;
-	const greylistClient = new SMTPClient({
-		port: greylistPort,
-		user: 'pooh',
-		password: 'honey',
-		ssl: true,
-	});
 	const greylistServer = new SMTPServer({
 		secure: true,
 		onRcptTo(_address, _session, callback) {
@@ -279,8 +286,15 @@ test.cb('client only responds once to greylisting', (t) => {
 		},
 	});
 
-	greylistServer.listen(greylistPort, () => {
-		greylistClient.send(new Message(msg), (err) => {
+	const p = greylistPort++;
+	greylistServer.listen(p, () => {
+		new SMTPClient({
+			port: p,
+			user: 'pooh',
+			password: 'honey',
+			ssl: true,
+		}).send(new Message(msg), (err) => {
+			greylistServer.close();
 			if (err) {
 				t.pass();
 				t.end();
