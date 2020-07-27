@@ -28,14 +28,7 @@ const server = new SMTPServer({
 	},
 });
 
-test.before.cb((t) => {
-	server.listen(port, () => t.end());
-});
-
 const { onData } = server;
-test.afterEach(async () => {
-	server.onData = onData;
-});
 
 function send(
 	t: CbExecutionContext,
@@ -55,6 +48,14 @@ function send(
 		t.end(err);
 	});
 }
+
+test.before(async (t) => {
+	server.listen(port, t.pass);
+});
+
+test.afterEach(async () => {
+	server.onData = onData;
+});
 
 test.cb('simple text message', (t) => {
 	const msg = {

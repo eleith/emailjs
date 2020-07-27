@@ -29,15 +29,8 @@ const server = new SMTPServer({
 });
 
 const sendAsync = promisify(client.send.bind(client));
-
-test.before.cb((t) => {
-	server.listen(port, () => t.end());
-});
-
 const { onData } = server;
-test.afterEach(async () => {
-	server.onData = onData;
-});
+
 function send(
 	t: CbExecutionContext,
 	message: Message,
@@ -57,6 +50,14 @@ function send(
 	});
 }
 
+test.before(async (t) => {
+	server.listen(port, t.pass);
+});
+
+test.afterEach(async () => {
+	server.onData = onData;
+});
+
 test('client invokes callback exactly once for invalid connection', async (t) => {
 	t.plan(1);
 	const msg = {
@@ -74,7 +75,7 @@ test('client invokes callback exactly once for invalid connection', async (t) =>
 	}
 });
 
-test('client has a default connection timeout', (t) => {
+test('client has a default connection timeout', async (t) => {
 	const connectionOptions = {
 		user: 'username',
 		password: 'password',
@@ -91,7 +92,7 @@ test('client has a default connection timeout', (t) => {
 	t.is(new SMTPClient(connectionOptions).smtp.timeout, DEFAULT_TIMEOUT);
 });
 
-test('client deduplicates recipients', (t) => {
+test('client deduplicates recipients', async (t) => {
 	const msg = {
 		from: 'zelda@gmail.com',
 		to: 'gannon@gmail.com',
@@ -142,36 +143,22 @@ test.cb('client accepts array sender', (t) => {
 });
 
 test('client rejects message without `from` header', async (t) => {
-	t.plan(2);
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	const sendAsync = promisify(client.send.bind(client));
-	try {
-		await sendAsync(new Message(msg));
-	} catch (err) {
-		t.true(err instanceof Error);
-		t.is(err?.message, 'Message must have a `from` header');
-	}
+	const { message: error } = await t.throwsAsync(sendAsync(new Message(msg)));
+	t.is(error, 'Message must have a `from` header');
 });
 
 test('client rejects message without `to`, `cc`, or `bcc` header', async (t) => {
-	t.plan(2);
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'piglet@gmail.com',
 		text: "It is hard to be brave when you're only a Very Small Animal.",
 	};
-	try {
-		await sendAsync(new Message(msg));
-	} catch (err) {
-		t.true(err instanceof Error);
-		t.is(
-			err?.message,
-			'Message must have at least one `to`, `cc`, or `bcc` header'
-		);
-	}
+	const { message: error } = await t.throwsAsync(sendAsync(new Message(msg)));
+	t.is(error, 'Message must have at least one `to`, `cc`, or `bcc` header');
 });
 
 test.cb('client allows message with only `cc` recipient header', (t) => {
@@ -206,7 +193,7 @@ test.cb('client allows message with only `bcc` recipient header', (t) => {
 	});
 });
 
-test('client constructor throws if `password` supplied without `user`', (t) => {
+test('client constructor throws if `password` supplied without `user`', async (t) => {
 	t.notThrows(() => new SMTPClient({ user: 'anything', password: 'anything' }));
 	t.throws(() => new SMTPClient({ password: 'anything' }));
 	t.throws(
