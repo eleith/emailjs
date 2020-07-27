@@ -37,10 +37,9 @@ const server = new SMTPServer({
 	},
 });
 
-const clientSendAsync = promisify(client.send.bind(client));
-
+const _clientSendAsync = promisify(client.send.bind(client));
 async function send(headers: Partial<MessageHeaders>) {
-	await clientSendAsync(new Message(headers));
+	await _clientSendAsync(new Message(headers));
 	return parseMap.get(headers.subject as string) as ParsedMail;
 }
 
@@ -122,7 +121,6 @@ test('client accepts array sender', async (t) => {
 		from: ['zelda@gmail.com'],
 		to: ['gannon1@gmail.com'],
 	});
-
 	msg.header.from = [msg.header.from as string];
 
 	const isValid = await new Promise((r) => msg.valid(r));
@@ -130,24 +128,22 @@ test('client accepts array sender', async (t) => {
 });
 
 test('client rejects message without `from` header', async (t) => {
-	const msg = {
-		subject: 'this is a test TEXT message from emailjs',
-		text: "It is hard to be brave when you're only a Very Small Animal.",
-	};
 	const { message: error } = await t.throwsAsync(
-		clientSendAsync(new Message(msg))
+		send({
+			subject: 'this is a test TEXT message from emailjs',
+			text: "It is hard to be brave when you're only a Very Small Animal.",
+		})
 	);
 	t.is(error, 'Message must have a `from` header');
 });
 
 test('client rejects message without `to`, `cc`, or `bcc` header', async (t) => {
-	const msg = {
-		subject: 'this is a test TEXT message from emailjs',
-		from: 'piglet@gmail.com',
-		text: "It is hard to be brave when you're only a Very Small Animal.",
-	};
 	const { message: error } = await t.throwsAsync(
-		clientSendAsync(new Message(msg))
+		send({
+			subject: 'this is a test TEXT message from emailjs',
+			from: 'piglet@gmail.com',
+			text: "It is hard to be brave when you're only a Very Small Animal.",
+		})
 	);
 	t.is(error, 'Message must have at least one `to`, `cc`, or `bcc` header');
 });
