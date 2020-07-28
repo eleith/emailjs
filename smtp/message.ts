@@ -1,5 +1,4 @@
-import fs from 'fs';
-import type { PathLike } from 'fs';
+import fs, { PathLike } from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
 import type { Readable } from 'stream';

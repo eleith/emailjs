@@ -1,8 +1,6 @@
 import { addressparser } from './address';
-import { Message } from './message';
-import type { MessageAttachment, MessageHeaders } from './message';
-import { SMTPConnection, SMTPState } from './connection';
-import type { SMTPConnectionOptions } from './connection';
+import { Message, MessageAttachment, MessageHeaders } from './message';
+import { SMTPConnection, SMTPConnectionOptions, SMTPState } from './connection';
 
 export interface MessageStack {
 	callback: (error: Error | null, message: Message) => void;

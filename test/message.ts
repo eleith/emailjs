@@ -2,8 +2,7 @@ import { readFileSync, createReadStream } from 'fs';
 import { join } from 'path';
 
 import test from 'ava';
-import { simpleParser } from 'mailparser';
-import type { ParsedMail } from 'mailparser';
+import { simpleParser, ParsedMail } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
 import { SMTPClient, Message, MessageAttachment } from '../email';
