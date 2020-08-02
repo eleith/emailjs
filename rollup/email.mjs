@@ -596,7 +596,6 @@ class Message {
      * @returns {*} a stream of the current message
      */
     stream() {
-        // eslint-disable-next-line @typescript-eslint/no-use-before-define
         return new MessageStream(this);
     }
     /**
@@ -766,19 +765,17 @@ class MessageStream extends Stream {
          * @returns {void}
          */
         const output_stream = (attachment, callback) => {
-            if (attachment.stream != null && attachment.stream.readable) {
+            const { stream } = attachment;
+            if (stream === null || stream === void 0 ? void 0 : stream.readable) {
                 let previous = Buffer.alloc(0);
-                attachment.stream.resume();
-                attachment.stream.on('end', () => {
+                stream.resume();
+                stream.on('end', () => {
                     output_base64(previous.toString('base64'), callback);
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    this.removeListener('pause', attachment.stream.pause);
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    this.removeListener('resume', attachment.stream.resume);
-                    // eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-                    this.removeListener('error', attachment.stream.resume);
+                    this.removeListener('pause', stream.pause);
+                    this.removeListener('resume', stream.resume);
+                    this.removeListener('error', stream.resume);
                 });
-                attachment.stream.on('data', (buff) => {
+                stream.on('data', (buff) => {
                     // do we have bytes from a previous stream data event?
                     let buffer = Buffer.isBuffer(buff) ? buff : Buffer.from(buff);
                     if (previous.byteLength > 0) {
@@ -793,9 +790,9 @@ class MessageStream extends Stream {
                     }
                     output_base64(buffer.toString('base64', 0, buffer.length - padded));
                 });
-                this.on('pause', attachment.stream.pause);
-                this.on('resume', attachment.stream.resume);
-                this.on('error', attachment.stream.resume);
+                this.on('pause', stream.pause);
+                this.on('resume', stream.resume);
+                this.on('error', stream.resume);
             }
             else {
                 this.emit('error', { message: 'stream not readable' });
@@ -1132,6 +1129,7 @@ const SMTP_PORT = 25;
 const SMTP_SSL_PORT = 465;
 const SMTP_TLS_PORT = 587;
 const CRLF$1 = '\r\n';
+const GREYLIST_DELAY = 300;
 let DEBUG = 0;
 /**
  * @param {...any} args the message(s) to log
@@ -1185,6 +1183,7 @@ class SMTPConnection extends EventEmitter {
         this.host = 'localhost';
         this.ssl = false;
         this.tls = false;
+        this.greylistResponseTracker = new WeakMap();
         if (Array.isArray(authentication)) {
             this.authentication = authentication;
         }
@@ -1333,7 +1332,7 @@ class SMTPConnection extends EventEmitter {
      * @returns {void}
      */
     send(str, callback) {
-        if (this.sock && this._state === SMTPState.CONNECTED) {
+        if (this.sock != null && this._state === SMTPState.CONNECTED) {
             this.log(str);
             this.sock.once('response', (err, msg) => {
                 if (err) {
@@ -1344,7 +1343,9 @@ class SMTPConnection extends EventEmitter {
                     caller(callback, null, msg);
                 }
             });
-            this.sock.write(str);
+            if (this.sock.writable) {
+                this.sock.write(str);
+            }
         }
         else {
             this.close(true);
@@ -1369,8 +1370,17 @@ class SMTPConnection extends EventEmitter {
                 caller(callback, err);
             }
             else {
-                if (codesArray.indexOf(Number(msg.code)) !== -1) {
+                const code = Number(msg.code);
+                if (codesArray.indexOf(code) !== -1) {
                     caller(callback, err, msg.data, msg.message);
+                }
+                else if ((code === 450 || code === 451) &&
+                    msg.message.toLowerCase().includes('greylist') &&
+                    this.greylistResponseTracker.get(response) === false) {
+                    this.greylistResponseTracker.set(response, true);
+                    setTimeout(() => {
+                        this.send(cmd + CRLF$1, response);
+                    }, GREYLIST_DELAY);
                 }
                 else {
                     const suffix = msg.message ? `: ${msg.message}` : '';
@@ -1379,6 +1389,7 @@ class SMTPConnection extends EventEmitter {
                 }
             }
         };
+        this.greylistResponseTracker.set(response, false);
         this.send(cmd + CRLF$1, response);
     }
     /**
