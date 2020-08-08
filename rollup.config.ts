@@ -1,6 +1,4 @@
 import module from 'module';
-import commonjs from '@rollup/plugin-commonjs';
-import resolve from '@rollup/plugin-node-resolve';
 import typescript from '@rollup/plugin-typescript';
 
 export default {
@@ -23,8 +21,6 @@ export default {
 	],
 	external: module.builtinModules,
 	plugins: [
-		resolve(),
-		commonjs(),
 		typescript({ removeComments: false, include: ['email.ts', 'smtp/**/*'] }),
 	],
 };
