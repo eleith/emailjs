@@ -78,7 +78,7 @@ export interface MessageHeaders {
 
 let counter = 0;
 
-function generate_boundary() {
+function generateBoundary() {
 	let text = '';
 	const possible =
 		"ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'()+_,-./:=?";
@@ -322,7 +322,7 @@ class MessageStream extends Stream {
 		 * @param {MessageAttachment} [attachment] the attachment whose headers you would like to output
 		 * @returns {void}
 		 */
-		const output_attachment_headers = (attachment: MessageAttachment) => {
+		const outputAttachmentHeaders = (attachment: MessageAttachment) => {
 			let data: string[] = [];
 			const headers: Partial<MessageHeaders> = {
 				'content-type':
@@ -361,7 +361,7 @@ class MessageStream extends Stream {
 		 * @param {function(): void} [callback] the function to call after output is finished
 		 * @returns {void}
 		 */
-		const output_base64 = (data: string, callback?: () => void) => {
+		const outputBase64 = (data: string, callback?: () => void) => {
 			const loops = Math.ceil(data.length / MIMECHUNK);
 			let loop = 0;
 			while (loop < loops) {
@@ -373,7 +373,7 @@ class MessageStream extends Stream {
 			}
 		};
 
-		const output_file = (
+		const outputFile = (
 			attachment: MessageAttachment,
 			next: (err: NodeJS.ErrnoException | null) => void
 		) => {
@@ -402,7 +402,7 @@ class MessageStream extends Stream {
 								encoding = 'base64';
 							}
 							// guaranteed to be encoded without padding unless it is our last read
-							output_base64(buffer.toString(encoding, 0, bytes), () => {
+							outputBase64(buffer.toString(encoding, 0, bytes), () => {
 								if (bytes == chunk) {
 									// we read a full chunk, there might be more
 									fs.read(fd, buffer, 0, chunk, null, read);
@@ -435,7 +435,7 @@ class MessageStream extends Stream {
 		 * @param {function(): void} callback the function to call after output is finished
 		 * @returns {void}
 		 */
-		const output_stream = (
+		const outputStream = (
 			attachment: MessageAttachment,
 			callback: () => void
 		) => {
@@ -446,7 +446,7 @@ class MessageStream extends Stream {
 				stream.resume();
 
 				stream.on('end', () => {
-					output_base64(previous.toString('base64'), callback);
+					outputBase64(previous.toString('base64'), callback);
 					this.removeListener('pause', stream.pause);
 					this.removeListener('resume', stream.resume);
 					this.removeListener('error', stream.resume);
@@ -468,7 +468,7 @@ class MessageStream extends Stream {
 						// copy dangling bytes into previous buffer
 						buffer.copy(previous, 0, buffer.length - padded);
 					}
-					output_base64(buffer.toString('base64', 0, buffer.length - padded));
+					outputBase64(buffer.toString('base64', 0, buffer.length - padded));
 				});
 
 				this.on('pause', stream.pause);
@@ -479,16 +479,16 @@ class MessageStream extends Stream {
 			}
 		};
 
-		const output_attachment = (
+		const outputAttachment = (
 			attachment: MessageAttachment,
 			callback: () => void
 		) => {
 			const build = attachment.path
-				? output_file
+				? outputFile
 				: attachment.stream
-				? output_stream
-				: output_data;
-			output_attachment_headers(attachment);
+				? outputStream
+				: outputData;
+			outputAttachmentHeaders(attachment);
 			build(attachment, callback);
 		};
 
@@ -499,7 +499,7 @@ class MessageStream extends Stream {
 		 * @param {function(): void} callback the function to call if index is greater than upper bound
 		 * @returns {void}
 		 */
-		const output_message = (
+		const outputMessage = (
 			boundary: string,
 			list: MessageAttachment[],
 			index: number,
@@ -508,12 +508,12 @@ class MessageStream extends Stream {
 			if (index < list.length) {
 				output(`--${boundary}${CRLF}`);
 				if (list[index].related) {
-					output_related(list[index], () =>
-						output_message(boundary, list, index + 1, callback)
+					outputRelated(list[index], () =>
+						outputMessage(boundary, list, index + 1, callback)
 					);
 				} else {
-					output_attachment(list[index], () =>
-						output_message(boundary, list, index + 1, callback)
+					outputAttachment(list[index], () =>
+						outputMessage(boundary, list, index + 1, callback)
 					);
 				}
 			} else {
@@ -522,20 +522,20 @@ class MessageStream extends Stream {
 			}
 		};
 
-		const output_mixed = () => {
-			const boundary = generate_boundary();
+		const outputMixed = () => {
+			const boundary = generateBoundary();
 			output(
 				`Content-Type: multipart/mixed; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`
 			);
 
 			if (this.message.alternative == null) {
-				output_text(this.message);
-				output_message(boundary, this.message.attachments, 0, close);
+				outputText(this.message);
+				outputMessage(boundary, this.message.attachments, 0, close);
 			} else {
-				output_alternative(
+				outputAlternative(
 					// typescript bug; should narrow to { alternative: MessageAttachment }
-					this.message as Parameters<typeof output_alternative>[0],
-					() => output_message(boundary, this.message.attachments, 0, close)
+					this.message as Parameters<typeof outputAlternative>[0],
+					() => outputMessage(boundary, this.message.attachments, 0, close)
 				);
 			}
 		};
@@ -545,11 +545,11 @@ class MessageStream extends Stream {
 		 * @param {function(): void} callback the function to call after output is finished
 		 * @returns {void}
 		 */
-		const output_data = (
+		const outputData = (
 			attachment: MessageAttachment,
 			callback: () => void
 		) => {
-			output_base64(
+			outputBase64(
 				attachment.encoded
 					? attachment.data ?? ''
 					: Buffer.from(attachment.data ?? '').toString('base64'),
@@ -561,7 +561,7 @@ class MessageStream extends Stream {
 		 * @param {Message} message the message to output
 		 * @returns {void}
 		 */
-		const output_text = (message: Message) => {
+		const outputText = (message: Message) => {
 			let data: string[] = [];
 
 			data = data.concat([
@@ -582,16 +582,16 @@ class MessageStream extends Stream {
 		 * @param {function(): void} callback the function to call after output is finished
 		 * @returns {void}
 		 */
-		const output_related = (
+		const outputRelated = (
 			message: MessageAttachment,
 			callback: () => void
 		) => {
-			const boundary = generate_boundary();
+			const boundary = generateBoundary();
 			output(
 				`Content-Type: multipart/related; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`
 			);
-			output_attachment(message, () => {
-				output_message(boundary, message.related ?? [], 0, () => {
+			outputAttachment(message, () => {
+				outputMessage(boundary, message.related ?? [], 0, () => {
 					output(`${CRLF}--${boundary}--${CRLF}${CRLF}`);
 					callback();
 				});
@@ -603,15 +603,15 @@ class MessageStream extends Stream {
 		 * @param {function(): void} callback the function to call after output is finished
 		 * @returns {void}
 		 */
-		const output_alternative = (
+		const outputAlternative = (
 			message: Message & { alternative: MessageAttachment },
 			callback: () => void
 		) => {
-			const boundary = generate_boundary();
+			const boundary = generateBoundary();
 			output(
 				`Content-Type: multipart/alternative; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`
 			);
-			output_text(message);
+			outputText(message);
 			output(`--${boundary}${CRLF}`);
 
 			/**
@@ -623,9 +623,9 @@ class MessageStream extends Stream {
 			};
 
 			if (message.alternative.related) {
-				output_related(message.alternative, finish);
+				outputRelated(message.alternative, finish);
 			} else {
-				output_attachment(message.alternative, finish);
+				outputAttachment(message.alternative, finish);
 			}
 		};
 
@@ -652,13 +652,13 @@ class MessageStream extends Stream {
 		/**
 		 * @returns {void}
 		 */
-		const output_header_data = () => {
+		const outputHeaderData = () => {
 			if (this.message.attachments.length || this.message.alternative) {
 				output(`MIME-Version: 1.0${CRLF}`);
-				output_mixed();
+				outputMixed();
 			} // you only have a text message!
 			else {
-				output_text(this.message);
+				outputText(this.message);
 				close();
 			}
 		};
@@ -666,7 +666,7 @@ class MessageStream extends Stream {
 		/**
 		 * @returns {void}
 		 */
-		const output_header = () => {
+		const outputHeader = () => {
 			let data: string[] = [];
 
 			for (const header in this.message.header) {
@@ -685,11 +685,11 @@ class MessageStream extends Stream {
 			}
 
 			output(data.join(''));
-			output_header_data();
+			outputHeaderData();
 		};
 
 		this.once('destroy', close);
-		process.nextTick(output_header);
+		process.nextTick(outputHeader);
 	}
 
 	/**

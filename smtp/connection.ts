@@ -734,7 +734,7 @@ export class SMTPConnection extends EventEmitter {
 			 * @param {string} challenge challenge
 			 * @returns {string} base64 cram hash
 			 */
-			const encode_cram_md5 = (challenge: string): string => {
+			const encodeCramMd5 = (challenge: string): string => {
 				const hmac = createHmac('md5', login.password());
 				hmac.update(Buffer.from(challenge, 'base64').toString('ascii'));
 				return Buffer.from(`${login.user()} ${hmac.digest('hex')}`).toString(
@@ -745,7 +745,7 @@ export class SMTPConnection extends EventEmitter {
 			/**
 			 * @returns {string} base64 login/password
 			 */
-			const encode_plain = (): string =>
+			const encodePlain = (): string =>
 				Buffer.from(`\u0000${login.user()}\u0000${login.password()}`).toString(
 					'base64'
 				);
@@ -754,7 +754,7 @@ export class SMTPConnection extends EventEmitter {
 			 * @see https://developers.google.com/gmail/xoauth2_protocol
 			 * @returns {string} base64 xoauth2 auth token
 			 */
-			const encode_xoauth2 = (): string =>
+			const encodeXoauth2 = (): string =>
 				Buffer.from(
 					`user=${login.user()}\u0001auth=Bearer ${login.password()}\u0001\u0001`
 				).toString('base64');
@@ -826,7 +826,7 @@ export class SMTPConnection extends EventEmitter {
 					failed(err, data);
 				} else {
 					if (method === AUTH_METHODS['CRAM-MD5']) {
-						this.command(encode_cram_md5(msg), response, [235, 503]);
+						this.command(encodeCramMd5(msg), response, [235, 503]);
 					} else if (method === AUTH_METHODS.LOGIN) {
 						this.command(
 							Buffer.from(login.password()).toString('base64'),
@@ -843,7 +843,7 @@ export class SMTPConnection extends EventEmitter {
 			 * @param {string} msg msg
 			 * @returns {void}
 			 */
-			const attempt_user = (err: Error, data: unknown) => {
+			const attemptUser = (err: Error, data: unknown) => {
 				if (err) {
 					failed(err, data);
 				} else {
@@ -862,18 +862,18 @@ export class SMTPConnection extends EventEmitter {
 					this.command(`AUTH  ${AUTH_METHODS['CRAM-MD5']}`, attempt, [334]);
 					break;
 				case AUTH_METHODS.LOGIN:
-					this.command(`AUTH ${AUTH_METHODS.LOGIN}`, attempt_user, [334]);
+					this.command(`AUTH ${AUTH_METHODS.LOGIN}`, attemptUser, [334]);
 					break;
 				case AUTH_METHODS.PLAIN:
 					this.command(
-						`AUTH ${AUTH_METHODS.PLAIN} ${encode_plain()}`,
+						`AUTH ${AUTH_METHODS.PLAIN} ${encodePlain()}`,
 						response,
 						[235, 503]
 					);
 					break;
 				case AUTH_METHODS.XOAUTH2:
 					this.command(
-						`AUTH ${AUTH_METHODS.XOAUTH2} ${encode_xoauth2()}`,
+						`AUTH ${AUTH_METHODS.XOAUTH2} ${encodeXoauth2()}`,
 						response,
 						[235, 503]
 					);
