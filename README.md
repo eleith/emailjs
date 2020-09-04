@@ -1,4 +1,4 @@
-# emailjs [![Test Status](https://github.com/eleith/emailjs/workflows/.github/workflows/test.yml/badge.svg)](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Ftest.yml)
+# emailjs [![Test Status](https://github.com/eleith/emailjs/workflows/.github/workflows/test.yml/badge.svg)](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Ftest.yml) [![Lint Status](https://github.com/eleith/emailjs/workflows/.github/workflows/lint.yml/badge.svg)](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Flint.yml)
 
 send emails, html and attachments (files, streams and strings) from node.js to any smtp server
 
