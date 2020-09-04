@@ -210,8 +210,8 @@ export class SMTPClient {
 
 	/**
 	 * @protected
-	 * @param {*} attachment attachment
-	 * @returns {*} whether the attachment contains inlined html
+	 * @param {MessageAttachment | MessageAttachment[]} attachment attachment
+	 * @returns {boolean} whether the attachment contains inlined html
 	 */
 	protected _containsInlinedHtml(
 		attachment: MessageAttachment | MessageAttachment[]

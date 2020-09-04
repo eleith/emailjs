@@ -232,7 +232,7 @@ export class Message {
 
 	/**
 	 * @public
-	 * @returns {*} a stream of the current message
+	 * @returns {MessageStream} a stream of the current message
 	 */
 	public stream() {
 		return new MessageStream(this);
@@ -259,7 +259,7 @@ class MessageStream extends Stream {
 	bufferIndex = 0;
 
 	/**
-	 * @param {*} message the message to stream
+	 * @param {Message} message the message to stream
 	 */
 	constructor(private message: Message) {
 		super();

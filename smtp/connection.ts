@@ -44,7 +44,7 @@ const GREYLIST_DELAY = 300 as const;
 let DEBUG: 0 | 1 = 0;
 
 /**
- * @param {...any} args the message(s) to log
+ * @param {...any[]} args the message(s) to log
  * @returns {void}
  */
 const log = (...args: any[]) => {
@@ -62,8 +62,8 @@ const log = (...args: any[]) => {
 };
 
 /**
- * @param {function(...*): void} callback the function to call
- * @param {...*} args the arguments to apply to the function
+ * @param {function(...any[]): void} callback the function to call
+ * @param {...any[]} args the arguments to apply to the function
  * @returns {void}
  */
 const caller = (callback?: (...rest: any[]) => void, ...args: any[]) => {
@@ -225,7 +225,7 @@ export class SMTPConnection extends EventEmitter {
 	 * NOTE: `host` is trimmed before being used to establish a connection; however, the original untrimmed value will still be visible in configuration.
 	 *
 	 * @public
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @param {number} [port] the port to use for the connection
 	 * @param {string} [host] the hostname to use for the connection
 	 * @param {ConnectOptions} [options={}] the options
@@ -350,7 +350,7 @@ export class SMTPConnection extends EventEmitter {
 	/**
 	 * @public
 	 * @param {string} str the string to send
-	 * @param {*} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @returns {void}
 	 */
 	public send(str: string, callback: (...args: any[]) => void) {
@@ -383,7 +383,7 @@ export class SMTPConnection extends EventEmitter {
 	/**
 	 * @public
 	 * @param {string} cmd command to issue
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @param {(number[] | number)} [codes=[250]] array codes
 	 * @returns {void}
 	 */
@@ -449,7 +449,7 @@ export class SMTPConnection extends EventEmitter {
 	 * As this command was deprecated by rfc2821, it should only be used for compatibility with non-compliant servers.
 	 * @see https://tools.ietf.org/html/rfc2821#appendix-F.3
 	 *
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @param {string} domain the domain to associate with the 'helo' request
 	 * @returns {void}
 	 */
@@ -466,7 +466,7 @@ export class SMTPConnection extends EventEmitter {
 
 	/**
 	 * @public
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @returns {void}
 	 */
 	public starttls(callback: (...rest: any[]) => void) {
@@ -534,7 +534,7 @@ export class SMTPConnection extends EventEmitter {
 
 	/**
 	 * @public
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @param {string} domain the domain to associate with the 'ehlo' request
 	 * @returns {void}
 	 */
@@ -567,7 +567,7 @@ export class SMTPConnection extends EventEmitter {
 	/**
 	 * @public
 	 * @description SMTP 'help' command, returns text from the server
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @param {string} domain the domain to associate with the 'help' request
 	 * @returns {void}
 	 */
@@ -577,7 +577,7 @@ export class SMTPConnection extends EventEmitter {
 
 	/**
 	 * @public
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @returns {void}
 	 */
 	public rset(callback: (...rest: any[]) => void) {
@@ -586,7 +586,7 @@ export class SMTPConnection extends EventEmitter {
 
 	/**
 	 * @public
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @returns {void}
 	 */
 	public noop(callback: (...rest: any[]) => void) {
@@ -595,7 +595,7 @@ export class SMTPConnection extends EventEmitter {
 
 	/**
 	 * @public
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @param {string} from the sender
 	 * @returns {void}
 	 */
@@ -605,7 +605,7 @@ export class SMTPConnection extends EventEmitter {
 
 	/**
 	 * @public
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @param {string} to the receiver
 	 * @returns {void}
 	 */
@@ -615,7 +615,7 @@ export class SMTPConnection extends EventEmitter {
 
 	/**
 	 * @public
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @returns {void}
 	 */
 	public data(callback: (...rest: any[]) => void) {
@@ -624,7 +624,7 @@ export class SMTPConnection extends EventEmitter {
 
 	/**
 	 * @public
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @returns {void}
 	 */
 	public data_end(callback: (...rest: any[]) => void) {
@@ -645,7 +645,7 @@ export class SMTPConnection extends EventEmitter {
 	 * @public
 	 * @description SMTP 'verify' command -- checks for address validity.
 	 * @param {string} address the address to validate
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @returns {void}
 	 */
 	public verify(address: string, callback: (...rest: any[]) => void) {
@@ -656,7 +656,7 @@ export class SMTPConnection extends EventEmitter {
 	 * @public
 	 * @description SMTP 'expn' command -- expands a mailing list.
 	 * @param {string} address the mailing list to expand
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @returns {void}
 	 */
 	public expn(address: string, callback: (...rest: any[]) => void) {
@@ -670,7 +670,7 @@ export class SMTPConnection extends EventEmitter {
 	 * If there has been no previous EHLO or HELO command self session, self
 	 * method tries ESMTP EHLO first.
 	 *
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @param {string} [domain] the domain to associate with the command
 	 * @returns {void}
 	 */
@@ -702,7 +702,7 @@ export class SMTPConnection extends EventEmitter {
 	 *
 	 * This method will return normally if the authentication was successful.
 	 *
-	 * @param {function(...*): void} callback function to call after response
+	 * @param {function(...any[]): void} callback function to call after response
 	 * @param {string} [user] the username to authenticate with
 	 * @param {string} [password] the password for the authentication
 	 * @param {{ method: string, domain: string }} [options] login options
@@ -780,7 +780,7 @@ export class SMTPConnection extends EventEmitter {
 			/**
 			 * handle bad responses from command differently
 			 * @param {Error} err err
-			 * @param {*} data data
+			 * @param {unknown} data data
 			 * @returns {void}
 			 */
 			const failed = (err: Error, data: unknown) => {
@@ -799,7 +799,7 @@ export class SMTPConnection extends EventEmitter {
 
 			/**
 			 * @param {Error} err err
-			 * @param {*} data data
+			 * @param {unknown} data data
 			 * @returns {void}
 			 */
 			const response = (err: Error | null | undefined, data: unknown) => {
@@ -813,7 +813,7 @@ export class SMTPConnection extends EventEmitter {
 
 			/**
 			 * @param {Error} err err
-			 * @param {*} data data
+			 * @param {unknown} data data
 			 * @param {string} msg msg
 			 * @returns {void}
 			 */
@@ -839,7 +839,7 @@ export class SMTPConnection extends EventEmitter {
 
 			/**
 			 * @param {Error} err err
-			 * @param {*} data data
+			 * @param {unknown} data data
 			 * @param {string} msg msg
 			 * @returns {void}
 			 */
@@ -925,7 +925,7 @@ export class SMTPConnection extends EventEmitter {
 
 	/**
 	 * @public
-	 * @param {function(...*): void} [callback] function to call after response
+	 * @param {function(...any[]): void} [callback] function to call after response
 	 * @returns {void}
 	 */
 	public quit(callback?: (...rest: any[]) => void) {
