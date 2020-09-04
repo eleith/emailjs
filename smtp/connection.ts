@@ -560,7 +560,7 @@ export class SMTPConnection extends EventEmitter {
 	 * @param {string} opt the features keyname to check
 	 * @returns {boolean} whether the extension exists
 	 */
-	public has_extn(opt: string): boolean {
+	public has_extn(opt: string) {
 		return (this.features ?? {})[opt.toLowerCase()] === undefined;
 	}
 
@@ -734,7 +734,7 @@ export class SMTPConnection extends EventEmitter {
 			 * @param {string} challenge challenge
 			 * @returns {string} base64 cram hash
 			 */
-			const encodeCramMd5 = (challenge: string): string => {
+			const encodeCramMd5 = (challenge: string) => {
 				const hmac = createHmac('md5', login.password());
 				hmac.update(Buffer.from(challenge, 'base64').toString('ascii'));
 				return Buffer.from(`${login.user()} ${hmac.digest('hex')}`).toString(
@@ -745,7 +745,7 @@ export class SMTPConnection extends EventEmitter {
 			/**
 			 * @returns {string} base64 login/password
 			 */
-			const encodePlain = (): string =>
+			const encodePlain = () =>
 				Buffer.from(`\u0000${login.user()}\u0000${login.password()}`).toString(
 					'base64'
 				);
@@ -754,7 +754,7 @@ export class SMTPConnection extends EventEmitter {
 			 * @see https://developers.google.com/gmail/xoauth2_protocol
 			 * @returns {string} base64 xoauth2 auth token
 			 */
-			const encodeXoauth2 = (): string =>
+			const encodeXoauth2 = () =>
 				Buffer.from(
 					`user=${login.user()}\u0001auth=Bearer ${login.password()}\u0001\u0001`
 				).toString('base64');
@@ -879,14 +879,15 @@ export class SMTPConnection extends EventEmitter {
 					);
 					break;
 				default:
-					const msg = 'no form of authorization supported';
-					const err = SMTPError.create(
-						msg,
-						SMTPErrorStates.AUTHNOTSUPPORTED,
-						null,
-						data
+					caller(
+						callback,
+						SMTPError.create(
+							'no form of authorization supported',
+							SMTPErrorStates.AUTHNOTSUPPORTED,
+							null,
+							data
+						)
 					);
-					caller(callback, err);
 					break;
 			}
 		};

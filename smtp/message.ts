@@ -170,7 +170,7 @@ export class Message {
 	 * @param {MessageAttachment} options attachment options
 	 * @returns {Message} the current instance for chaining
 	 */
-	public attach(options: MessageAttachment): Message {
+	public attach(options: MessageAttachment) {
 		// sender can specify an attachment as an alternative
 		if (options.alternative) {
 			this.alternative = options;
