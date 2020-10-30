@@ -63,19 +63,45 @@ test.after(async (t) => {
 });
 
 test('client invokes callback exactly once for invalid connection', async (t) => {
-	t.plan(1);
 	const msg = {
 		from: 'foo@bar.baz',
 		to: 'foo@bar.baz',
 		subject: 'hello world',
 		text: 'hello world',
 	};
-	try {
-		const invalidClient = new SMTPClient({ host: 'bar.baz' });
-		await promisify(invalidClient.send.bind(invalidClient))(new Message(msg));
-	} catch (err) {
-		t.true(err instanceof Error);
-	}
+	await t.notThrowsAsync(
+		new Promise((resolve, reject) => {
+			let counter = 0;
+			const invalidClient = new SMTPClient({ host: 'bar.baz' });
+			const incrementListener = () => {
+				if (counter > 0) {
+					reject();
+				} else {
+					counter++;
+				}
+			};
+			invalidClient.smtp.addListener('incrementTestCounter', incrementListener);
+			invalidClient.send(new Message(msg), (err) => {
+				if (err == null || counter > 0) {
+					reject();
+				} else {
+					invalidClient.smtp.emit('incrementTestCounter');
+				}
+			});
+			// @ts-expect-error the error event is only accessible from the protected socket property
+			invalidClient.smtp.sock.once('error', () => {
+				invalidClient.smtp.removeListener(
+					'incrementTestCounter',
+					incrementListener
+				);
+				if (counter === 1) {
+					resolve();
+				} else {
+					reject();
+				}
+			});
+		})
+	);
 });
 
 test('client has a default connection timeout', async (t) => {
