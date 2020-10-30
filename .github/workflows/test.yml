@@ -7,19 +7,17 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node-version: [^10, ^12, ^14, ^15]
+        node: [^10, ^12, ^14, ^15]
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
       - name: checkout
-        uses: actions/checkout@v1
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v2
 
       - name: node
-        uses: actions/setup-node@v1
+        uses: actions/setup-node@v2-beta
         with:
-          node-version: ${{ matrix.node-version }}
+          node-version: ${{ matrix.node }}
 
       - name: install
         run: yarn install
