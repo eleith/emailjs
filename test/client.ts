@@ -373,3 +373,51 @@ test('client send can have result awaited when promisified', async (t) => {
 		t.fail(err);
 	}
 });
+
+test('client sendAsync can have result awaited', async (t) => {
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		bcc: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+
+	try {
+		const message = await client.sendAsync(new Message(msg));
+		t.true(message instanceof Message);
+		t.like(message, {
+			alternative: null,
+			content: 'text/plain; charset=utf-8',
+			text: "It is hard to be brave when you're only a Very Small Animal.",
+			header: {
+				bcc: 'pooh@gmail.com',
+				from: 'piglet@gmail.com',
+				subject: '=?UTF-8?Q?this_is_a_test_TEXT_message_from_emailjs?=',
+			},
+		});
+		t.deepEqual(message.attachments, []);
+		t.true(isRFC2822Date(message.header.date as string));
+		t.regex(message.header['message-id'] as string, /^<.*[@]{1}.*>$/);
+	} catch (err) {
+		t.fail(err);
+	}
+});
+
+test('client sendAsync can have error caught when awaited', async (t) => {
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'piglet@gmail.com',
+		bcc: 'pooh@gmail.com',
+		text: "It is hard to be brave when you're only a Very Small Animal.",
+	};
+
+	try {
+		const invalidClient = new SMTPClient({ host: 'bar.baz' });
+		const message = await invalidClient.sendAsync(new Message(msg));
+		t.true(message instanceof Message);
+		t.fail();
+	} catch (err) {
+		t.true(err instanceof Error);
+		t.pass();
+	}
+});

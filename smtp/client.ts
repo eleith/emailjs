@@ -74,6 +74,23 @@ export class SMTPClient {
 
 	/**
 	 * @public
+	 * @param {Message} msg the message to send
+	 * @returns {Promise<Message>} a promise that resolves to the fully processed message
+	 */
+	public sendAsync(msg: Message) {
+		return new Promise<Message>((resolve, reject) => {
+			this.send(msg, (err, msg) => {
+				if (err != null) {
+					reject(err);
+				} else {
+					resolve(msg);
+				}
+			});
+		});
+	}
+
+	/**
+	 * @public
 	 * @description Converts a message to the raw object used by the internal stack.
 	 * @param {Message} message message to convert
 	 * @param {function(err: Error, msg: Message): void} callback errback
