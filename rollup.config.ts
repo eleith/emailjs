@@ -7,15 +7,12 @@ export default {
 		{
 			file: 'rollup/email.cjs',
 			format: 'cjs',
-			interop: false,
-			freeze: false,
+			interop: 'default',
 			sourcemap: true,
 		},
 		{
 			file: 'rollup/email.mjs',
 			format: 'es',
-			interop: false,
-			freeze: false,
 			sourcemap: true,
 		},
 	],
