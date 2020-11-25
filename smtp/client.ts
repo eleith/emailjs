@@ -63,9 +63,6 @@ export class SMTPClient {
 				}
 				this.queue.push(stack);
 				this._poll();
-				if (this.queue.every((x) => x !== stack)) {
-					callback(null, message);
-				}
 			} else {
 				callback(new Error(why), msg);
 			}
