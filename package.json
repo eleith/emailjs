@@ -16,23 +16,23 @@
 	},
 	"type": "module",
 	"devDependencies": {
-		"@ledge/configs": "23.0.0",
+		"@ledge/configs": "23.3.223",
 		"@rollup/plugin-typescript": "6.1.0",
-		"@types/mailparser": "2.7.4",
+		"@types/mailparser": "3.0.0",
 		"@types/smtp-server": "3.5.5",
-		"@typescript-eslint/eslint-plugin": "4.6.0",
-		"@typescript-eslint/parser": "4.6.0",
+		"@typescript-eslint/eslint-plugin": "4.8.2",
+		"@typescript-eslint/parser": "4.8.2",
 		"ava": "3.13.0",
-		"eslint": "7.12.1",
+		"eslint": "7.14.0",
 		"eslint-config-prettier": "6.15.0",
 		"eslint-plugin-prettier": "3.1.4",
-		"mailparser": "2.8.0",
-		"prettier": "2.1.2",
-		"rollup": "2.32.1",
-		"smtp-server": "3.7.0",
+		"mailparser": "3.0.0",
+		"prettier": "2.2.1",
+		"rollup": "2.34.0",
+		"smtp-server": "3.8.0",
 		"ts-node": "9.0.0",
 		"tslib": "2.0.3",
-		"typescript": "4.0.5"
+		"typescript": "4.1.2"
 	},
 	"engine": [
 		"node >= 10"
@@ -47,6 +47,9 @@
 	"exports": {
 		"import": "./rollup/email.mjs",
 		"require": "./rollup/email.cjs"
+	},
+	"resolutions": {
+		"nodemailer": "6.4.16"
 	},
 	"scripts": {
 		"build": "rollup -c rollup.config.ts",
