@@ -256,6 +256,19 @@ function getRFC2822DateUTC(date = new Date()) {
     dates.push('+0000');
     return dates.join(' ');
 }
+/**
+ * RFC 2822 regex
+ * @see https://tools.ietf.org/html/rfc2822#section-3.3
+ * @see https://github.com/moment/moment/blob/a831fc7e2694281ce31e4f090bbcf90a690f0277/src/lib/create/from-string.js#L101
+ */
+const rfc2822re = /^(?:(Mon|Tue|Wed|Thu|Fri|Sat|Sun),?\s)?(\d{1,2})\s(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s(\d{2,4})\s(\d\d):(\d\d)(?::(\d\d))?\s(?:(UT|GMT|[ECMP][SD]T)|([Zz])|([+-]\d{4}))$/.compile();
+/**
+ * @param {string} [date] a string to check for conformance to the [rfc2822](https://tools.ietf.org/html/rfc2822#section-3.3) standard
+ * @returns {boolean} the result of the conformance check
+ */
+function isRFC2822Date(date) {
+    return rfc2822re.test(date);
+}
 
 // adapted from https://github.com/emailjs/emailjs-mime-codec/blob/6909c706b9f09bc0e5c3faf48f723cca53e5b352/src/mimecodec.js
 const encoder = new util.TextEncoder();
@@ -458,7 +471,7 @@ const MIME64CHUNK = (MIMECHUNK * 6);
  */
 const BUFFERSIZE = (MIMECHUNK * 24 * 7);
 let counter = 0;
-function generate_boundary() {
+function generateBoundary() {
     let text = '';
     const possible = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789'()+_,-./:=?";
     for (let i = 0; i < 69; i++) {
@@ -597,7 +610,7 @@ class Message {
     }
     /**
      * @public
-     * @returns {*} a stream of the current message
+     * @returns {MessageStream} a stream of the current message
      */
     stream() {
         return new MessageStream(this);
@@ -617,7 +630,7 @@ class Message {
 }
 class MessageStream extends stream.Stream {
     /**
-     * @param {*} message the message to stream
+     * @param {Message} message the message to stream
      */
     constructor(message) {
         super();
@@ -670,7 +683,7 @@ class MessageStream extends stream.Stream {
          * @param {MessageAttachment} [attachment] the attachment whose headers you would like to output
          * @returns {void}
          */
-        const output_attachment_headers = (attachment) => {
+        const outputAttachmentHeaders = (attachment) => {
             let data = [];
             const headers = {
                 'content-type': attachment.type +
@@ -702,7 +715,7 @@ class MessageStream extends stream.Stream {
          * @param {function(): void} [callback] the function to call after output is finished
          * @returns {void}
          */
-        const output_base64 = (data, callback) => {
+        const outputBase64 = (data, callback) => {
             const loops = Math.ceil(data.length / MIMECHUNK);
             let loop = 0;
             while (loop < loops) {
@@ -713,7 +726,7 @@ class MessageStream extends stream.Stream {
                 callback();
             }
         };
-        const output_file = (attachment, next) => {
+        const outputFile = (attachment, next) => {
             const chunk = MIME64CHUNK * 16;
             const buffer = Buffer.alloc(chunk);
             const closed = (fd) => fs.closeSync(fd);
@@ -739,7 +752,7 @@ class MessageStream extends stream.Stream {
                                 encoding = 'base64';
                             }
                             // guaranteed to be encoded without padding unless it is our last read
-                            output_base64(buffer.toString(encoding, 0, bytes), () => {
+                            outputBase64(buffer.toString(encoding, 0, bytes), () => {
                                 if (bytes == chunk) {
                                     // we read a full chunk, there might be more
                                     fs.read(fd, buffer, 0, chunk, null, read);
@@ -768,13 +781,13 @@ class MessageStream extends stream.Stream {
          * @param {function(): void} callback the function to call after output is finished
          * @returns {void}
          */
-        const output_stream = (attachment, callback) => {
+        const outputStream = (attachment, callback) => {
             const { stream } = attachment;
             if (stream === null || stream === void 0 ? void 0 : stream.readable) {
                 let previous = Buffer.alloc(0);
                 stream.resume();
                 stream.on('end', () => {
-                    output_base64(previous.toString('base64'), callback);
+                    outputBase64(previous.toString('base64'), callback);
                     this.removeListener('pause', stream.pause);
                     this.removeListener('resume', stream.resume);
                     this.removeListener('error', stream.resume);
@@ -792,7 +805,7 @@ class MessageStream extends stream.Stream {
                         // copy dangling bytes into previous buffer
                         buffer.copy(previous, 0, buffer.length - padded);
                     }
-                    output_base64(buffer.toString('base64', 0, buffer.length - padded));
+                    outputBase64(buffer.toString('base64', 0, buffer.length - padded));
                 });
                 this.on('pause', stream.pause);
                 this.on('resume', stream.resume);
@@ -802,13 +815,13 @@ class MessageStream extends stream.Stream {
                 this.emit('error', { message: 'stream not readable' });
             }
         };
-        const output_attachment = (attachment, callback) => {
+        const outputAttachment = (attachment, callback) => {
             const build = attachment.path
-                ? output_file
+                ? outputFile
                 : attachment.stream
-                    ? output_stream
-                    : output_data;
-            output_attachment_headers(attachment);
+                    ? outputStream
+                    : outputData;
+            outputAttachmentHeaders(attachment);
             build(attachment, callback);
         };
         /**
@@ -818,14 +831,14 @@ class MessageStream extends stream.Stream {
          * @param {function(): void} callback the function to call if index is greater than upper bound
          * @returns {void}
          */
-        const output_message = (boundary, list, index, callback) => {
+        const outputMessage = (boundary, list, index, callback) => {
             if (index < list.length) {
                 output(`--${boundary}${CRLF}`);
                 if (list[index].related) {
-                    output_related(list[index], () => output_message(boundary, list, index + 1, callback));
+                    outputRelated(list[index], () => outputMessage(boundary, list, index + 1, callback));
                 }
                 else {
-                    output_attachment(list[index], () => output_message(boundary, list, index + 1, callback));
+                    outputAttachment(list[index], () => outputMessage(boundary, list, index + 1, callback));
                 }
             }
             else {
@@ -833,17 +846,17 @@ class MessageStream extends stream.Stream {
                 callback();
             }
         };
-        const output_mixed = () => {
-            const boundary = generate_boundary();
+        const outputMixed = () => {
+            const boundary = generateBoundary();
             output(`Content-Type: multipart/mixed; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`);
             if (this.message.alternative == null) {
-                output_text(this.message);
-                output_message(boundary, this.message.attachments, 0, close);
+                outputText(this.message);
+                outputMessage(boundary, this.message.attachments, 0, close);
             }
             else {
-                output_alternative(
+                outputAlternative(
                 // typescript bug; should narrow to { alternative: MessageAttachment }
-                this.message, () => output_message(boundary, this.message.attachments, 0, close));
+                this.message, () => outputMessage(boundary, this.message.attachments, 0, close));
             }
         };
         /**
@@ -851,16 +864,16 @@ class MessageStream extends stream.Stream {
          * @param {function(): void} callback the function to call after output is finished
          * @returns {void}
          */
-        const output_data = (attachment, callback) => {
+        const outputData = (attachment, callback) => {
             var _a, _b;
-            output_base64(attachment.encoded
+            outputBase64(attachment.encoded
                 ? (_a = attachment.data) !== null && _a !== void 0 ? _a : '' : Buffer.from((_b = attachment.data) !== null && _b !== void 0 ? _b : '').toString('base64'), callback);
         };
         /**
          * @param {Message} message the message to output
          * @returns {void}
          */
-        const output_text = (message) => {
+        const outputText = (message) => {
             let data = [];
             data = data.concat([
                 'Content-Type:',
@@ -878,12 +891,12 @@ class MessageStream extends stream.Stream {
          * @param {function(): void} callback the function to call after output is finished
          * @returns {void}
          */
-        const output_related = (message, callback) => {
-            const boundary = generate_boundary();
+        const outputRelated = (message, callback) => {
+            const boundary = generateBoundary();
             output(`Content-Type: multipart/related; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`);
-            output_attachment(message, () => {
+            outputAttachment(message, () => {
                 var _a;
-                output_message(boundary, (_a = message.related) !== null && _a !== void 0 ? _a : [], 0, () => {
+                outputMessage(boundary, (_a = message.related) !== null && _a !== void 0 ? _a : [], 0, () => {
                     output(`${CRLF}--${boundary}--${CRLF}${CRLF}`);
                     callback();
                 });
@@ -894,10 +907,10 @@ class MessageStream extends stream.Stream {
          * @param {function(): void} callback the function to call after output is finished
          * @returns {void}
          */
-        const output_alternative = (message, callback) => {
-            const boundary = generate_boundary();
+        const outputAlternative = (message, callback) => {
+            const boundary = generateBoundary();
             output(`Content-Type: multipart/alternative; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`);
-            output_text(message);
+            outputText(message);
             output(`--${boundary}${CRLF}`);
             /**
              * @returns {void}
@@ -907,10 +920,10 @@ class MessageStream extends stream.Stream {
                 callback();
             };
             if (message.alternative.related) {
-                output_related(message.alternative, finish);
+                outputRelated(message.alternative, finish);
             }
             else {
-                output_attachment(message.alternative, finish);
+                outputAttachment(message.alternative, finish);
             }
         };
         const close = (err) => {
@@ -934,20 +947,20 @@ class MessageStream extends stream.Stream {
         /**
          * @returns {void}
          */
-        const output_header_data = () => {
+        const outputHeaderData = () => {
             if (this.message.attachments.length || this.message.alternative) {
                 output(`MIME-Version: 1.0${CRLF}`);
-                output_mixed();
+                outputMixed();
             } // you only have a text message!
             else {
-                output_text(this.message);
+                outputText(this.message);
                 close();
             }
         };
         /**
          * @returns {void}
          */
-        const output_header = () => {
+        const outputHeader = () => {
             let data = [];
             for (const header in this.message.header) {
                 // do not output BCC in the headers (regex) nor custom Object.prototype functions...
@@ -962,10 +975,10 @@ class MessageStream extends stream.Stream {
                 }
             }
             output(data.join(''));
-            output_header_data();
+            outputHeaderData();
         };
         this.once('destroy', close);
-        process.nextTick(output_header);
+        process.nextTick(outputHeader);
     }
     /**
      * @public
@@ -1136,7 +1149,7 @@ const CRLF$1 = '\r\n';
 const GREYLIST_DELAY = 300;
 let DEBUG = 0;
 /**
- * @param {...any} args the message(s) to log
+ * @param {...any[]} args the message(s) to log
  * @returns {void}
  */
 const log = (...args) => {
@@ -1149,8 +1162,8 @@ const log = (...args) => {
     }
 };
 /**
- * @param {function(...*): void} callback the function to call
- * @param {...*} args the arguments to apply to the function
+ * @param {function(...any[]): void} callback the function to call
+ * @param {...any[]} args the arguments to apply to the function
  * @returns {void}
  */
 const caller = (callback, ...args) => {
@@ -1187,7 +1200,7 @@ class SMTPConnection extends events.EventEmitter {
         this.host = 'localhost';
         this.ssl = false;
         this.tls = false;
-        this.greylistResponseTracker = new WeakMap();
+        this.greylistResponseTracker = new WeakSet();
         if (Array.isArray(authentication)) {
             this.authentication = authentication;
         }
@@ -1250,7 +1263,7 @@ class SMTPConnection extends events.EventEmitter {
      * NOTE: `host` is trimmed before being used to establish a connection; however, the original untrimmed value will still be visible in configuration.
      *
      * @public
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @param {number} [port] the port to use for the connection
      * @param {string} [host] the hostname to use for the connection
      * @param {ConnectOptions} [options={}] the options
@@ -1332,7 +1345,7 @@ class SMTPConnection extends events.EventEmitter {
     /**
      * @public
      * @param {string} str the string to send
-     * @param {*} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @returns {void}
      */
     send(str, callback) {
@@ -1359,7 +1372,7 @@ class SMTPConnection extends events.EventEmitter {
     /**
      * @public
      * @param {string} cmd command to issue
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @param {(number[] | number)} [codes=[250]] array codes
      * @returns {void}
      */
@@ -1380,8 +1393,8 @@ class SMTPConnection extends events.EventEmitter {
                 }
                 else if ((code === 450 || code === 451) &&
                     msg.message.toLowerCase().includes('greylist') &&
-                    this.greylistResponseTracker.get(response) === false) {
-                    this.greylistResponseTracker.set(response, true);
+                    this.greylistResponseTracker.has(response) === false) {
+                    this.greylistResponseTracker.add(response);
                     setTimeout(() => {
                         this.send(cmd + CRLF$1, response);
                     }, GREYLIST_DELAY);
@@ -1393,7 +1406,7 @@ class SMTPConnection extends events.EventEmitter {
                 }
             }
         };
-        this.greylistResponseTracker.set(response, false);
+        this.greylistResponseTracker.delete(response);
         this.send(cmd + CRLF$1, response);
     }
     /**
@@ -1406,7 +1419,7 @@ class SMTPConnection extends events.EventEmitter {
      * As this command was deprecated by rfc2821, it should only be used for compatibility with non-compliant servers.
      * @see https://tools.ietf.org/html/rfc2821#appendix-F.3
      *
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @param {string} domain the domain to associate with the 'helo' request
      * @returns {void}
      */
@@ -1423,7 +1436,7 @@ class SMTPConnection extends events.EventEmitter {
     }
     /**
      * @public
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @returns {void}
      */
     starttls(callback) {
@@ -1478,7 +1491,7 @@ class SMTPConnection extends events.EventEmitter {
     }
     /**
      * @public
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @param {string} domain the domain to associate with the 'ehlo' request
      * @returns {void}
      */
@@ -1511,7 +1524,7 @@ class SMTPConnection extends events.EventEmitter {
     /**
      * @public
      * @description SMTP 'help' command, returns text from the server
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @param {string} domain the domain to associate with the 'help' request
      * @returns {void}
      */
@@ -1520,7 +1533,7 @@ class SMTPConnection extends events.EventEmitter {
     }
     /**
      * @public
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @returns {void}
      */
     rset(callback) {
@@ -1528,7 +1541,7 @@ class SMTPConnection extends events.EventEmitter {
     }
     /**
      * @public
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @returns {void}
      */
     noop(callback) {
@@ -1536,7 +1549,7 @@ class SMTPConnection extends events.EventEmitter {
     }
     /**
      * @public
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @param {string} from the sender
      * @returns {void}
      */
@@ -1545,7 +1558,7 @@ class SMTPConnection extends events.EventEmitter {
     }
     /**
      * @public
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @param {string} to the receiver
      * @returns {void}
      */
@@ -1554,7 +1567,7 @@ class SMTPConnection extends events.EventEmitter {
     }
     /**
      * @public
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @returns {void}
      */
     data(callback) {
@@ -1562,7 +1575,7 @@ class SMTPConnection extends events.EventEmitter {
     }
     /**
      * @public
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @returns {void}
      */
     data_end(callback) {
@@ -1582,7 +1595,7 @@ class SMTPConnection extends events.EventEmitter {
      * @public
      * @description SMTP 'verify' command -- checks for address validity.
      * @param {string} address the address to validate
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @returns {void}
      */
     verify(address, callback) {
@@ -1592,7 +1605,7 @@ class SMTPConnection extends events.EventEmitter {
      * @public
      * @description SMTP 'expn' command -- expands a mailing list.
      * @param {string} address the mailing list to expand
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @returns {void}
      */
     expn(address, callback) {
@@ -1605,7 +1618,7 @@ class SMTPConnection extends events.EventEmitter {
      * If there has been no previous EHLO or HELO command self session, self
      * method tries ESMTP EHLO first.
      *
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @param {string} [domain] the domain to associate with the command
      * @returns {void}
      */
@@ -1633,7 +1646,7 @@ class SMTPConnection extends events.EventEmitter {
      *
      * This method will return normally if the authentication was successful.
      *
-     * @param {function(...*): void} callback function to call after response
+     * @param {function(...any[]): void} callback function to call after response
      * @param {string} [user] the username to authenticate with
      * @param {string} [password] the password for the authentication
      * @param {{ method: string, domain: string }} [options] login options
@@ -1658,7 +1671,7 @@ class SMTPConnection extends events.EventEmitter {
              * @param {string} challenge challenge
              * @returns {string} base64 cram hash
              */
-            const encode_cram_md5 = (challenge) => {
+            const encodeCramMd5 = (challenge) => {
                 const hmac = crypto.createHmac('md5', login.password());
                 hmac.update(Buffer.from(challenge, 'base64').toString('ascii'));
                 return Buffer.from(`${login.user()} ${hmac.digest('hex')}`).toString('base64');
@@ -1666,12 +1679,12 @@ class SMTPConnection extends events.EventEmitter {
             /**
              * @returns {string} base64 login/password
              */
-            const encode_plain = () => Buffer.from(`\u0000${login.user()}\u0000${login.password()}`).toString('base64');
+            const encodePlain = () => Buffer.from(`\u0000${login.user()}\u0000${login.password()}`).toString('base64');
             /**
              * @see https://developers.google.com/gmail/xoauth2_protocol
              * @returns {string} base64 xoauth2 auth token
              */
-            const encode_xoauth2 = () => Buffer.from(`user=${login.user()}\u0001auth=Bearer ${login.password()}\u0001\u0001`).toString('base64');
+            const encodeXoauth2 = () => Buffer.from(`user=${login.user()}\u0001auth=Bearer ${login.password()}\u0001\u0001`).toString('base64');
             // List of authentication methods we support: from preferred to
             // less preferred methods.
             if (!method) {
@@ -1690,7 +1703,7 @@ class SMTPConnection extends events.EventEmitter {
             /**
              * handle bad responses from command differently
              * @param {Error} err err
-             * @param {*} data data
+             * @param {unknown} data data
              * @returns {void}
              */
             const failed = (err, data) => {
@@ -1700,7 +1713,7 @@ class SMTPConnection extends events.EventEmitter {
             };
             /**
              * @param {Error} err err
-             * @param {*} data data
+             * @param {unknown} data data
              * @returns {void}
              */
             const response = (err, data) => {
@@ -1714,7 +1727,7 @@ class SMTPConnection extends events.EventEmitter {
             };
             /**
              * @param {Error} err err
-             * @param {*} data data
+             * @param {unknown} data data
              * @param {string} msg msg
              * @returns {void}
              */
@@ -1724,7 +1737,7 @@ class SMTPConnection extends events.EventEmitter {
                 }
                 else {
                     if (method === AUTH_METHODS['CRAM-MD5']) {
-                        this.command(encode_cram_md5(msg), response, [235, 503]);
+                        this.command(encodeCramMd5(msg), response, [235, 503]);
                     }
                     else if (method === AUTH_METHODS.LOGIN) {
                         this.command(Buffer.from(login.password()).toString('base64'), response, [235, 503]);
@@ -1733,11 +1746,11 @@ class SMTPConnection extends events.EventEmitter {
             };
             /**
              * @param {Error} err err
-             * @param {*} data data
+             * @param {unknown} data data
              * @param {string} msg msg
              * @returns {void}
              */
-            const attempt_user = (err, data) => {
+            const attemptUser = (err, data) => {
                 if (err) {
                     failed(err, data);
                 }
@@ -1752,18 +1765,16 @@ class SMTPConnection extends events.EventEmitter {
                     this.command(`AUTH  ${AUTH_METHODS['CRAM-MD5']}`, attempt, [334]);
                     break;
                 case AUTH_METHODS.LOGIN:
-                    this.command(`AUTH ${AUTH_METHODS.LOGIN}`, attempt_user, [334]);
+                    this.command(`AUTH ${AUTH_METHODS.LOGIN}`, attemptUser, [334]);
                     break;
                 case AUTH_METHODS.PLAIN:
-                    this.command(`AUTH ${AUTH_METHODS.PLAIN} ${encode_plain()}`, response, [235, 503]);
+                    this.command(`AUTH ${AUTH_METHODS.PLAIN} ${encodePlain()}`, response, [235, 503]);
                     break;
                 case AUTH_METHODS.XOAUTH2:
-                    this.command(`AUTH ${AUTH_METHODS.XOAUTH2} ${encode_xoauth2()}`, response, [235, 503]);
+                    this.command(`AUTH ${AUTH_METHODS.XOAUTH2} ${encodeXoauth2()}`, response, [235, 503]);
                     break;
                 default:
-                    const msg = 'no form of authorization supported';
-                    const err = SMTPError.create(msg, SMTPErrorStates.AUTHNOTSUPPORTED, null, data);
-                    caller(callback, err);
+                    caller(callback, SMTPError.create('no form of authorization supported', SMTPErrorStates.AUTHNOTSUPPORTED, null, data));
                     break;
             }
         };
@@ -1797,7 +1808,7 @@ class SMTPConnection extends events.EventEmitter {
     }
     /**
      * @public
-     * @param {function(...*): void} [callback] function to call after response
+     * @param {function(...any[]): void} [callback] function to call after response
      * @returns {void}
      */
     quit(callback) {
@@ -1851,6 +1862,23 @@ class SMTPClient {
             else {
                 callback(new Error(why), msg);
             }
+        });
+    }
+    /**
+     * @public
+     * @param {Message} msg the message to send
+     * @returns {Promise<Message>} a promise that resolves to the fully processed message
+     */
+    sendAsync(msg) {
+        return new Promise((resolve, reject) => {
+            this.send(msg, (err, msg) => {
+                if (err != null) {
+                    reject(err);
+                }
+                else {
+                    resolve(msg);
+                }
+            });
         });
     }
     /**
@@ -1966,8 +1994,8 @@ class SMTPClient {
     }
     /**
      * @protected
-     * @param {*} attachment attachment
-     * @returns {*} whether the attachment contains inlined html
+     * @param {MessageAttachment | MessageAttachment[]} attachment attachment
+     * @returns {boolean} whether the attachment contains inlined html
      */
     _containsInlinedHtml(attachment) {
         if (Array.isArray(attachment)) {
@@ -2088,6 +2116,7 @@ exports.SMTPState = SMTPState;
 exports.addressparser = addressparser;
 exports.getRFC2822Date = getRFC2822Date;
 exports.getRFC2822DateUTC = getRFC2822DateUTC;
+exports.isRFC2822Date = isRFC2822Date;
 exports.mimeEncode = mimeEncode;
 exports.mimeWordEncode = mimeWordEncode;
 //# sourceMappingURL=email.cjs.map
