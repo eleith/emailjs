@@ -49,7 +49,7 @@ async function send(headers: Partial<MessageHeaders>) {
 			if (err) {
 				reject(err);
 			} else {
-				resolve(parseMap.get(headers.subject as string));
+				resolve(parseMap.get(headers.subject as string) as ParsedMail);
 			}
 		});
 	});
@@ -70,7 +70,7 @@ test('client invokes callback exactly once for invalid connection', async (t) =>
 		text: 'hello world',
 	};
 	await t.notThrowsAsync(
-		new Promise((resolve, reject) => {
+		new Promise<void>((resolve, reject) => {
 			let counter = 0;
 			const invalidClient = new SMTPClient({ host: 'bar.baz' });
 			const incrementListener = () => {
@@ -272,7 +272,7 @@ test('client supports greylisting', async (t) => {
 
 	const p = greylistPort++;
 	await t.notThrowsAsync(
-		new Promise((resolve, reject) => {
+		new Promise<void>((resolve, reject) => {
 			greylistServer.listen(p, () => {
 				new SMTPClient({
 					port: p,
@@ -321,7 +321,7 @@ test('client only responds once to greylisting', async (t) => {
 
 	const p = greylistPort++;
 	const { message: error } = await t.throwsAsync(
-		new Promise((resolve, reject) => {
+		new Promise<void>((resolve, reject) => {
 			greylistServer.listen(p, () => {
 				new SMTPClient({
 					port: p,

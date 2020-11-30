@@ -44,7 +44,7 @@ function send(headers: Partial<MessageHeaders>) {
 			if (err) {
 				reject(err);
 			} else {
-				resolve(parseMap.get(headers.subject as string));
+				resolve(parseMap.get(headers.subject as string) as ParsedMail);
 			}
 		});
 	});

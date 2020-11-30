@@ -18,7 +18,7 @@ function send(
 		secure?: boolean;
 	} = {}
 ) {
-	return new Promise((resolve, reject) => {
+	return new Promise<void>((resolve, reject) => {
 		t.plan(5);
 
 		const msg = {
