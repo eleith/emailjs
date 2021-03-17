@@ -1,4 +1,4 @@
-import fs, { PathLike } from 'fs';
+import  { PathLike } from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
 import type { Readable } from 'stream';
@@ -6,7 +6,7 @@ import type { Readable } from 'stream';
 import { addressparser } from './address';
 import { getRFC2822Date } from './date';
 import { mimeWordEncode } from './mime';
-
+const fs = require('fs');
 const CRLF = '\r\n' as const;
 
 /**
