@@ -34,9 +34,9 @@
 		"tslib": "2.2.0",
 		"typescript": "4.2.4"
 	},
-	"engine": [
-		"node >= 10"
-	],
+	"engines": {
+		"node": ">=10"
+	},
 	"files": [
 		"email.ts",
 		"smtp",
