@@ -168,8 +168,7 @@ test('very large text data message', async (t) => {
 		subject: 'this is a test TEXT+DATA message from emailjs',
 		from: 'lobsters@gmail.com',
 		to: 'lizards@gmail.com',
-		text:
-			'hello friend if you are seeing this, you can not view html emails. it is attached inline.',
+		text: 'hello friend if you are seeing this, you can not view html emails. it is attached inline.',
 		attachment: {
 			data: text,
 			alternative: true,
@@ -365,8 +364,7 @@ test('streams message', async (t) => {
 		subject: 'this is a test TEXT+2+STREAMED+ATTACHMENTS message from emailjs',
 		from: 'stanford@gmail.com',
 		to: 'mit@gmail.com',
-		text:
-			'hello friend, i hope this message and streamed attachments finds you well.',
+		text: 'hello friend, i hope this message and streamed attachments finds you well.',
 		attachment: [
 			{ stream, type: 'application/pdf', name: 'smtp-info.pdf' },
 			{

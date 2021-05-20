@@ -13,9 +13,8 @@ const RANGES = [
 	[0x20, 0x3c], // <SP>!"#$%&'()*+,-./0123456789:;
 	[0x3e, 0x7e], // >?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}
 ];
-const LOOKUP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split(
-	''
-);
+const LOOKUP =
+	'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('');
 const MAX_CHUNK_LENGTH = 16383; // must be multiple of 3
 const MAX_MIME_WORD_LENGTH = 52;
 const MAX_B64_MIME_WORD_BYTE_LENGTH = 39;

@@ -260,13 +260,13 @@ test('client supports greylisting', async (t) => {
 		greylistServer.onRcptTo = (a, s, cb) => {
 			t.pass();
 			const err = new Error('greylist');
-			((err as never) as { responseCode: number }).responseCode = 450;
+			(err as never as { responseCode: number }).responseCode = 450;
 			greylistServer.onRcptTo = onRcptTo;
 			onRcptTo(a, s, cb);
 		};
 
 		const err = new Error('greylist');
-		((err as never) as { responseCode: number }).responseCode = 450;
+		(err as never as { responseCode: number }).responseCode = 450;
 		callback(err);
 	};
 
@@ -307,7 +307,7 @@ test('client only responds once to greylisting', async (t) => {
 		onRcptTo(_address, _session, callback) {
 			t.pass();
 			const err = new Error('greylist');
-			((err as never) as { responseCode: number }).responseCode = 450;
+			(err as never as { responseCode: number }).responseCode = 450;
 			callback(err);
 		},
 		onAuth(auth, _session, callback) {
