@@ -276,7 +276,7 @@ const RANGES = [
     [0x0a],
     [0x0d],
     [0x20, 0x3c],
-    [0x3e, 0x7e],
+    [0x3e, 0x7e], // >?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}
 ];
 const LOOKUP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('');
 const MAX_CHUNK_LENGTH = 16383; // must be multiple of 3
@@ -453,7 +453,7 @@ function mimeWordEncode(data, mimeWordEncoding = 'Q', encoding = 'utf-8') {
         .trim();
 }
 
-const CRLF = '\r\n';
+const CRLF$1 = '\r\n';
 /**
  * MIME standard wants 76 char chunks when sending out.
  */
@@ -701,10 +701,10 @@ class MessageStream extends Stream {
                     convertDashDelimitedTextToSnakeCase(header),
                     ': ',
                     headers[header],
-                    CRLF,
+                    CRLF$1,
                 ]);
             }
-            output(data.concat([CRLF]).join(''));
+            output(data.concat([CRLF$1]).join(''));
         };
         /**
          * @param {string} data the data to output as base64
@@ -715,7 +715,7 @@ class MessageStream extends Stream {
             const loops = Math.ceil(data.length / MIMECHUNK);
             let loop = 0;
             while (loop < loops) {
-                output(data.substring(MIMECHUNK * loop, MIMECHUNK * (loop + 1)) + CRLF);
+                output(data.substring(MIMECHUNK * loop, MIMECHUNK * (loop + 1)) + CRLF$1);
                 loop++;
             }
             if (callback) {
@@ -829,7 +829,7 @@ class MessageStream extends Stream {
          */
         const outputMessage = (boundary, list, index, callback) => {
             if (index < list.length) {
-                output(`--${boundary}${CRLF}`);
+                output(`--${boundary}${CRLF$1}`);
                 if (list[index].related) {
                     outputRelated(list[index], () => outputMessage(boundary, list, index + 1, callback));
                 }
@@ -838,13 +838,13 @@ class MessageStream extends Stream {
                 }
             }
             else {
-                output(`${CRLF}--${boundary}--${CRLF}${CRLF}`);
+                output(`${CRLF$1}--${boundary}--${CRLF$1}${CRLF$1}`);
                 callback();
             }
         };
         const outputMixed = () => {
             const boundary = generateBoundary();
-            output(`Content-Type: multipart/mixed; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`);
+            output(`Content-Type: multipart/mixed; boundary="${boundary}"${CRLF$1}${CRLF$1}--${boundary}${CRLF$1}`);
             if (this.message.alternative == null) {
                 outputText(this.message);
                 outputMessage(boundary, this.message.attachments, 0, close);
@@ -863,7 +863,8 @@ class MessageStream extends Stream {
         const outputData = (attachment, callback) => {
             var _a, _b;
             outputBase64(attachment.encoded
-                ? (_a = attachment.data) !== null && _a !== void 0 ? _a : '' : Buffer.from((_b = attachment.data) !== null && _b !== void 0 ? _b : '').toString('base64'), callback);
+                ? (_a = attachment.data) !== null && _a !== void 0 ? _a : ''
+                : Buffer.from((_b = attachment.data) !== null && _b !== void 0 ? _b : '').toString('base64'), callback);
         };
         /**
          * @param {Message} message the message to output
@@ -874,12 +875,12 @@ class MessageStream extends Stream {
             data = data.concat([
                 'Content-Type:',
                 message.content,
-                CRLF,
+                CRLF$1,
                 'Content-Transfer-Encoding: 7bit',
-                CRLF,
+                CRLF$1,
             ]);
-            data = data.concat(['Content-Disposition: inline', CRLF, CRLF]);
-            data = data.concat([message.text || '', CRLF, CRLF]);
+            data = data.concat(['Content-Disposition: inline', CRLF$1, CRLF$1]);
+            data = data.concat([message.text || '', CRLF$1, CRLF$1]);
             output(data.join(''));
         };
         /**
@@ -889,11 +890,11 @@ class MessageStream extends Stream {
          */
         const outputRelated = (message, callback) => {
             const boundary = generateBoundary();
-            output(`Content-Type: multipart/related; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`);
+            output(`Content-Type: multipart/related; boundary="${boundary}"${CRLF$1}${CRLF$1}--${boundary}${CRLF$1}`);
             outputAttachment(message, () => {
                 var _a;
                 outputMessage(boundary, (_a = message.related) !== null && _a !== void 0 ? _a : [], 0, () => {
-                    output(`${CRLF}--${boundary}--${CRLF}${CRLF}`);
+                    output(`${CRLF$1}--${boundary}--${CRLF$1}${CRLF$1}`);
                     callback();
                 });
             });
@@ -905,14 +906,14 @@ class MessageStream extends Stream {
          */
         const outputAlternative = (message, callback) => {
             const boundary = generateBoundary();
-            output(`Content-Type: multipart/alternative; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`);
+            output(`Content-Type: multipart/alternative; boundary="${boundary}"${CRLF$1}${CRLF$1}--${boundary}${CRLF$1}`);
             outputText(message);
-            output(`--${boundary}${CRLF}`);
+            output(`--${boundary}${CRLF$1}`);
             /**
              * @returns {void}
              */
             const finish = () => {
-                output([CRLF, '--', boundary, '--', CRLF, CRLF].join(''));
+                output([CRLF$1, '--', boundary, '--', CRLF$1, CRLF$1].join(''));
                 callback();
             };
             if (message.alternative.related) {
@@ -945,7 +946,7 @@ class MessageStream extends Stream {
          */
         const outputHeaderData = () => {
             if (this.message.attachments.length || this.message.alternative) {
-                output(`MIME-Version: 1.0${CRLF}`);
+                output(`MIME-Version: 1.0${CRLF$1}`);
                 outputMixed();
             } // you only have a text message!
             else {
@@ -966,7 +967,7 @@ class MessageStream extends Stream {
                         convertDashDelimitedTextToSnakeCase(header),
                         ': ',
                         this.message.header[header],
-                        CRLF,
+                        CRLF$1,
                     ]);
                 }
             }
@@ -1141,7 +1142,7 @@ const DEFAULT_TIMEOUT = 5000;
 const SMTP_PORT = 25;
 const SMTP_SSL_PORT = 465;
 const SMTP_TLS_PORT = 587;
-const CRLF$1 = '\r\n';
+const CRLF = '\r\n';
 const GREYLIST_DELAY = 300;
 let DEBUG = 0;
 /**
@@ -1392,7 +1393,7 @@ class SMTPConnection extends EventEmitter {
                     this.greylistResponseTracker.has(response) === false) {
                     this.greylistResponseTracker.add(response);
                     setTimeout(() => {
-                        this.send(cmd + CRLF$1, response);
+                        this.send(cmd + CRLF, response);
                     }, GREYLIST_DELAY);
                 }
                 else {
@@ -1403,7 +1404,7 @@ class SMTPConnection extends EventEmitter {
             }
         };
         this.greylistResponseTracker.delete(response);
-        this.send(cmd + CRLF$1, response);
+        this.send(cmd + CRLF, response);
     }
     /**
      * @public
@@ -1575,7 +1576,7 @@ class SMTPConnection extends EventEmitter {
      * @returns {void}
      */
     data_end(callback) {
-        this.command(`${CRLF$1}.`, callback);
+        this.command(`${CRLF}.`, callback);
     }
     /**
      * @public
@@ -1686,8 +1687,8 @@ class SMTPConnection extends EventEmitter {
             if (!method) {
                 const preferred = this.authentication;
                 let auth = '';
-                if (typeof ((_a = this.features) === null || _a === void 0 ? void 0 : _a.auth) === 'string') {
-                    auth = this.features.auth;
+                if (typeof ((_a = this.features) === null || _a === void 0 ? void 0 : _a['auth']) === 'string') {
+                    auth = this.features['auth'];
                 }
                 for (let i = 0; i < preferred.length; i++) {
                     if (auth.includes(preferred[i])) {
