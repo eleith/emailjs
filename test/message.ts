@@ -2,14 +2,20 @@ import { readFileSync, createReadStream } from 'fs';
 import { join } from 'path';
 
 import test from 'ava';
-import { simpleParser, ParsedMail } from 'mailparser';
+import { simpleParser, AddressObject, ParsedMail } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
 import { SMTPClient, Message, MessageAttachment } from '../email';
 import { MessageHeaders } from '../smtp/message';
 
+/**
+ * \@types/mailparser@3.0.2 breaks our code
+ * @see https://github.com/DefinitelyTyped/DefinitelyTyped/pull/50744
+ */
+type ParsedMailCompat = Omit<ParsedMail, 'to'> & { to?: AddressObject };
+
 const port = 5000;
-const parseMap = new Map<string, ParsedMail>();
+const parseMap = new Map<string, ParsedMailCompat>();
 
 const client = new SMTPClient({
 	port,
@@ -27,11 +33,11 @@ const server = new SMTPServer({
 		}
 	},
 	async onData(stream, _session, callback: () => void) {
-		const mail = await simpleParser(stream, {
+		const mail = (await simpleParser(stream, {
 			skipHtmlToText: true,
 			skipTextToHtml: true,
 			skipImageLinks: true,
-		} as Record<string, unknown>);
+		} as Record<string, unknown>)) as ParsedMailCompat;
 
 		parseMap.set(mail.subject as string, mail);
 		callback();
@@ -39,12 +45,12 @@ const server = new SMTPServer({
 });
 
 function send(headers: Partial<MessageHeaders>) {
-	return new Promise<ParsedMail>((resolve, reject) => {
+	return new Promise<ParsedMailCompat>((resolve, reject) => {
 		client.send(new Message(headers), (err) => {
 			if (err) {
 				reject(err);
 			} else {
-				resolve(parseMap.get(headers.subject as string) as ParsedMail);
+				resolve(parseMap.get(headers.subject as string) as ParsedMailCompat);
 			}
 		});
 	});
