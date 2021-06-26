@@ -762,8 +762,8 @@ export class SMTPConnection extends EventEmitter {
 				const preferred = this.authentication;
 				let auth = '';
 
-				if (typeof this.features?.auth === 'string') {
-					auth = this.features.auth;
+				if (typeof this.features?.['auth'] === 'string') {
+					auth = this.features['auth'];
 				}
 
 				for (let i = 0; i < preferred.length; i++) {
