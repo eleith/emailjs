@@ -73,27 +73,22 @@ test('client invokes callback exactly once for invalid connection', async (t) =>
 		new Promise<void>((resolve, reject) => {
 			let counter = 0;
 			const invalidClient = new SMTPClient({ host: 'bar.baz' });
-			const incrementListener = () => {
+			const incrementCounter = () => {
 				if (counter > 0) {
 					reject();
 				} else {
 					counter++;
 				}
 			};
-			invalidClient.smtp.addListener('incrementTestCounter', incrementListener);
 			invalidClient.send(new Message(msg), (err) => {
-				if (err == null || counter > 0) {
+				if (err == null) {
 					reject();
 				} else {
-					invalidClient.smtp.emit('incrementTestCounter');
+					incrementCounter();
 				}
 			});
 			// @ts-expect-error the error event is only accessible from the protected socket property
 			invalidClient.smtp.sock.once('error', () => {
-				invalidClient.smtp.removeListener(
-					'incrementTestCounter',
-					incrementListener
-				);
 				if (counter === 1) {
 					resolve();
 				} else {
