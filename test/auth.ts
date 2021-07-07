@@ -1,5 +1,5 @@
 import test, { ExecutionContext } from 'ava';
-import { simpleParser } from 'mailparser';
+import { simpleParser, AddressObject } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
 import { AUTH_METHODS, SMTPClient, Message } from '../email';
@@ -57,7 +57,7 @@ function send(
 				t.is(mail.text, msg.text + '\n\n\n');
 				t.is(mail.subject, msg.subject);
 				t.is(mail.from?.text, msg.from);
-				t.is(mail.to?.text, msg.to);
+				t.is((mail.to as AddressObject).text, msg.to);
 
 				callback();
 			},

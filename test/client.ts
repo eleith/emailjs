@@ -1,7 +1,7 @@
 import { promisify } from 'util';
 
 import test from 'ava';
-import { simpleParser, ParsedMail } from 'mailparser';
+import { simpleParser, ParsedMail, AddressObject } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
 import {
@@ -195,7 +195,7 @@ test('client allows message with only `cc` recipient header', async (t) => {
 	t.is(mail.text, msg.text + '\n\n\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
-	t.is(mail.cc?.text, msg.cc);
+	t.is((mail.cc as AddressObject).text, msg.cc);
 });
 
 test('client allows message with only `bcc` recipient header', async (t) => {
