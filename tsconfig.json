@@ -1,6 +1,7 @@
 {
 	"extends": "@ledge/configs/tsconfig.json",
 	"compilerOptions": {
+		"esModuleInterop": false,
 		"noPropertyAccessFromIndexSignature": true
 	},
 	"include": [
