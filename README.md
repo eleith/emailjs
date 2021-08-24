@@ -21,7 +21,6 @@ send emails, html and attachments (files, streams and strings) from node.js to a
 
 - auth access to an SMTP Server
 - if your service (ex: gmail) uses two-step authentication, use an application specific password
-- if using TypeScript, enable [`esModuleInterop`](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-2-7.html#support-for-import-d-from-cjs-from-commonjs-modules-with---esmoduleinterop) or [`allowSyntheticDefaultImports`](https://www.typescriptlang.org/docs/handbook/release-notes/typescript-1-8.html#support-for-default-import-interop-with-systemjs)
 
 ## EXAMPLE USAGE - text only emails
 

@@ -1,4 +1,11 @@
-import fs, { PathLike } from 'fs';
+import {
+	PathLike,
+	existsSync,
+	open as openFile,
+	close as closeFile,
+	closeSync as closeFileSync,
+	read as readFile,
+} from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
 import type { Readable } from 'stream';
@@ -214,7 +221,7 @@ export class Message {
 
 			this.attachments.forEach((attachment) => {
 				if (attachment.path) {
-					if (fs.existsSync(attachment.path) == false) {
+					if (existsSync(attachment.path) === false) {
 						failed.push(`${attachment.path} does not exist`);
 					}
 				} else if (attachment.stream) {
@@ -379,7 +386,15 @@ class MessageStream extends Stream {
 		) => {
 			const chunk = MIME64CHUNK * 16;
 			const buffer = Buffer.alloc(chunk);
-			const closed = (fd: number) => fs.closeSync(fd);
+
+			const inputEncoding =
+				attachment?.headers?.['content-transfer-encoding'] || 'base64';
+			const encoding =
+				inputEncoding === '7bit'
+					? 'ascii'
+					: inputEncoding === '8bit'
+					? 'binary'
+					: inputEncoding;
 
 			/**
 			 * @param {Error} err the error to emit
@@ -387,47 +402,38 @@ class MessageStream extends Stream {
 			 * @returns {void}
 			 */
 			const opened = (err: NodeJS.ErrnoException | null, fd: number) => {
-				if (!err) {
-					const read = (err: NodeJS.ErrnoException | null, bytes: number) => {
-						if (!err && this.readable) {
-							let encoding =
-								attachment && attachment.headers
-									? attachment.headers['content-transfer-encoding'] || 'base64'
-									: 'base64';
-							if (encoding === 'ascii' || encoding === '7bit') {
-								encoding = 'ascii';
-							} else if (encoding === 'binary' || encoding === '8bit') {
-								encoding = 'binary';
-							} else {
-								encoding = 'base64';
-							}
-							// guaranteed to be encoded without padding unless it is our last read
-							outputBase64(buffer.toString(encoding, 0, bytes), () => {
-								if (bytes == chunk) {
-									// we read a full chunk, there might be more
-									fs.read(fd, buffer, 0, chunk, null, read);
-								} // that was the last chunk, we are done reading the file
-								else {
-									this.removeListener('error', closed);
-									fs.close(fd, next);
-								}
-							});
-						} else {
-							this.emit(
-								'error',
-								err || { message: 'message stream was interrupted somehow!' }
-							);
-						}
-					};
-
-					fs.read(fd, buffer, 0, chunk, null, read);
-					this.once('error', closed);
-				} else {
+				if (err) {
 					this.emit('error', err);
+					return;
 				}
+				const readBytes = (
+					err: NodeJS.ErrnoException | null,
+					bytes: number
+				) => {
+					if (err || this.readable === false) {
+						this.emit(
+							'error',
+							err || new Error('message stream was interrupted somehow!')
+						);
+						return;
+					}
+					// guaranteed to be encoded without padding unless it is our last read
+					outputBase64(buffer.toString(encoding, 0, bytes), () => {
+						if (bytes == chunk) {
+							// we read a full chunk, there might be more
+							readFile(fd, buffer, 0, chunk, null, readBytes);
+						} // that was the last chunk, we are done reading the file
+						else {
+							this.removeListener('error', closeFileSync);
+							closeFile(fd, next);
+						}
+					});
+				};
+				readFile(fd, buffer, 0, chunk, null, readBytes);
+				this.once('error', closeFileSync);
 			};
 
-			fs.open(attachment.path as PathLike, 'r', opened);
+			openFile(attachment.path as PathLike, 'r', opened);
 		};
 
 		/**
