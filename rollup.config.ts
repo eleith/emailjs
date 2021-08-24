@@ -1,4 +1,4 @@
-import module from 'module';
+import { builtinModules } from 'module';
 import typescript from '@rollup/plugin-typescript';
 
 export default {
@@ -7,7 +7,7 @@ export default {
 		{
 			file: 'rollup/email.cjs',
 			format: 'cjs',
-			interop: 'default',
+			interop: false,
 			sourcemap: true,
 		},
 		{
@@ -16,7 +16,7 @@ export default {
 			sourcemap: true,
 		},
 	],
-	external: module.builtinModules,
+	external: builtinModules,
 	plugins: [
 		typescript({ removeComments: false, include: ['email.ts', 'smtp/**/*'] }),
 	],
