@@ -55,18 +55,18 @@ export class SMTPClient {
 			return;
 		}
 
-		message.valid((valid, why) => {
-			if (valid) {
-				const stack = this.createMessageStack(message, callback);
-				if (stack.to.length === 0) {
-					return callback(new Error('No recipients found in message'), msg);
-				}
-				this.queue.push(stack);
-				this._poll();
-			} else {
-				callback(new Error(why), msg);
+		const { isValid, validationError } = message.checkValidity();
+
+		if (isValid) {
+			const stack = this.createMessageStack(message, callback);
+			if (stack.to.length === 0) {
+				return callback(new Error('No recipients found in message'), msg);
 			}
-		});
+			this.queue.push(stack);
+			this._poll();
+		} else {
+			callback(new Error(validationError), msg);
+		}
 	}
 
 	/**

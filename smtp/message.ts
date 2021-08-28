@@ -193,16 +193,20 @@ export class Message {
 
 	/**
 	 * @public
-	 * @param {function(isValid: boolean, invalidReason: string): void} callback .
-	 * @returns {void}
+	 * @returns {{ isValid: boolean, validationError: (string | undefined) }} an object specifying whether this message is validly formatted, and the first validation error if it is not.
 	 */
-	public valid(callback: (isValid: boolean, invalidReason?: string) => void) {
+	public checkValidity() {
 		if (
 			typeof this.header.from !== 'string' &&
 			Array.isArray(this.header.from) === false
 		) {
-			callback(false, 'Message must have a `from` header');
-		} else if (
+			return {
+				isValid: false,
+				validationError: 'Message must have a `from` header',
+			};
+		}
+
+		if (
 			typeof this.header.to !== 'string' &&
 			Array.isArray(this.header.to) === false &&
 			typeof this.header.cc !== 'string' &&
@@ -210,13 +214,14 @@ export class Message {
 			typeof this.header.bcc !== 'string' &&
 			Array.isArray(this.header.bcc) === false
 		) {
-			callback(
-				false,
-				'Message must have at least one `to`, `cc`, or `bcc` header'
-			);
-		} else if (this.attachments.length === 0) {
-			callback(true, undefined);
-		} else {
+			return {
+				isValid: false,
+				validationError:
+					'Message must have at least one `to`, `cc`, or `bcc` header',
+			};
+		}
+
+		if (this.attachments.length > 0) {
 			const failed: string[] = [];
 
 			this.attachments.forEach((attachment) => {
@@ -232,9 +237,24 @@ export class Message {
 					failed.push('attachment has no data associated with it');
 				}
 			});
-
-			callback(failed.length === 0, failed.join(', '));
+			return {
+				isValid: failed.length === 0,
+				validationError: failed.join(', '),
+			};
 		}
+
+		return { isValid: true, validationError: undefined };
+	}
+
+	/**
+	 * @public
+	 * @deprecated does not conform to the `errback` style followed by the rest of the library, and will be removed in the next major version. use `checkValidity` instead.
+	 * @param {function(isValid: boolean, invalidReason: (string | undefined)): void} callback .
+	 * @returns {void}
+	 */
+	public valid(callback: (isValid: boolean, invalidReason?: string) => void) {
+		const { isValid, validationError } = this.checkValidity();
+		callback(isValid, validationError);
 	}
 
 	/**

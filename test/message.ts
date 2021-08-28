@@ -63,31 +63,6 @@ function send(headers: Partial<MessageHeaders>) {
 	});
 }
 
-function validate(headers: Partial<MessageHeaders>) {
-	const { to, cc, bcc } = headers;
-	const msg = new Message(headers);
-
-	if (Array.isArray(to)) {
-		msg.header.to = to;
-	}
-	if (Array.isArray(cc)) {
-		msg.header.to = to;
-	}
-	if (Array.isArray(bcc)) {
-		msg.header.to = to;
-	}
-
-	return new Promise((resolve, reject) => {
-		msg.valid((isValid, reason) => {
-			if (isValid) {
-				resolve(isValid);
-			} else {
-				reject(new Error(reason));
-			}
-		});
-	});
-}
-
 test.before(async (t) => {
 	server.listen(port, t.pass);
 });
@@ -401,69 +376,80 @@ test('streams message', async (t) => {
 });
 
 test('message validation fails without `from` header', async (t) => {
-	const { message: error } = await t.throwsAsync(validate({}));
-	t.is(error, 'Message must have a `from` header');
+	const msg = new Message({});
+	const { isValid, validationError } = msg.checkValidity();
+	t.false(isValid);
+	t.is(validationError, 'Message must have a `from` header');
 });
 
 test('message validation fails without `to`, `cc`, or `bcc` header', async (t) => {
-	const { message: error } = await t.throwsAsync(
-		validate({
-			from: 'piglet@gmail.com',
-		})
+	const { isValid, validationError } = new Message({
+		from: 'piglet@gmail.com',
+	}).checkValidity();
+
+	t.false(isValid);
+	t.is(
+		validationError,
+		'Message must have at least one `to`, `cc`, or `bcc` header'
 	);
-	t.is(error, 'Message must have at least one `to`, `cc`, or `bcc` header');
 });
 
 test('message validation succeeds with only `to` recipient header (string)', async (t) => {
-	const isValid = validate({
+	const { isValid, validationError } = new Message({
 		from: 'piglet@gmail.com',
 		to: 'pooh@gmail.com',
-	});
-	await t.notThrowsAsync(isValid);
-	t.true(await isValid);
+	}).checkValidity();
+
+	t.true(isValid);
+	t.is(validationError, undefined);
 });
 
 test('message validation succeeds with only `to` recipient header (array)', async (t) => {
-	const isValid = validate({
+	const { isValid, validationError } = new Message({
 		from: 'piglet@gmail.com',
 		to: ['pooh@gmail.com'],
-	});
-	await t.notThrowsAsync(isValid);
-	t.true(await isValid);
+	}).checkValidity();
+
+	t.true(isValid);
+	t.is(validationError, undefined);
 });
 
 test('message validation succeeds with only `cc` recipient header (string)', async (t) => {
-	const isValid = validate({
+	const { isValid, validationError } = new Message({
 		from: 'piglet@gmail.com',
 		cc: 'pooh@gmail.com',
-	});
-	await t.notThrowsAsync(isValid);
-	t.true(await isValid);
+	}).checkValidity();
+
+	t.true(isValid);
+	t.is(validationError, undefined);
 });
 
 test('message validation succeeds with only `cc` recipient header (array)', async (t) => {
-	const isValid = validate({
+	const { isValid, validationError } = new Message({
 		from: 'piglet@gmail.com',
 		cc: ['pooh@gmail.com'],
-	});
-	await t.notThrowsAsync(isValid);
-	t.true(await isValid);
+	}).checkValidity();
+
+	t.true(isValid);
+	t.is(validationError, undefined);
 });
 
 test('message validation succeeds with only `bcc` recipient header (string)', async (t) => {
-	const isValid = validate({
+	const { isValid, validationError } = new Message({
 		from: 'piglet@gmail.com',
 		bcc: 'pooh@gmail.com',
-	});
-	await t.notThrowsAsync(isValid);
-	t.true(await isValid);
+	}).checkValidity();
+
+	t.true(isValid);
+	t.is(validationError, undefined);
 });
 
 test('message validation succeeds with only `bcc` recipient header (array)', async (t) => {
-	const isValid = validate({
+	const { isValid, validationError } = new Message({
 		from: 'piglet@gmail.com',
 		bcc: ['pooh@gmail.com'],
-	});
-	await t.notThrowsAsync(isValid);
-	t.true(await isValid);
+	}).checkValidity();
+
+	t.true(isValid);
+	t.is(validationError, undefined);
 });
