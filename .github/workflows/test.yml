@@ -19,7 +19,12 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
+      - name: install (node 10)
+        if: matrix.node == '^10'
+        run: yarn install --ignore-engines
+
       - name: install
+        if: matrix.node != '^10'
         run: yarn install
 
       - name: test
