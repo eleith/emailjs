@@ -140,7 +140,7 @@ test('client accepts array recipients', async (t) => {
 	msg.header.cc = [msg.header.cc as string];
 	msg.header.bcc = [msg.header.bcc as string];
 
-	const isValid = await new Promise((r) => msg.valid(r));
+	const { isValid } = msg.checkValidity();
 	const stack = client.createMessageStack(msg);
 
 	t.true(isValid);
@@ -158,7 +158,7 @@ test('client accepts array sender', async (t) => {
 	});
 	msg.header.from = [msg.header.from as string];
 
-	const isValid = await new Promise((r) => msg.valid(r));
+	const { isValid } = msg.checkValidity();
 	t.true(isValid);
 });
 
