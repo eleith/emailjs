@@ -1,4 +1,12 @@
-require('ts-node/register');
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+require('ts-node').register({
+	moduleTypes: {
+		'test/*.ts': 'cjs',
+	},
+	compilerOptions: {
+		module: 'commonjs',
+	},
+});
 if (process.title === 'cjs') {
 	require('./rollup/email.cjs');
 	require.cache[require.resolve('./email.ts')] =

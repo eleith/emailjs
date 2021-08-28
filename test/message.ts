@@ -8,6 +8,13 @@ import { SMTPServer } from 'smtp-server';
 import { SMTPClient, Message, MessageAttachment } from '../email';
 import { MessageHeaders } from '../smtp/message';
 
+// eslint-disable-next-line no-var
+var __dirname: string;
+// @ts-expect-error compat hack for node 10
+if (__dirname == null) {
+	__dirname = join(process.cwd(), 'test');
+}
+
 /**
  * \@types/mailparser@3.0.2 breaks our code
  * @see https://github.com/DefinitelyTyped/DefinitelyTyped/pull/50744
