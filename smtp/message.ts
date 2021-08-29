@@ -257,6 +257,18 @@ export class Message {
 		str.on('end', (err) => callback(err, buffer));
 		str.on('error', (err) => callback(err, buffer));
 	}
+
+	public readAsync() {
+		return new Promise<string>((resolve, reject) => {
+			this.read((err, buffer) => {
+				if (err != null) {
+					reject(err);
+				} else {
+					resolve(buffer);
+				}
+			});
+		});
+	}
 }
 
 class MessageStream extends Stream {
