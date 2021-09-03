@@ -4,6 +4,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.6.0] - [TBD]
+### Added
+- support `tsc` compilation without `--esModuleInterop` or `--allowSyntheticDefaultImports` [#296](https://github.com/eleith/emailjs/pull/296)
+- `Message#readAsync` API [#297](https://github.com/eleith/emailjs/pull/297)
+- `Message#checkValidity` API [#298](https://github.com/eleith/emailjs/pull/298)
+
+### Deprecated
+- `Message#valid` API [#298](https://github.com/eleith/emailjs/pull/298)
+
 ## [3.5.0] - 2021-06-28
 ### Added
 - support `tsc --noPropertyAccessFromIndexSignature` [#290](https://github.com/eleith/emailjs/pull/290)
