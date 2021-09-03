@@ -365,7 +365,13 @@ test('client send can have result awaited when promisified', async (t) => {
 		t.true(isRFC2822Date(message.header.date as string));
 		t.regex(message.header['message-id'] as string, /^<.*[@]{1}.*>$/);
 	} catch (err) {
-		t.fail(err);
+		if (err instanceof Error) {
+			t.fail(err.message);
+		} else if (typeof err === 'string') {
+			t.fail(err);
+		} else {
+			t.fail();
+		}
 	}
 });
 
@@ -394,7 +400,13 @@ test('client sendAsync can have result awaited', async (t) => {
 		t.true(isRFC2822Date(message.header.date as string));
 		t.regex(message.header['message-id'] as string, /^<.*[@]{1}.*>$/);
 	} catch (err) {
-		t.fail(err);
+		if (err instanceof Error) {
+			t.fail(err.message);
+		} else if (typeof err === 'string') {
+			t.fail(err);
+		} else {
+			t.fail();
+		}
 	}
 });
 
