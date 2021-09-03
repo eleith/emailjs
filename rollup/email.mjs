@@ -1,4 +1,4 @@
-import fs from 'fs';
+import { existsSync, open, read, closeSync, close } from 'fs';
 import { hostname } from 'os';
 import { Stream } from 'stream';
 import { TextEncoder, TextDecoder } from 'util';
@@ -565,30 +565,32 @@ class Message {
     }
     /**
      * @public
-     * @param {function(isValid: boolean, invalidReason: string): void} callback .
-     * @returns {void}
+     * @returns {{ isValid: boolean, validationError: (string | undefined) }} an object specifying whether this message is validly formatted, and the first validation error if it is not.
      */
-    valid(callback) {
+    checkValidity() {
         if (typeof this.header.from !== 'string' &&
             Array.isArray(this.header.from) === false) {
-            callback(false, 'Message must have a `from` header');
+            return {
+                isValid: false,
+                validationError: 'Message must have a `from` header',
+            };
         }
-        else if (typeof this.header.to !== 'string' &&
+        if (typeof this.header.to !== 'string' &&
             Array.isArray(this.header.to) === false &&
             typeof this.header.cc !== 'string' &&
             Array.isArray(this.header.cc) === false &&
             typeof this.header.bcc !== 'string' &&
             Array.isArray(this.header.bcc) === false) {
-            callback(false, 'Message must have at least one `to`, `cc`, or `bcc` header');
+            return {
+                isValid: false,
+                validationError: 'Message must have at least one `to`, `cc`, or `bcc` header',
+            };
         }
-        else if (this.attachments.length === 0) {
-            callback(true, undefined);
-        }
-        else {
+        if (this.attachments.length > 0) {
             const failed = [];
             this.attachments.forEach((attachment) => {
                 if (attachment.path) {
-                    if (fs.existsSync(attachment.path) == false) {
+                    if (existsSync(attachment.path) === false) {
                         failed.push(`${attachment.path} does not exist`);
                     }
                 }
@@ -601,8 +603,22 @@ class Message {
                     failed.push('attachment has no data associated with it');
                 }
             });
-            callback(failed.length === 0, failed.join(', '));
+            return {
+                isValid: failed.length === 0,
+                validationError: failed.join(', '),
+            };
         }
+        return { isValid: true, validationError: undefined };
+    }
+    /**
+     * @public
+     * @deprecated does not conform to the `errback` style followed by the rest of the library, and will be removed in the next major version. use `checkValidity` instead.
+     * @param {function(isValid: boolean, invalidReason: (string | undefined)): void} callback .
+     * @returns {void}
+     */
+    valid(callback) {
+        const { isValid, validationError } = this.checkValidity();
+        callback(isValid, validationError);
     }
     /**
      * @public
@@ -622,6 +638,18 @@ class Message {
         str.on('data', (data) => (buffer += data));
         str.on('end', (err) => callback(err, buffer));
         str.on('error', (err) => callback(err, buffer));
+    }
+    readAsync() {
+        return new Promise((resolve, reject) => {
+            this.read((err, buffer) => {
+                if (err != null) {
+                    reject(err);
+                }
+                else {
+                    resolve(buffer);
+                }
+            });
+        });
     }
 }
 class MessageStream extends Stream {
@@ -723,54 +751,46 @@ class MessageStream extends Stream {
             }
         };
         const outputFile = (attachment, next) => {
+            var _a;
             const chunk = MIME64CHUNK * 16;
             const buffer = Buffer.alloc(chunk);
-            const closed = (fd) => fs.closeSync(fd);
+            const inputEncoding = ((_a = attachment === null || attachment === void 0 ? void 0 : attachment.headers) === null || _a === void 0 ? void 0 : _a['content-transfer-encoding']) || 'base64';
+            const encoding = inputEncoding === '7bit'
+                ? 'ascii'
+                : inputEncoding === '8bit'
+                    ? 'binary'
+                    : inputEncoding;
             /**
              * @param {Error} err the error to emit
              * @param {number} fd the file descriptor
              * @returns {void}
              */
             const opened = (err, fd) => {
-                if (!err) {
-                    const read = (err, bytes) => {
-                        if (!err && this.readable) {
-                            let encoding = attachment && attachment.headers
-                                ? attachment.headers['content-transfer-encoding'] || 'base64'
-                                : 'base64';
-                            if (encoding === 'ascii' || encoding === '7bit') {
-                                encoding = 'ascii';
-                            }
-                            else if (encoding === 'binary' || encoding === '8bit') {
-                                encoding = 'binary';
-                            }
-                            else {
-                                encoding = 'base64';
-                            }
-                            // guaranteed to be encoded without padding unless it is our last read
-                            outputBase64(buffer.toString(encoding, 0, bytes), () => {
-                                if (bytes == chunk) {
-                                    // we read a full chunk, there might be more
-                                    fs.read(fd, buffer, 0, chunk, null, read);
-                                } // that was the last chunk, we are done reading the file
-                                else {
-                                    this.removeListener('error', closed);
-                                    fs.close(fd, next);
-                                }
-                            });
-                        }
-                        else {
-                            this.emit('error', err || { message: 'message stream was interrupted somehow!' });
-                        }
-                    };
-                    fs.read(fd, buffer, 0, chunk, null, read);
-                    this.once('error', closed);
-                }
-                else {
+                if (err) {
                     this.emit('error', err);
+                    return;
                 }
+                const readBytes = (err, bytes) => {
+                    if (err || this.readable === false) {
+                        this.emit('error', err || new Error('message stream was interrupted somehow!'));
+                        return;
+                    }
+                    // guaranteed to be encoded without padding unless it is our last read
+                    outputBase64(buffer.toString(encoding, 0, bytes), () => {
+                        if (bytes == chunk) {
+                            // we read a full chunk, there might be more
+                            read(fd, buffer, 0, chunk, null, readBytes);
+                        } // that was the last chunk, we are done reading the file
+                        else {
+                            this.removeListener('error', closeSync);
+                            close(fd, next);
+                        }
+                    });
+                };
+                read(fd, buffer, 0, chunk, null, readBytes);
+                this.once('error', closeSync);
             };
-            fs.open(attachment.path, 'r', opened);
+            open(attachment.path, 'r', opened);
         };
         /**
          * @param {MessageAttachment} attachment the metadata to use as headers
@@ -847,12 +867,12 @@ class MessageStream extends Stream {
             output(`Content-Type: multipart/mixed; boundary="${boundary}"${CRLF$1}${CRLF$1}--${boundary}${CRLF$1}`);
             if (this.message.alternative == null) {
                 outputText(this.message);
-                outputMessage(boundary, this.message.attachments, 0, close);
+                outputMessage(boundary, this.message.attachments, 0, close$1);
             }
             else {
                 outputAlternative(
                 // typescript bug; should narrow to { alternative: MessageAttachment }
-                this.message, () => outputMessage(boundary, this.message.attachments, 0, close));
+                this.message, () => outputMessage(boundary, this.message.attachments, 0, close$1));
             }
         };
         /**
@@ -923,7 +943,7 @@ class MessageStream extends Stream {
                 outputAttachment(message.alternative, finish);
             }
         };
-        const close = (err) => {
+        const close$1 = (err) => {
             var _a, _b;
             if (err) {
                 this.emit('error', err);
@@ -951,7 +971,7 @@ class MessageStream extends Stream {
             } // you only have a text message!
             else {
                 outputText(this.message);
-                close();
+                close$1();
             }
         };
         /**
@@ -974,7 +994,7 @@ class MessageStream extends Stream {
             output(data.join(''));
             outputHeaderData();
         };
-        this.once('destroy', close);
+        this.once('destroy', close$1);
         process.nextTick(outputHeader);
     }
     /**
@@ -1847,19 +1867,18 @@ class SMTPClient {
             callback(new Error('message is not a valid Message instance'), msg);
             return;
         }
-        message.valid((valid, why) => {
-            if (valid) {
-                const stack = this.createMessageStack(message, callback);
-                if (stack.to.length === 0) {
-                    return callback(new Error('No recipients found in message'), msg);
-                }
-                this.queue.push(stack);
-                this._poll();
+        const { isValid, validationError } = message.checkValidity();
+        if (isValid) {
+            const stack = this.createMessageStack(message, callback);
+            if (stack.to.length === 0) {
+                return callback(new Error('No recipients found in message'), msg);
             }
-            else {
-                callback(new Error(why), msg);
-            }
-        });
+            this.queue.push(stack);
+            this._poll();
+        }
+        else {
+            callback(new Error(validationError), msg);
+        }
     }
     /**
      * @public
