@@ -262,6 +262,21 @@ const options = {
 };
 ```
 
+## Message#checkValidity()
+
+Synchronously validate that a Message is properly formed.
+
+```js
+const message = new Message(options);
+const { isValid, validationError } = message.checkValidity();
+if (isValid) {
+	// ...
+} else {
+	// first error encountered
+	console.error(validationError);
+}
+```
+
 ## new SMTPConnection(options={})
 
 ```js
