@@ -16,27 +16,27 @@
 	},
 	"type": "module",
 	"devDependencies": {
-		"@ledge/configs": "23.3.23232",
+		"@ledge/configs": "23.3.23322",
 		"@rollup/plugin-typescript": "8.3.0",
-		"@types/mailparser": "3.0.3",
-		"@types/node": "16.11.6",
+		"@types/mailparser": "3.4.0",
+		"@types/node": "16.11.9",
 		"@types/smtp-server": "3.5.7",
-		"@typescript-eslint/eslint-plugin": "5.2.0",
-		"@typescript-eslint/parser": "5.2.0",
+		"@typescript-eslint/eslint-plugin": "5.4.0",
+		"@typescript-eslint/parser": "5.4.0",
 		"ava": "3.15.0",
 		"eslint": "7.32.0",
 		"eslint-config-prettier": "8.3.0",
 		"eslint-plugin-prettier": "4.0.0",
 		"mailparser": "3.4.0",
 		"prettier": "2.4.1",
-		"rollup": "2.58.3",
+		"rollup": "2.60.0",
 		"smtp-server": "3.9.0",
 		"ts-node": "10.4.0",
 		"tslib": "2.3.1",
-		"typescript": "4.4.4"
+		"typescript": "4.5.2"
 	},
 	"resolutions": {
-		"nodemailer": "6.7.0"
+		"nodemailer": "6.7.1"
 	},
 	"engines": {
 		"node": ">=10"
