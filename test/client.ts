@@ -13,8 +13,8 @@ import {
 } from '../email';
 
 const parseMap = new Map<string, ParsedMail>();
-const port = 3000;
-let greylistPort = 4000;
+const port = 3333;
+let greylistPort = 4444;
 
 const client = new SMTPClient({
 	port,

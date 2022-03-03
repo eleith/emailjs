@@ -21,7 +21,7 @@ if (__dirname == null) {
  */
 type ParsedMailCompat = Omit<ParsedMail, 'to'> & { to?: AddressObject };
 
-const port = 5000;
+const port = 5555;
 const parseMap = new Map<string, ParsedMailCompat>();
 
 const client = new SMTPClient({
