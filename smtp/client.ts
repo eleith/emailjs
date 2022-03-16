@@ -2,8 +2,16 @@ import { addressparser } from './address';
 import { Message, MessageAttachment, MessageHeaders } from './message';
 import { SMTPConnection, SMTPConnectionOptions, SMTPState } from './connection';
 
+export type MessageCallback<T = Message | MessageHeaders> = <
+	U extends Error | null,
+	V extends U extends Error ? T : Message
+>(
+	err: U,
+	msg: V
+) => void;
+
 export interface MessageStack {
-	callback: (error: Error | null, message: Message) => void;
+	callback: MessageCallback;
 	message: Message;
 	attachment: MessageAttachment;
 	text: string;
@@ -36,14 +44,14 @@ export class SMTPClient {
 	/**
 	 * @public
 	 * @param {Message} msg the message to send
-	 * @param {function(err: Error, msg: Message): void} callback .
+	 * @param {MessageCallback} callback .
 	 * @returns {void}
 	 */
-	public send(
-		msg: Message,
-		callback: (err: Error | null, msg: Message) => void
+	public send<T extends Message | MessageHeaders>(
+		msg: T,
+		callback: MessageCallback<T>
 	) {
-		const message: Message | null =
+		const message =
 			msg instanceof Message
 				? msg
 				: this._canMakeMessage(msg)
@@ -74,13 +82,15 @@ export class SMTPClient {
 	 * @param {Message} msg the message to send
 	 * @returns {Promise<Message>} a promise that resolves to the fully processed message
 	 */
-	public sendAsync(msg: Message) {
+	public sendAsync(msg: Message | MessageHeaders) {
 		return new Promise<Message>((resolve, reject) => {
-			this.send(msg, (err, msg) => {
+			this.send(msg, (err, message) => {
 				if (err != null) {
 					reject(err);
 				} else {
-					resolve(msg);
+					// unfortunately, the conditional type doesn't reach here
+					// fortunately, we only return a `Message` when err is null, so this is safe
+					resolve(message as Message);
 				}
 			});
 		});
@@ -90,12 +100,12 @@ export class SMTPClient {
 	 * @public
 	 * @description Converts a message to the raw object used by the internal stack.
 	 * @param {Message} message message to convert
-	 * @param {function(err: Error, msg: Message): void} callback errback
+	 * @param {MessageCallback} callback errback
 	 * @returns {MessageStack} raw message object
 	 */
 	public createMessageStack(
 		message: Message,
-		callback: (err: Error | null, msg: Message) => void = function () {
+		callback: MessageCallback = function () {
 			/* ø */
 		}
 	) {
@@ -231,7 +241,7 @@ export class SMTPClient {
 	 * @returns {boolean} whether the attachment contains inlined html
 	 */
 	protected _containsInlinedHtml(
-		attachment: MessageAttachment | MessageAttachment[]
+		attachment?: MessageAttachment | MessageAttachment[]
 	) {
 		if (Array.isArray(attachment)) {
 			return attachment.some((att) => {
@@ -247,7 +257,7 @@ export class SMTPClient {
 	 * @param {MessageAttachment} attachment attachment
 	 * @returns {boolean} whether the attachment is inlined html
 	 */
-	protected _isAttachmentInlinedHtml(attachment: MessageAttachment) {
+	protected _isAttachmentInlinedHtml(attachment?: MessageAttachment) {
 		return (
 			attachment &&
 			(attachment.data || attachment.path) &&

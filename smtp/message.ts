@@ -68,19 +68,20 @@ export interface MessageHeaders {
 		| string
 		| string[]
 		| null
+		| undefined
 		| MessageAttachment
 		| MessageAttachment[];
-	'content-type': string;
-	'message-id': string;
-	'return-path': string | null;
-	date: string;
+	'content-type'?: string;
+	'message-id'?: string;
+	'return-path'?: string | null;
+	date?: string;
 	from: string | string[];
 	to: string | string[];
-	cc: string | string[];
-	bcc: string | string[];
+	cc?: string | string[];
+	bcc?: string | string[];
 	subject: string;
 	text: string | null;
-	attachment: MessageAttachment | MessageAttachment[];
+	attachment?: MessageAttachment | MessageAttachment[];
 }
 
 let counter = 0;
