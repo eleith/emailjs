@@ -1854,7 +1854,7 @@ class SMTPClient {
     /**
      * @public
      * @param {Message} msg the message to send
-     * @param {function(err: Error, msg: Message): void} callback .
+     * @param {MessageCallback} callback .
      * @returns {void}
      */
     send(msg, callback) {
@@ -1887,12 +1887,14 @@ class SMTPClient {
      */
     sendAsync(msg) {
         return new Promise((resolve, reject) => {
-            this.send(msg, (err, msg) => {
+            this.send(msg, (err, message) => {
                 if (err != null) {
                     reject(err);
                 }
                 else {
-                    resolve(msg);
+                    // unfortunately, the conditional type doesn't reach here
+                    // fortunately, we only return a `Message` when err is null, so this is safe
+                    resolve(message);
                 }
             });
         });
@@ -1901,7 +1903,7 @@ class SMTPClient {
      * @public
      * @description Converts a message to the raw object used by the internal stack.
      * @param {Message} message message to convert
-     * @param {function(err: Error, msg: Message): void} callback errback
+     * @param {MessageCallback} callback errback
      * @returns {MessageStack} raw message object
      */
     createMessageStack(message, callback = function () {
