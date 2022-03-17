@@ -4,6 +4,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [3.8.0] - 2022-03-17
+### Added
+- support `typescript@4.6`
+- type allow `Client#send` & `Client#sendAsync` to accept message headers instead of a `Message`
+	- no behavior change: this was previously allowed, but the types didn't acknowledge it
+
 ## [3.7.0] - 2021-11-19
 ### Added
 - support `typescript@4.5`
