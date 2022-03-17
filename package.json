@@ -55,7 +55,6 @@
 	"scripts": {
 		"build": "rollup -c rollup.config.ts",
 		"lint": "eslint *.ts \"+(smtp|test)/*.ts\"",
-		"tsc": "tsc",
 		"test": "ava",
 		"pretest-cjs": "npm run build",
 		"test-cjs": "npm run test -- --node-arguments='--title=cjs'"
