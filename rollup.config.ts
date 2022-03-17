@@ -7,7 +7,6 @@ export default {
 		{
 			file: 'rollup/email.cjs',
 			format: 'cjs',
-			interop: false,
 			sourcemap: true,
 		},
 		{
@@ -18,6 +17,6 @@ export default {
 	],
 	external: builtinModules,
 	plugins: [
-		typescript({ removeComments: false, include: ['email.ts', 'smtp/**/*'] }),
+		typescript({ removeComments: false, include: ['email.ts', 'smtp/*'] }),
 	],
 };
