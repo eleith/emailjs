@@ -1,5 +1,5 @@
+import type { PathLike } from 'fs';
 import {
-	PathLike,
 	existsSync,
 	open as openFile,
 	close as closeFile,

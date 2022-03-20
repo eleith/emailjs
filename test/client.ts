@@ -1,16 +1,12 @@
 import { promisify } from 'util';
 
 import test from 'ava';
-import { simpleParser, ParsedMail, AddressObject } from 'mailparser';
+import { simpleParser } from 'mailparser';
+import type { ParsedMail, AddressObject } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
-import {
-	DEFAULT_TIMEOUT,
-	SMTPClient,
-	Message,
-	MessageHeaders,
-	isRFC2822Date,
-} from '../email';
+import type { MessageHeaders } from '../email';
+import { DEFAULT_TIMEOUT, SMTPClient, Message, isRFC2822Date } from '../email';
 
 const parseMap = new Map<string, ParsedMail>();
 const port = 3333;

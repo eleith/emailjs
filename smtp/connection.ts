@@ -2,12 +2,8 @@ import { createHmac } from 'crypto';
 import { EventEmitter } from 'events';
 import { Socket } from 'net';
 import { hostname } from 'os';
-import {
-	connect,
-	createSecureContext,
-	ConnectionOptions,
-	TLSSocket,
-} from 'tls';
+import { connect, createSecureContext, TLSSocket } from 'tls';
+import type { ConnectionOptions } from 'tls';
 
 import { SMTPError, SMTPErrorStates } from './error';
 import { SMTPResponseMonitor } from './response';

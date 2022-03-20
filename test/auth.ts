@@ -1,5 +1,7 @@
-import test, { ExecutionContext } from 'ava';
-import { simpleParser, AddressObject } from 'mailparser';
+import test from 'ava';
+import type { ExecutionContext } from 'ava';
+import { simpleParser } from 'mailparser';
+import type { AddressObject } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
 import { AUTH_METHODS, SMTPClient, Message } from '../email';
