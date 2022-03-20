@@ -1,6 +1,8 @@
 import { addressparser } from './address';
-import { Message, MessageAttachment, MessageHeaders } from './message';
-import { SMTPConnection, SMTPConnectionOptions, SMTPState } from './connection';
+import type { MessageAttachment, MessageHeaders } from './message';
+import { Message } from './message';
+import type { SMTPConnectionOptions } from './connection';
+import { SMTPConnection, SMTPState } from './connection';
 
 export type MessageCallback<T = Message | MessageHeaders> = <
 	U extends Error | null,

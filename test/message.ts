@@ -2,11 +2,14 @@ import { readFileSync, createReadStream } from 'fs';
 import { join } from 'path';
 
 import test from 'ava';
-import { simpleParser, AddressObject, ParsedMail } from 'mailparser';
+import { simpleParser } from 'mailparser';
+import type { AddressObject, ParsedMail } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
-import { SMTPClient, Message, MessageAttachment } from '../email';
-import { MessageHeaders } from '../smtp/message';
+import { SMTPClient, Message } from '../email';
+import type { MessageAttachment } from '../email';
+
+import type { MessageHeaders } from '../smtp/message';
 
 // eslint-disable-next-line no-var
 var __dirname: string;
