@@ -47,7 +47,7 @@ export class SMTPClient {
 	 * @param {MessageCallback} callback .
 	 * @returns {void}
 	 */
-	public send<T extends Message | MessageHeaders>(
+	public send<T extends MessageHeaders>(
 		msg: T,
 		callback: MessageCallback<T>
 	) {
@@ -82,7 +82,7 @@ export class SMTPClient {
 	 * @param {Message} msg the message to send
 	 * @returns {Promise<Message>} a promise that resolves to the fully processed message
 	 */
-	public sendAsync(msg: Message | MessageHeaders) {
+	public sendAsync(msg: MessageHeaders) {
 		return new Promise<Message>((resolve, reject) => {
 			this.send(msg, (err, message) => {
 				if (err != null) {
