@@ -280,7 +280,7 @@ const RANGES = [
     [0x0a],
     [0x0d],
     [0x20, 0x3c],
-    [0x3e, 0x7e], // >?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}
+    [0x3e, 0x7e],
 ];
 const LOOKUP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('');
 const MAX_CHUNK_LENGTH = 16383; // must be multiple of 3
@@ -887,8 +887,7 @@ class MessageStream extends stream.Stream {
         const outputData = (attachment, callback) => {
             var _a, _b;
             outputBase64(attachment.encoded
-                ? (_a = attachment.data) !== null && _a !== void 0 ? _a : ''
-                : Buffer.from((_b = attachment.data) !== null && _b !== void 0 ? _b : '').toString('base64'), callback);
+                ? (_a = attachment.data) !== null && _a !== void 0 ? _a : '' : Buffer.from((_b = attachment.data) !== null && _b !== void 0 ? _b : '').toString('base64'), callback);
         };
         /**
          * @param {Message} message the message to output
