@@ -83,7 +83,7 @@ test('client invokes callback exactly once for invalid connection', async (t) =>
 					incrementCounter();
 				}
 			});
-			// @ts-expect-error the error event is only accessible from the protected socket property
+			// @ts-ignore the error event is only accessible from the protected socket property
 			invalidClient.smtp.sock.once('error', () => {
 				if (counter === 1) {
 					resolve();
@@ -345,7 +345,7 @@ test('client send can have result awaited when promisified', async (t) => {
 	};
 
 	try {
-		const message = await sendAsync(new Message(msg));
+		const message = (await sendAsync(new Message(msg))) as Message;
 		t.true(message instanceof Message);
 		t.like(message, {
 			alternative: null,
