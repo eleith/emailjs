@@ -33,7 +33,15 @@
 		"smtp-server": "3.10.0",
 		"ts-node": "10.7.0",
 		"tslib": "2.3.1",
-		"typescript": "4.6.2"
+		"typescript": "3.8.3"
+	},
+	"peerDependencies": {
+		"typescript": ">=3.8.3"
+	},
+	"peerDependenciesMeta": {
+		"typescript": {
+			"optional": true
+		}
 	},
 	"resolutions": {
 		"nodemailer": "6.7.2"

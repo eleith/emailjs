@@ -47,9 +47,9 @@ export class SMTPClient {
 	 * @param {MessageCallback} callback .
 	 * @returns {void}
 	 */
-	public send<T extends Message | MessageHeaders>(
-		msg: T,
-		callback: MessageCallback<T>
+	public send(
+		msg: Message | MessageHeaders,
+		callback: MessageCallback<Message | MessageHeaders>
 	) {
 		const message =
 			msg instanceof Message
