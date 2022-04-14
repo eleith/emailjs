@@ -1,4 +1,5 @@
 import { createReadStream, readFileSync } from 'fs';
+import { URL } from 'url';
 
 import test from 'ava';
 import { simpleParser } from 'mailparser';

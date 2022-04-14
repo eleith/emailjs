@@ -19,7 +19,7 @@
 		"@ledge/configs": "23.3.23322",
 		"@rollup/plugin-typescript": "8.3.2",
 		"@types/mailparser": "3.4.0",
-		"@types/node": "17.0.23",
+		"@types/node": "12.12.6",
 		"@types/smtp-server": "3.5.7",
 		"@typescript-eslint/eslint-plugin": "5.19.0",
 		"@typescript-eslint/parser": "5.19.0",
