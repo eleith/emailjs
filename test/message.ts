@@ -1,5 +1,4 @@
-import { createReadStream } from 'fs';
-import { readFile } from 'fs/promises';
+import { createReadStream, readFileSync } from 'fs';
 
 import test from 'ava';
 import { simpleParser } from 'mailparser';
@@ -10,19 +9,19 @@ import { SMTPClient, Message } from '../email.js';
 import type { MessageAttachment, MessageHeaders } from '../email.js';
 
 const textFixtureUrl = new URL('attachments/smtp.txt', import.meta.url);
-const textFixture = await readFile(textFixtureUrl, 'utf-8');
+const textFixture = readFileSync(textFixtureUrl, 'utf-8');
 
 const htmlFixtureUrl = new URL('attachments/smtp.html', import.meta.url);
-const htmlFixture = await readFile(htmlFixtureUrl, 'utf-8');
+const htmlFixture = readFileSync(htmlFixtureUrl, 'utf-8');
 
 const pdfFixtureUrl = new URL('attachments/smtp.pdf', import.meta.url);
-const pdfFixture = await readFile(pdfFixtureUrl, 'base64');
+const pdfFixture = readFileSync(pdfFixtureUrl, 'base64');
 
 const tarFixtureUrl = new URL(
 	'attachments/postfix-2.8.7.tar.gz',
 	import.meta.url
 );
-const tarFixture = await readFile(tarFixtureUrl, 'base64');
+const tarFixture = readFileSync(tarFixtureUrl, 'base64');
 
 /**
  * \@types/mailparser@3.0.2 breaks our code
@@ -216,23 +215,18 @@ test('html file message', async (t) => {
 });
 
 test('html with image embed message', async (t) => {
-	const html = await readFile(
-		new URL('attachments/smtp2.html', import.meta.url),
-		'utf-8'
-	);
-	const image = await readFile(
-		new URL('attachments/smtp.gif', import.meta.url)
-	);
+	const htmlFixture2Url = new URL('attachments/smtp2.html', import.meta.url);
+	const imageFixtureUrl = new URL('attachments/smtp.gif', import.meta.url);
 	const msg = {
 		subject: 'this is a test TEXT+HTML+IMAGE message from emailjs',
 		from: 'ninja@gmail.com',
 		to: 'pirate@gmail.com',
 		attachment: {
-			path: new URL('attachments/smtp2.html', import.meta.url),
+			path: htmlFixture2Url,
 			alternative: true,
 			related: [
 				{
-					path: new URL('attachments/smtp.gif', import.meta.url),
+					path: imageFixtureUrl,
 					type: 'image/gif',
 					name: 'smtp-diagram.gif',
 					headers: { 'Content-ID': '<smtp-diagram@local>' },
@@ -244,9 +238,9 @@ test('html with image embed message', async (t) => {
 	const mail = await send(msg);
 	t.is(
 		mail.attachments[0].content.toString('base64'),
-		image.toString('base64')
+		readFileSync(imageFixtureUrl, 'base64')
 	);
-	t.is(mail.html, html.replace(/\r/g, ''));
+	t.is(mail.html, readFileSync(htmlFixture2Url, 'utf-8').replace(/\r/g, ''));
 	t.is(mail.text, '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
