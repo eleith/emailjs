@@ -83,7 +83,7 @@ test('client invokes callback exactly once for invalid connection', async (t) =>
 					incrementCounter();
 				}
 			});
-			// @ts-ignore the error event is only accessible from the protected socket property
+			// @ts-expect-error the error event is only accessible from the protected socket property
 			invalidClient.smtp.sock.once('error', () => {
 				if (counter === 1) {
 					resolve();
@@ -159,24 +159,27 @@ test('client accepts array sender', async (t) => {
 });
 
 test('client rejects message without `from` header', async (t) => {
-	const { message: error } = await t.throwsAsync(
+	const error = await t.throwsAsync(
 		send({
 			subject: 'this is a test TEXT message from emailjs',
 			text: "It is hard to be brave when you're only a Very Small Animal.",
 		})
 	);
-	t.is(error, 'Message must have a `from` header');
+	t.is(error?.message, 'Message must have a `from` header');
 });
 
 test('client rejects message without `to`, `cc`, or `bcc` header', async (t) => {
-	const { message: error } = await t.throwsAsync(
+	const error = await t.throwsAsync(
 		send({
 			subject: 'this is a test TEXT message from emailjs',
 			from: 'piglet@gmail.com',
 			text: "It is hard to be brave when you're only a Very Small Animal.",
 		})
 	);
-	t.is(error, 'Message must have at least one `to`, `cc`, or `bcc` header');
+	t.is(
+		error?.message,
+		'Message must have at least one `to`, `cc`, or `bcc` header'
+	);
 });
 
 test('client allows message with only `cc` recipient header', async (t) => {
@@ -311,7 +314,7 @@ test('client only responds once to greylisting', async (t) => {
 	});
 
 	const p = greylistPort++;
-	const { message: error } = await t.throwsAsync(
+	const error = await t.throwsAsync(
 		new Promise<void>((resolve, reject) => {
 			greylistServer.listen(p, () => {
 				new SMTPClient({
@@ -330,7 +333,7 @@ test('client only responds once to greylisting', async (t) => {
 			});
 		})
 	);
-	t.is(error, "bad response on command 'RCPT': greylist");
+	t.is(error?.message, "bad response on command 'RCPT': greylist");
 });
 
 test('client send can have result awaited when promisified', async (t) => {

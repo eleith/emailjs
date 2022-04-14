@@ -1,5 +1,4 @@
 import { readFileSync, createReadStream } from 'fs';
-import { join } from 'path';
 
 import test from 'ava';
 import { simpleParser } from 'mailparser';
@@ -7,16 +6,7 @@ import type { AddressObject, ParsedMail } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
 import { SMTPClient, Message } from '../email';
-import type { MessageAttachment } from '../email';
-
-import type { MessageHeaders } from '../smtp/message';
-
-// eslint-disable-next-line no-var
-var __dirname: string;
-// @ts-ignore compat hack for node 10
-if (__dirname == null) {
-	__dirname = join(process.cwd(), 'test');
-}
+import type { MessageAttachment, MessageHeaders } from '../email';
 
 /**
  * \@types/mailparser@3.0.2 breaks our code
@@ -139,7 +129,10 @@ test('very large text message', async (t) => {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'ninjas@gmail.com',
 		to: 'pirates@gmail.com',
-		text: readFileSync(join(__dirname, 'attachments/smtp.txt'), 'utf-8'),
+		text: readFileSync(
+			new URL('attachments/smtp.txt', import.meta.url),
+			'utf-8'
+		),
 	};
 
 	const mail = await send(msg);
@@ -152,7 +145,7 @@ test('very large text message', async (t) => {
 test('very large text data message', async (t) => {
 	const text =
 		'<html><body><pre>' +
-		readFileSync(join(__dirname, 'attachments/smtp.txt'), 'utf-8') +
+		readFileSync(new URL('attachments/smtp.txt', import.meta.url), 'utf-8') +
 		'</pre></body></html>';
 
 	const msg = {
@@ -175,7 +168,10 @@ test('very large text data message', async (t) => {
 });
 
 test('html data message', async (t) => {
-	const html = readFileSync(join(__dirname, 'attachments/smtp.html'), 'utf-8');
+	const html = readFileSync(
+		new URL('attachments/smtp.html', import.meta.url),
+		'utf-8'
+	);
 	const msg = {
 		subject: 'this is a test TEXT+HTML+DATA message from emailjs',
 		from: 'obama@gmail.com',
@@ -195,13 +191,16 @@ test('html data message', async (t) => {
 });
 
 test('html file message', async (t) => {
-	const html = readFileSync(join(__dirname, 'attachments/smtp.html'), 'utf-8');
+	const html = readFileSync(
+		new URL('attachments/smtp.html', import.meta.url),
+		'utf-8'
+	);
 	const msg = {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
 		from: 'thomas@gmail.com',
 		to: 'nikolas@gmail.com',
 		attachment: {
-			path: join(__dirname, 'attachments/smtp.html'),
+			path: new URL('attachments/smtp.html', import.meta.url),
 			alternative: true,
 		},
 	};
@@ -215,18 +214,21 @@ test('html file message', async (t) => {
 });
 
 test('html with image embed message', async (t) => {
-	const html = readFileSync(join(__dirname, 'attachments/smtp2.html'), 'utf-8');
-	const image = readFileSync(join(__dirname, 'attachments/smtp.gif'));
+	const html = readFileSync(
+		new URL('attachments/smtp2.html', import.meta.url),
+		'utf-8'
+	);
+	const image = readFileSync(new URL('attachments/smtp.gif', import.meta.url));
 	const msg = {
 		subject: 'this is a test TEXT+HTML+IMAGE message from emailjs',
 		from: 'ninja@gmail.com',
 		to: 'pirate@gmail.com',
 		attachment: {
-			path: join(__dirname, 'attachments/smtp2.html'),
+			path: new URL('attachments/smtp2.html', import.meta.url),
 			alternative: true,
 			related: [
 				{
-					path: join(__dirname, 'attachments/smtp.gif'),
+					path: new URL('attachments/smtp.gif', import.meta.url),
 					type: 'image/gif',
 					name: 'smtp-diagram.gif',
 					headers: { 'Content-ID': '<smtp-diagram@local>' },
@@ -248,14 +250,20 @@ test('html with image embed message', async (t) => {
 });
 
 test('html data and attachment message', async (t) => {
-	const html = readFileSync(join(__dirname, 'attachments/smtp.html'), 'utf-8');
+	const html = readFileSync(
+		new URL('attachments/smtp.html', import.meta.url),
+		'utf-8'
+	);
 	const msg = {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
 		from: 'thomas@gmail.com',
 		to: 'nikolas@gmail.com',
 		attachment: [
-			{ path: join(__dirname, 'attachments/smtp.html'), alternative: true },
-			{ path: join(__dirname, 'attachments/smtp.gif') },
+			{
+				path: new URL('attachments/smtp.html', import.meta.url),
+				alternative: true,
+			},
+			{ path: new URL('attachments/smtp.gif', import.meta.url) },
 		] as MessageAttachment[],
 	};
 
@@ -268,14 +276,14 @@ test('html data and attachment message', async (t) => {
 });
 
 test('attachment message', async (t) => {
-	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
+	const pdf = readFileSync(new URL('attachments/smtp.pdf', import.meta.url));
 	const msg = {
 		subject: 'this is a test TEXT+ATTACHMENT message from emailjs',
 		from: 'washing@gmail.com',
 		to: 'lincoln@gmail.com',
 		text: 'hello friend, i hope this message and pdf finds you well.',
 		attachment: {
-			path: join(__dirname, 'attachments/smtp.pdf'),
+			path: new URL('attachments/smtp.pdf', import.meta.url),
 			type: 'application/pdf',
 			name: 'smtp-info.pdf',
 		} as MessageAttachment,
@@ -290,14 +298,14 @@ test('attachment message', async (t) => {
 });
 
 test('attachment sent with unicode filename message', async (t) => {
-	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
+	const pdf = readFileSync(new URL('attachments/smtp.pdf', import.meta.url));
 	const msg = {
 		subject: 'this is a test TEXT+ATTACHMENT message from emailjs',
 		from: 'washing@gmail.com',
 		to: 'lincoln@gmail.com',
 		text: 'hello friend, i hope this message and pdf finds you well.',
 		attachment: {
-			path: join(__dirname, 'attachments/smtp.pdf'),
+			path: new URL('attachments/smtp.pdf', import.meta.url),
 			type: 'application/pdf',
 			name: 'smtp-✓-info.pdf',
 		} as MessageAttachment,
@@ -313,8 +321,10 @@ test('attachment sent with unicode filename message', async (t) => {
 });
 
 test('attachments message', async (t) => {
-	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
-	const tar = readFileSync(join(__dirname, 'attachments/postfix-2.8.7.tar.gz'));
+	const pdf = readFileSync(new URL('attachments/smtp.pdf', import.meta.url));
+	const tar = readFileSync(
+		new URL('attachments/postfix-2.8.7.tar.gz', import.meta.url)
+	);
 	const msg = {
 		subject: 'this is a test TEXT+2+ATTACHMENTS message from emailjs',
 		from: 'sergey@gmail.com',
@@ -322,12 +332,12 @@ test('attachments message', async (t) => {
 		text: 'hello friend, i hope this message and attachments finds you well.',
 		attachment: [
 			{
-				path: join(__dirname, 'attachments/smtp.pdf'),
+				path: new URL('attachments/smtp.pdf', import.meta.url),
 				type: 'application/pdf',
 				name: 'smtp-info.pdf',
 			},
 			{
-				path: join(__dirname, 'attachments/postfix-2.8.7.tar.gz'),
+				path: new URL('attachments/postfix-2.8.7.tar.gz', import.meta.url),
 				type: 'application/tar-gz',
 				name: 'postfix.source.2.8.7.tar.gz',
 			},
@@ -344,11 +354,15 @@ test('attachments message', async (t) => {
 });
 
 test('streams message', async (t) => {
-	const pdf = readFileSync(join(__dirname, 'attachments/smtp.pdf'));
-	const tar = readFileSync(join(__dirname, 'attachments/postfix-2.8.7.tar.gz'));
-	const stream = createReadStream(join(__dirname, 'attachments/smtp.pdf'));
+	const pdf = readFileSync(new URL('attachments/smtp.pdf', import.meta.url));
+	const tar = readFileSync(
+		new URL('attachments/postfix-2.8.7.tar.gz', import.meta.url)
+	);
+	const stream = createReadStream(
+		new URL('attachments/smtp.pdf', import.meta.url)
+	);
 	const stream2 = createReadStream(
-		join(__dirname, 'attachments/postfix-2.8.7.tar.gz')
+		new URL('attachments/postfix-2.8.7.tar.gz', import.meta.url)
 	);
 
 	const msg = {

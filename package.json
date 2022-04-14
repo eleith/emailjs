@@ -17,26 +17,26 @@
 	"type": "module",
 	"devDependencies": {
 		"@ledge/configs": "23.3.23322",
-		"@rollup/plugin-typescript": "8.3.1",
+		"@rollup/plugin-typescript": "8.3.2",
 		"@types/mailparser": "3.4.0",
-		"@types/node": "17.0.21",
+		"@types/node": "17.0.23",
 		"@types/smtp-server": "3.5.7",
-		"@typescript-eslint/eslint-plugin": "5.15.0",
-		"@typescript-eslint/parser": "5.15.0",
-		"ava": "3.15.0",
-		"eslint": "7.32.0",
+		"@typescript-eslint/eslint-plugin": "5.19.0",
+		"@typescript-eslint/parser": "5.19.0",
+		"ava": "4.2.0",
+		"eslint": "8.13.0",
 		"eslint-config-prettier": "8.5.0",
 		"eslint-plugin-prettier": "4.0.0",
 		"mailparser": "3.4.0",
-		"prettier": "2.6.0",
+		"prettier": "2.6.2",
 		"rollup": "2.70.1",
 		"smtp-server": "3.10.0",
 		"ts-node": "10.7.0",
 		"tslib": "2.3.1",
-		"typescript": "3.8.3"
+		"typescript": "4.3.5"
 	},
 	"peerDependencies": {
-		"typescript": ">=3.8.3"
+		"typescript": ">=4.3.5"
 	},
 	"peerDependenciesMeta": {
 		"typescript": {
@@ -44,10 +44,10 @@
 		}
 	},
 	"resolutions": {
-		"nodemailer": "6.7.2"
+		"nodemailer": "6.7.3"
 	},
 	"engines": {
-		"node": ">=10"
+		"node": ">=12"
 	},
 	"files": [
 		"email.ts",
@@ -63,9 +63,7 @@
 	"scripts": {
 		"build": "rollup -c rollup.config.ts",
 		"lint": "eslint *.ts \"+(smtp|test)/*.ts\"",
-		"test": "ava",
-		"pretest-cjs": "npm run build",
-		"test-cjs": "npm run test -- --node-arguments='--title=cjs'"
+		"test": "ava"
 	},
 	"license": "MIT"
 }
