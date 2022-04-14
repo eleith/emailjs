@@ -1,4 +1,5 @@
-import { readFileSync, createReadStream } from 'fs';
+import { createReadStream } from 'fs';
+import { readFile } from 'fs/promises';
 
 import test from 'ava';
 import { simpleParser } from 'mailparser';
@@ -7,6 +8,21 @@ import { SMTPServer } from 'smtp-server';
 
 import { SMTPClient, Message } from '../email.js';
 import type { MessageAttachment, MessageHeaders } from '../email.js';
+
+const textFixtureUrl = new URL('attachments/smtp.txt', import.meta.url);
+const textFixture = await readFile(textFixtureUrl, 'utf-8');
+
+const htmlFixtureUrl = new URL('attachments/smtp.html', import.meta.url);
+const htmlFixture = await readFile(htmlFixtureUrl, 'utf-8');
+
+const pdfFixtureUrl = new URL('attachments/smtp.pdf', import.meta.url);
+const pdfFixture = await readFile(pdfFixtureUrl, 'base64');
+
+const tarFixtureUrl = new URL(
+	'attachments/postfix-2.8.7.tar.gz',
+	import.meta.url
+);
+const tarFixture = await readFile(tarFixtureUrl, 'base64');
 
 /**
  * \@types/mailparser@3.0.2 breaks our code
@@ -129,10 +145,7 @@ test('very large text message', async (t) => {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'ninjas@gmail.com',
 		to: 'pirates@gmail.com',
-		text: readFileSync(
-			new URL('attachments/smtp.txt', import.meta.url),
-			'utf-8'
-		),
+		text: textFixture,
 	};
 
 	const mail = await send(msg);
@@ -143,10 +156,7 @@ test('very large text message', async (t) => {
 });
 
 test('very large text data message', async (t) => {
-	const text =
-		'<html><body><pre>' +
-		readFileSync(new URL('attachments/smtp.txt', import.meta.url), 'utf-8') +
-		'</pre></body></html>';
+	const text = '<html><body><pre>' + textFixture + '</pre></body></html>';
 
 	const msg = {
 		subject: 'this is a test TEXT+DATA message from emailjs',
@@ -168,22 +178,18 @@ test('very large text data message', async (t) => {
 });
 
 test('html data message', async (t) => {
-	const html = readFileSync(
-		new URL('attachments/smtp.html', import.meta.url),
-		'utf-8'
-	);
 	const msg = {
 		subject: 'this is a test TEXT+HTML+DATA message from emailjs',
 		from: 'obama@gmail.com',
 		to: 'mitt@gmail.com',
 		attachment: {
-			data: html,
+			data: htmlFixture,
 			alternative: true,
 		},
 	};
 
 	const mail = await send(msg);
-	t.is(mail.html, html.replace(/\r/g, ''));
+	t.is(mail.html, htmlFixture.replace(/\r/g, ''));
 	t.is(mail.text, '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
@@ -191,10 +197,6 @@ test('html data message', async (t) => {
 });
 
 test('html file message', async (t) => {
-	const html = readFileSync(
-		new URL('attachments/smtp.html', import.meta.url),
-		'utf-8'
-	);
 	const msg = {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
 		from: 'thomas@gmail.com',
@@ -206,7 +208,7 @@ test('html file message', async (t) => {
 	};
 
 	const mail = await send(msg);
-	t.is(mail.html, html.replace(/\r/g, ''));
+	t.is(mail.html, htmlFixture.replace(/\r/g, ''));
 	t.is(mail.text, '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
@@ -214,11 +216,13 @@ test('html file message', async (t) => {
 });
 
 test('html with image embed message', async (t) => {
-	const html = readFileSync(
+	const html = await readFile(
 		new URL('attachments/smtp2.html', import.meta.url),
 		'utf-8'
 	);
-	const image = readFileSync(new URL('attachments/smtp.gif', import.meta.url));
+	const image = await readFile(
+		new URL('attachments/smtp.gif', import.meta.url)
+	);
 	const msg = {
 		subject: 'this is a test TEXT+HTML+IMAGE message from emailjs',
 		from: 'ninja@gmail.com',
@@ -250,10 +254,6 @@ test('html with image embed message', async (t) => {
 });
 
 test('html data and attachment message', async (t) => {
-	const html = readFileSync(
-		new URL('attachments/smtp.html', import.meta.url),
-		'utf-8'
-	);
 	const msg = {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
 		from: 'thomas@gmail.com',
@@ -268,7 +268,7 @@ test('html data and attachment message', async (t) => {
 	};
 
 	const mail = await send(msg);
-	t.is(mail.html, html.replace(/\r/g, ''));
+	t.is(mail.html, htmlFixture.replace(/\r/g, ''));
 	t.is(mail.text, '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
@@ -276,21 +276,20 @@ test('html data and attachment message', async (t) => {
 });
 
 test('attachment message', async (t) => {
-	const pdf = readFileSync(new URL('attachments/smtp.pdf', import.meta.url));
 	const msg = {
 		subject: 'this is a test TEXT+ATTACHMENT message from emailjs',
 		from: 'washing@gmail.com',
 		to: 'lincoln@gmail.com',
 		text: 'hello friend, i hope this message and pdf finds you well.',
 		attachment: {
-			path: new URL('attachments/smtp.pdf', import.meta.url),
+			path: pdfFixtureUrl,
 			type: 'application/pdf',
 			name: 'smtp-info.pdf',
 		} as MessageAttachment,
 	};
 
 	const mail = await send(msg);
-	t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
+	t.is(mail.attachments[0].content.toString('base64'), pdfFixture);
 	t.is(mail.text, msg.text + '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
@@ -298,21 +297,20 @@ test('attachment message', async (t) => {
 });
 
 test('attachment sent with unicode filename message', async (t) => {
-	const pdf = readFileSync(new URL('attachments/smtp.pdf', import.meta.url));
 	const msg = {
 		subject: 'this is a test TEXT+ATTACHMENT message from emailjs',
 		from: 'washing@gmail.com',
 		to: 'lincoln@gmail.com',
 		text: 'hello friend, i hope this message and pdf finds you well.',
 		attachment: {
-			path: new URL('attachments/smtp.pdf', import.meta.url),
+			path: pdfFixtureUrl,
 			type: 'application/pdf',
 			name: 'smtp-✓-info.pdf',
 		} as MessageAttachment,
 	};
 
 	const mail = await send(msg);
-	t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
+	t.is(mail.attachments[0].content.toString('base64'), pdfFixture);
 	t.is(mail.attachments[0].filename, 'smtp-✓-info.pdf');
 	t.is(mail.text, msg.text + '\n');
 	t.is(mail.subject, msg.subject);
@@ -321,10 +319,6 @@ test('attachment sent with unicode filename message', async (t) => {
 });
 
 test('attachments message', async (t) => {
-	const pdf = readFileSync(new URL('attachments/smtp.pdf', import.meta.url));
-	const tar = readFileSync(
-		new URL('attachments/postfix-2.8.7.tar.gz', import.meta.url)
-	);
 	const msg = {
 		subject: 'this is a test TEXT+2+ATTACHMENTS message from emailjs',
 		from: 'sergey@gmail.com',
@@ -332,12 +326,12 @@ test('attachments message', async (t) => {
 		text: 'hello friend, i hope this message and attachments finds you well.',
 		attachment: [
 			{
-				path: new URL('attachments/smtp.pdf', import.meta.url),
+				path: pdfFixtureUrl,
 				type: 'application/pdf',
 				name: 'smtp-info.pdf',
 			},
 			{
-				path: new URL('attachments/postfix-2.8.7.tar.gz', import.meta.url),
+				path: tarFixtureUrl,
 				type: 'application/tar-gz',
 				name: 'postfix.source.2.8.7.tar.gz',
 			},
@@ -345,8 +339,8 @@ test('attachments message', async (t) => {
 	};
 
 	const mail = await send(msg);
-	t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
-	t.is(mail.attachments[1].content.toString('base64'), tar.toString('base64'));
+	t.is(mail.attachments[0].content.toString('base64'), pdfFixture);
+	t.is(mail.attachments[1].content.toString('base64'), tarFixture);
 	t.is(mail.text, msg.text + '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
@@ -354,38 +348,32 @@ test('attachments message', async (t) => {
 });
 
 test('streams message', async (t) => {
-	const pdf = readFileSync(new URL('attachments/smtp.pdf', import.meta.url));
-	const tar = readFileSync(
-		new URL('attachments/postfix-2.8.7.tar.gz', import.meta.url)
-	);
-	const stream = createReadStream(
-		new URL('attachments/smtp.pdf', import.meta.url)
-	);
-	const stream2 = createReadStream(
-		new URL('attachments/postfix-2.8.7.tar.gz', import.meta.url)
-	);
-
 	const msg = {
 		subject: 'this is a test TEXT+2+STREAMED+ATTACHMENTS message from emailjs',
 		from: 'stanford@gmail.com',
 		to: 'mit@gmail.com',
 		text: 'hello friend, i hope this message and streamed attachments finds you well.',
 		attachment: [
-			{ stream, type: 'application/pdf', name: 'smtp-info.pdf' },
 			{
-				stream: stream2,
+				stream: createReadStream(pdfFixtureUrl),
+				type: 'application/pdf',
+				name: 'smtp-info.pdf',
+			},
+			{
+				stream: createReadStream(tarFixtureUrl),
 				type: 'application/x-gzip',
 				name: 'postfix.source.2.8.7.tar.gz',
 			},
 		],
 	};
 
-	stream.pause();
-	stream2.pause();
+	for (const { stream } of msg.attachment) {
+		stream.pause();
+	}
 
 	const mail = await send(msg);
-	t.is(mail.attachments[0].content.toString('base64'), pdf.toString('base64'));
-	t.is(mail.attachments[1].content.toString('base64'), tar.toString('base64'));
+	t.is(mail.attachments[0].content.toString('base64'), pdfFixture);
+	t.is(mail.attachments[1].content.toString('base64'), tarFixture);
 	t.is(mail.text, msg.text + '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
