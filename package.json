@@ -50,15 +50,13 @@
 		"node": ">=12"
 	},
 	"files": [
+		"email.js",
 		"email.ts",
-		"smtp",
-		"rollup"
+		"smtp"
 	],
-	"main": "./rollup/email.cjs",
 	"types": "./email.ts",
 	"exports": {
-		"import": "./rollup/email.mjs",
-		"require": "./rollup/email.cjs"
+		"default": "./email.js"
 	},
 	"scripts": {
 		"build": "rollup -c rollup.config.ts",

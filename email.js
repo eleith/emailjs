@@ -276,7 +276,7 @@ const RANGES = [
     [0x0a],
     [0x0d],
     [0x20, 0x3c],
-    [0x3e, 0x7e],
+    [0x3e, 0x7e], // >?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}
 ];
 const LOOKUP = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'.split('');
 const MAX_CHUNK_LENGTH = 16383; // must be multiple of 3
@@ -883,7 +883,8 @@ class MessageStream extends Stream {
         const outputData = (attachment, callback) => {
             var _a, _b;
             outputBase64(attachment.encoded
-                ? (_a = attachment.data) !== null && _a !== void 0 ? _a : '' : Buffer.from((_b = attachment.data) !== null && _b !== void 0 ? _b : '').toString('base64'), callback);
+                ? (_a = attachment.data) !== null && _a !== void 0 ? _a : ''
+                : Buffer.from((_b = attachment.data) !== null && _b !== void 0 ? _b : '').toString('base64'), callback);
         };
         /**
          * @param {Message} message the message to output
@@ -1852,8 +1853,9 @@ class SMTPClient {
     }
     /**
      * @public
-     * @param {Message} msg the message to send
-     * @param {MessageCallback} callback .
+     * @template {Message | MessageHeaders} T
+     * @param {T} msg the message to send
+     * @param {MessageCallback<T>} callback receiver for the error (if any) as well as the passed-in message / headers
      * @returns {void}
      */
     send(msg, callback) {
@@ -1881,8 +1883,9 @@ class SMTPClient {
     }
     /**
      * @public
-     * @param {Message} msg the message to send
-     * @returns {Promise<Message>} a promise that resolves to the fully processed message
+     * @template {Message | MessageHeaders} T
+     * @param {T} msg the message to send
+     * @returns {Promise<T>} a promise that resolves to the passed-in message / headers
      */
     sendAsync(msg) {
         return new Promise((resolve, reject) => {
@@ -2119,4 +2122,4 @@ class SMTPClient {
 }
 
 export { AUTH_METHODS, BUFFERSIZE, DEFAULT_TIMEOUT, MIME64CHUNK, MIMECHUNK, Message, SMTPClient, SMTPConnection, SMTPError, SMTPErrorStates, SMTPResponseMonitor, SMTPState, addressparser, getRFC2822Date, getRFC2822DateUTC, isRFC2822Date, mimeEncode, mimeWordEncode };
-//# sourceMappingURL=email.mjs.map
+//# sourceMappingURL=email.js.map
