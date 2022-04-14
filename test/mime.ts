@@ -1,6 +1,6 @@
 // adapted from https://github.com/emailjs/emailjs-mime-codec/blob/6909c706b9f09bc0e5c3faf48f723cca53e5b352/src/mimecodec-unit.js
 import test from 'ava';
-import { mimeEncode, mimeWordEncode } from '../email';
+import { mimeEncode, mimeWordEncode } from '../email.js';
 
 test('mimeEncode should encode UTF-8', async (t) => {
 	t.is(mimeEncode('tere ÕÄÖÕ'), 'tere =C3=95=C3=84=C3=96=C3=95');

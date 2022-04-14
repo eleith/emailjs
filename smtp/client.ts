@@ -1,8 +1,8 @@
-import { addressparser } from './address';
-import type { MessageAttachment, MessageHeaders } from './message';
-import { Message } from './message';
-import type { SMTPConnectionOptions } from './connection';
-import { SMTPConnection, SMTPState } from './connection';
+import { addressparser } from './address.js';
+import type { MessageAttachment, MessageHeaders } from './message.js';
+import { Message } from './message.js';
+import type { SMTPConnectionOptions } from './connection.js';
+import { SMTPConnection, SMTPState } from './connection.js';
 
 export type MessageCallback<T = Message | MessageHeaders> = <
 	U extends Error | null,

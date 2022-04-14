@@ -5,8 +5,8 @@ import { hostname } from 'os';
 import { connect, createSecureContext, TLSSocket } from 'tls';
 import type { ConnectionOptions } from 'tls';
 
-import { SMTPError, SMTPErrorStates } from './error';
-import { SMTPResponseMonitor } from './response';
+import { SMTPError, SMTPErrorStates } from './error.js';
+import { SMTPResponseMonitor } from './response.js';
 
 /**
  * @readonly

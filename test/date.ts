@@ -1,5 +1,5 @@
 import test from 'ava';
-import { getRFC2822Date, getRFC2822DateUTC, isRFC2822Date } from '../email';
+import { getRFC2822Date, getRFC2822DateUTC, isRFC2822Date } from '../email.js';
 
 const toD_utc = (dt: number) => getRFC2822DateUTC(new Date(dt));
 const toD = (dt: number, utc = false) => getRFC2822Date(new Date(dt), utc);

@@ -6,9 +6,6 @@ export default {
 		NODE_TLS_REJECT_UNAUTHORIZED: '0',
 	},
 	files: ['test/*.ts'],
-	nodeArguments: [
-		'--loader=ts-node/esm',
-		'--experimental-specifier-resolution=node',
-	],
+	nodeArguments: ['--loader=ts-node/esm'],
 	workerThreads: false, // makes tests far slower
 };

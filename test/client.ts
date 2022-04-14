@@ -5,8 +5,13 @@ import { simpleParser } from 'mailparser';
 import type { ParsedMail, AddressObject } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
-import type { MessageHeaders } from '../email';
-import { DEFAULT_TIMEOUT, SMTPClient, Message, isRFC2822Date } from '../email';
+import type { MessageHeaders } from '../email.js';
+import {
+	DEFAULT_TIMEOUT,
+	SMTPClient,
+	Message,
+	isRFC2822Date,
+} from '../email.js';
 
 const parseMap = new Map<string, ParsedMail>();
 const port = 3333;

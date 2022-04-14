@@ -5,8 +5,8 @@ import { simpleParser } from 'mailparser';
 import type { AddressObject, ParsedMail } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
-import { SMTPClient, Message } from '../email';
-import type { MessageAttachment, MessageHeaders } from '../email';
+import { SMTPClient, Message } from '../email.js';
+import type { MessageAttachment, MessageHeaders } from '../email.js';
 
 /**
  * \@types/mailparser@3.0.2 breaks our code
