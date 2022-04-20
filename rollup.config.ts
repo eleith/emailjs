@@ -3,18 +3,11 @@ import typescript from '@rollup/plugin-typescript';
 
 export default {
 	input: 'email.ts',
-	output: [
-		{
-			file: 'rollup/email.cjs',
-			format: 'cjs',
-			sourcemap: true,
-		},
-		{
-			file: 'rollup/email.mjs',
-			format: 'es',
-			sourcemap: true,
-		},
-	],
+	output: {
+		file: 'email.js',
+		format: 'es',
+		sourcemap: true,
+	},
 	external: builtinModules,
 	plugins: [
 		typescript({ removeComments: false, include: ['email.ts', 'smtp/*'] }),

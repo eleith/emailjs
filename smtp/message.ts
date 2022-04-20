@@ -10,9 +10,9 @@ import { hostname } from 'os';
 import { Stream } from 'stream';
 import type { Readable } from 'stream';
 
-import { addressparser } from './address';
-import { getRFC2822Date } from './date';
-import { mimeWordEncode } from './mime';
+import { addressparser } from './address.js';
+import { getRFC2822Date } from './date.js';
+import { mimeWordEncode } from './mime.js';
 
 const CRLF = '\r\n' as const;
 

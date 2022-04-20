@@ -70,6 +70,7 @@ scripts
 spec
 test
 test-*
+!test-*.d.ts
 tests
 tsserverlibrary.*
 typescriptservices.*

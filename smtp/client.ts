@@ -1,8 +1,8 @@
-import { addressparser } from './address';
-import type { MessageAttachment, MessageHeaders } from './message';
-import { Message } from './message';
-import type { SMTPConnectionOptions } from './connection';
-import { SMTPConnection, SMTPState } from './connection';
+import { addressparser } from './address.js';
+import type { MessageAttachment, MessageHeaders } from './message.js';
+import { Message } from './message.js';
+import type { SMTPConnectionOptions } from './connection.js';
+import { SMTPConnection, SMTPState } from './connection.js';
 
 export type MessageCallback<T = Message | MessageHeaders> = <
 	U extends Error | null,
@@ -45,14 +45,15 @@ export class SMTPClient {
 
 	/**
 	 * @public
-	 * @param {Message} msg the message to send
-	 * @param {MessageCallback} callback .
+	 * @template {Message | MessageHeaders} T
+	 * @param {T} msg the message to send
+	 * @param {MessageCallback<T>} callback receiver for the error (if any) as well as the passed-in message / headers
 	 * @returns {void}
 	 */
-	public send(
-		msg: Message | MessageHeaders,
-		callback: MessageCallback<Message | MessageHeaders>
-	) {
+	public send<T extends Message | MessageHeaders>(
+		msg: T,
+		callback: MessageCallback<T>
+	): void {
 		const message =
 			msg instanceof Message
 				? msg
@@ -81,10 +82,11 @@ export class SMTPClient {
 
 	/**
 	 * @public
-	 * @param {Message} msg the message to send
-	 * @returns {Promise<Message>} a promise that resolves to the fully processed message
+	 * @template {Message | MessageHeaders} T
+	 * @param {T} msg the message to send
+	 * @returns {Promise<T>} a promise that resolves to the passed-in message / headers
 	 */
-	public sendAsync(msg: Message | MessageHeaders) {
+	public sendAsync<T extends Message | MessageHeaders>(msg: T) {
 		return new Promise<Message>((resolve, reject) => {
 			this.send(msg, (err, message) => {
 				if (err != null) {

@@ -1,5 +1,5 @@
 import test from 'ava';
-import { addressparser } from '../email';
+import { addressparser } from '../email.js';
 
 test('addressparser should handle single address correctly', async (t) => {
 	t.deepEqual(addressparser('andris@tr.ee'), [

@@ -7,7 +7,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [^10, ^12, ^14, ^16, ^17]
+        node: [^12, ^14, ^16, ^17]
         os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
@@ -19,12 +19,7 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
 
-      - name: install (node 10)
-        if: matrix.node == '^10'
-        run: yarn install --ignore-engines
-
       - name: install
-        if: matrix.node != '^10'
         run: yarn install
 
       - name: lint

@@ -4,7 +4,7 @@ import { simpleParser } from 'mailparser';
 import type { AddressObject } from 'mailparser';
 import { SMTPServer } from 'smtp-server';
 
-import { AUTH_METHODS, SMTPClient, Message } from '../email';
+import { AUTH_METHODS, SMTPClient, Message } from '../email.js';
 
 let port = 2000;
 
