@@ -183,7 +183,7 @@ export class SMTPConnection extends EventEmitter {
 		this.password = () => password as string;
 
 		if (typeof logger === 'function') {
-			this.log = log;
+			this.log = logger;
 		}
 	}
 
