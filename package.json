@@ -27,10 +27,10 @@
 		"eslint": "8.14.0",
 		"eslint-config-prettier": "8.5.0",
 		"eslint-plugin-prettier": "4.0.0",
-		"mailparser": "3.4.0",
+		"mailparser": "3.5.0",
 		"prettier": "2.6.2",
 		"rollup": "2.70.2",
-		"smtp-server": "3.10.0",
+		"smtp-server": "3.11.0",
 		"ts-node": "10.7.0",
 		"tslib": "2.4.0",
 		"typescript": "4.3.5"
@@ -44,7 +44,7 @@
 		}
 	},
 	"resolutions": {
-		"nodemailer": "6.7.3"
+		"nodemailer": "6.7.4"
 	},
 	"engines": {
 		"node": ">=12"
