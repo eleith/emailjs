@@ -126,7 +126,7 @@ test('client deduplicates recipients', async (t) => {
 	};
 	const stack = client.createMessageStack(new Message(msg));
 	t.true(stack.to.length === 1);
-	t.is(stack.to[0].address, 'gannon@gmail.com');
+	t.is(stack.to[0]?.address, 'gannon@gmail.com');
 });
 
 test('client accepts array recipients', async (t) => {

@@ -74,7 +74,7 @@ export type SMTPSocketOptions = Omit<
 >;
 
 export interface SMTPConnectionOptions {
-	timeout: number | null;
+	timeout: number | null | undefined;
 	user: string;
 	password: string;
 	domain: string;
@@ -520,7 +520,7 @@ export class SMTPConnection extends EventEmitter {
 				// It's actually stricter, in that only spaces are allowed between
 				// parameters, but were not going to check for that here.  Note
 				// that the space isn't present if there are no parameters.
-				this.features[parse[1].toLowerCase()] = parse[2] || true;
+				this.features[parse[1]?.toLowerCase() ?? ''] = parse[2] || true;
 			}
 		});
 	}
@@ -755,16 +755,15 @@ export class SMTPConnection extends EventEmitter {
 			// List of authentication methods we support: from preferred to
 			// less preferred methods.
 			if (!method) {
-				const preferred = this.authentication;
 				let auth = '';
 
 				if (typeof this.features?.['auth'] === 'string') {
 					auth = this.features['auth'];
 				}
 
-				for (let i = 0; i < preferred.length; i++) {
-					if (auth.includes(preferred[i])) {
-						method = preferred[i];
+				for (const authMethod of this.authentication) {
+					if (auth.includes(authMethod)) {
+						method = authMethod;
 						break;
 					}
 				}

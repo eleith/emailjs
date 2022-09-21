@@ -150,8 +150,8 @@ export class Message {
 			) {
 				const attachment = headers[header];
 				if (Array.isArray(attachment)) {
-					for (let i = 0; i < attachment.length; i++) {
-						this.attach(attachment[i]);
+					for (const attachmentItem of attachment) {
+						this.attach(attachmentItem);
 					}
 				} else if (attachment != null) {
 					this.attach(attachment);
@@ -546,12 +546,13 @@ class MessageStream extends Stream {
 		) => {
 			if (index < list.length) {
 				output(`--${boundary}${CRLF}`);
-				if (list[index].related) {
-					outputRelated(list[index], () =>
+				const item = list[index];
+				if (item?.related) {
+					outputRelated(item, () =>
 						outputMessage(boundary, list, index + 1, callback)
 					);
-				} else {
-					outputAttachment(list[index], () =>
+				} else if (item) {
+					outputAttachment(item, () =>
 						outputMessage(boundary, list, index + 1, callback)
 					);
 				}

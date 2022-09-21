@@ -113,11 +113,11 @@ export class SMTPClient {
 			/* ø */
 		}
 	) {
-		const [{ address: from }] = addressparser(message.header.from);
+		const [firstParsedAddress] = addressparser(message.header.from);
 		const stack = {
 			message,
 			to: [] as ReturnType<typeof addressparser>,
-			from,
+			from: firstParsedAddress?.address,
 			callback: callback.bind(this),
 		} as MessageStack;
 
@@ -146,10 +146,10 @@ export class SMTPClient {
 		}
 
 		if (typeof returnPath === 'string' && returnPath.length > 0) {
-			const parsedReturnPath = addressparser(returnPath);
-			if (parsedReturnPath.length > 0) {
-				const [{ address: returnPathAddress }] = parsedReturnPath;
-				stack.returnPath = returnPathAddress as string;
+			const parsedAddresses = addressparser(returnPath);
+			if (parsedAddresses.length > 0) {
+				const [firstParsedAddress] = parsedAddresses;
+				stack.returnPath = firstParsedAddress?.address ?? '';
 			}
 		}
 
@@ -165,15 +165,17 @@ export class SMTPClient {
 			clearTimeout(this.timer);
 		}
 
-		if (this.queue.length) {
+		const queueItem = this.queue[0];
+		if (queueItem) {
 			if (this.smtp.state() == SMTPState.NOTCONNECTED) {
-				this._connect(this.queue[0]);
+				this._connect(queueItem);
 			} else if (
 				this.smtp.state() == SMTPState.CONNECTED &&
 				!this.sending &&
 				this.ready
 			) {
-				this._sendmail(this.queue.shift() as MessageStack);
+				this.queue.shift();
+				this._sendmail(queueItem);
 			}
 		}
 		// wait around 1 seconds in case something does come in,

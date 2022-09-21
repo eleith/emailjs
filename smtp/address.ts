@@ -5,7 +5,7 @@ interface AddressToken {
 
 export interface AddressObject {
 	address?: string;
-	name?: string;
+	name?: string | undefined;
 	group?: AddressObject[];
 }
 
@@ -137,7 +137,7 @@ function convertAddressTokens(tokens: AddressToken[]) {
 		// If no address was found, try to detect one from regular text
 		if (addresses.length === 0 && texts.length > 0) {
 			for (let i = texts.length - 1; i >= 0; i--) {
-				if (texts[i].match(/^[^@\s]+@[^@\s]+$/)) {
+				if (texts[i]?.match(/^[^@\s]+@[^@\s]+$/) ?? false) {
 					addresses = texts.splice(i, 1);
 					break;
 				}
@@ -146,16 +146,19 @@ function convertAddressTokens(tokens: AddressToken[]) {
 			// still no address
 			if (addresses.length === 0) {
 				for (let i = texts.length - 1; i >= 0; i--) {
-					texts[i] = texts[i]
-						.replace(/\s*\b[^@\s]+@[^@\s]+\b\s*/, (address: string) => {
-							if (addresses.length === 0) {
-								addresses = [address.trim()];
-								return ' ';
-							} else {
-								return address;
-							}
-						})
-						.trim();
+					const text = texts[i];
+					texts[i] = text
+						? text
+								.replace(/\s*\b[^@\s]+@[^@\s]+\b\s*/, (address: string) => {
+									if (addresses.length === 0) {
+										addresses = [address.trim()];
+										return ' ';
+									} else {
+										return address;
+									}
+								})
+								.trim()
+						: '';
 
 					if (addresses.length > 0) {
 						break;

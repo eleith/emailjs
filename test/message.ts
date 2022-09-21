@@ -238,7 +238,7 @@ test('html with image embed message', async (t) => {
 
 	const mail = await send(msg);
 	t.is(
-		mail.attachments[0].content.toString('base64'),
+		mail.attachments[0]?.content.toString('base64'),
 		readFileSync(imageFixtureUrl, 'base64')
 	);
 	t.is(mail.html, readFileSync(htmlFixture2Url, 'utf-8').replace(/\r/g, ''));
@@ -284,7 +284,7 @@ test('attachment message', async (t) => {
 	};
 
 	const mail = await send(msg);
-	t.is(mail.attachments[0].content.toString('base64'), pdfFixture);
+	t.is(mail.attachments[0]?.content.toString('base64'), pdfFixture);
 	t.is(mail.text, msg.text + '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
@@ -305,8 +305,8 @@ test('attachment sent with unicode filename message', async (t) => {
 	};
 
 	const mail = await send(msg);
-	t.is(mail.attachments[0].content.toString('base64'), pdfFixture);
-	t.is(mail.attachments[0].filename, 'smtp-✓-info.pdf');
+	t.is(mail.attachments[0]?.content.toString('base64'), pdfFixture);
+	t.is(mail.attachments[0]?.filename, 'smtp-✓-info.pdf');
 	t.is(mail.text, msg.text + '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
@@ -334,8 +334,8 @@ test('attachments message', async (t) => {
 	};
 
 	const mail = await send(msg);
-	t.is(mail.attachments[0].content.toString('base64'), pdfFixture);
-	t.is(mail.attachments[1].content.toString('base64'), tarFixture);
+	t.is(mail.attachments[0]?.content.toString('base64'), pdfFixture);
+	t.is(mail.attachments[1]?.content.toString('base64'), tarFixture);
 	t.is(mail.text, msg.text + '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);
@@ -367,8 +367,8 @@ test('streams message', async (t) => {
 	}
 
 	const mail = await send(msg);
-	t.is(mail.attachments[0].content.toString('base64'), pdfFixture);
-	t.is(mail.attachments[1].content.toString('base64'), tarFixture);
+	t.is(mail.attachments[0]?.content.toString('base64'), pdfFixture);
+	t.is(mail.attachments[1]?.content.toString('base64'), tarFixture);
 	t.is(mail.text, msg.text + '\n');
 	t.is(mail.subject, msg.subject);
 	t.is(mail.from?.text, msg.from);

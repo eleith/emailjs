@@ -16,8 +16,8 @@ export function getRFC2822Date(date = new Date(), useUtc = false) {
 
 	dates[0] = dates[0] + ',';
 
-	const day = dates[1];
-	dates[1] = dates[2];
+	const day = dates[1] ?? '';
+	dates[1] = dates[2] ?? '';
 	dates[2] = day;
 
 	return dates.join(' ');
