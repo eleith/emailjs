@@ -79,7 +79,107 @@ test.after(async (t) => {
 	server.close(t.pass);
 });
 
-test('simple text message', async (t) => {
+test.serial('message validation fails without `from` header', async (t) => {
+	const msg = new Message({});
+	const { isValid, validationError } = msg.checkValidity();
+	t.false(isValid);
+	t.is(validationError, 'Message must have a `from` header');
+});
+
+test.serial(
+	'message validation fails without `to`, `cc`, or `bcc` header',
+	async (t) => {
+		const { isValid, validationError } = new Message({
+			from: 'piglet@gmail.com',
+		}).checkValidity();
+
+		t.false(isValid);
+		t.is(
+			validationError,
+			'Message must have at least one `to`, `cc`, or `bcc` header'
+		);
+	}
+);
+
+test.serial(
+	'message validation succeeds with only `to` recipient header (string)',
+	async (t) => {
+		const { isValid, validationError } = new Message({
+			from: 'piglet@gmail.com',
+			to: 'pooh@gmail.com',
+		}).checkValidity();
+
+		t.true(isValid);
+		t.is(validationError, undefined);
+	}
+);
+
+test.serial(
+	'message validation succeeds with only `to` recipient header (array)',
+	async (t) => {
+		const { isValid, validationError } = new Message({
+			from: 'piglet@gmail.com',
+			to: ['pooh@gmail.com'],
+		}).checkValidity();
+
+		t.true(isValid);
+		t.is(validationError, undefined);
+	}
+);
+
+test.serial(
+	'message validation succeeds with only `cc` recipient header (string)',
+	async (t) => {
+		const { isValid, validationError } = new Message({
+			from: 'piglet@gmail.com',
+			cc: 'pooh@gmail.com',
+		}).checkValidity();
+
+		t.true(isValid);
+		t.is(validationError, undefined);
+	}
+);
+
+test.serial(
+	'message validation succeeds with only `cc` recipient header (array)',
+	async (t) => {
+		const { isValid, validationError } = new Message({
+			from: 'piglet@gmail.com',
+			cc: ['pooh@gmail.com'],
+		}).checkValidity();
+
+		t.true(isValid);
+		t.is(validationError, undefined);
+	}
+);
+
+test.serial(
+	'message validation succeeds with only `bcc` recipient header (string)',
+	async (t) => {
+		const { isValid, validationError } = new Message({
+			from: 'piglet@gmail.com',
+			bcc: 'pooh@gmail.com',
+		}).checkValidity();
+
+		t.true(isValid);
+		t.is(validationError, undefined);
+	}
+);
+
+test.serial(
+	'message validation succeeds with only `bcc` recipient header (array)',
+	async (t) => {
+		const { isValid, validationError } = new Message({
+			from: 'piglet@gmail.com',
+			bcc: ['pooh@gmail.com'],
+		}).checkValidity();
+
+		t.true(isValid);
+		t.is(validationError, undefined);
+	}
+);
+
+test.serial('simple text message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'zelda@gmail.com',
@@ -98,7 +198,7 @@ test('simple text message', async (t) => {
 	t.is(mail.messageId, '<' + msg['message-id'] + '>');
 });
 
-test('null text message', async (t) => {
+test.serial('null text message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'zelda@gmail.com',
@@ -111,7 +211,7 @@ test('null text message', async (t) => {
 	t.is(mail.text, '\n\n\n');
 });
 
-test('empty text message', async (t) => {
+test.serial('empty text message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT message from emailjs',
 		from: 'zelda@gmail.com',
@@ -124,7 +224,7 @@ test('empty text message', async (t) => {
 	t.is(mail.text, '\n\n\n');
 });
 
-test('simple unicode text message', async (t) => {
+test.serial('simple unicode text message', async (t) => {
 	const msg = {
 		subject: 'this ✓ is a test ✓ TEXT message from emailjs',
 		from: 'zelda✓ <zelda@gmail.com>',
@@ -139,45 +239,7 @@ test('simple unicode text message', async (t) => {
 	t.is(mail.to?.text, msg.to);
 });
 
-test('very large text message', async (t) => {
-	// thanks to jart+loberstech for this one!
-	const msg = {
-		subject: 'this is a test TEXT message from emailjs',
-		from: 'ninjas@gmail.com',
-		to: 'pirates@gmail.com',
-		text: textFixture,
-	};
-
-	const mail = await send(msg);
-	t.is(mail.text, msg.text.replace(/\r/g, '') + '\n\n\n');
-	t.is(mail.subject, msg.subject);
-	t.is(mail.from?.text, msg.from);
-	t.is(mail.to?.text, msg.to);
-});
-
-test('very large text data message', async (t) => {
-	const text = '<html><body><pre>' + textFixture + '</pre></body></html>';
-
-	const msg = {
-		subject: 'this is a test TEXT+DATA message from emailjs',
-		from: 'lobsters@gmail.com',
-		to: 'lizards@gmail.com',
-		text: 'hello friend if you are seeing this, you can not view html emails. it is attached inline.',
-		attachment: {
-			data: text,
-			alternative: true,
-		},
-	};
-
-	const mail = await send(msg);
-	t.is(mail.html, text.replace(/\r/g, ''));
-	t.is(mail.text, msg.text + '\n');
-	t.is(mail.subject, msg.subject);
-	t.is(mail.from?.text, msg.from);
-	t.is(mail.to?.text, msg.to);
-});
-
-test('html data message', async (t) => {
+test.serial('html data message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT+HTML+DATA message from emailjs',
 		from: 'obama@gmail.com',
@@ -196,7 +258,7 @@ test('html data message', async (t) => {
 	t.is(mail.to?.text, msg.to);
 });
 
-test('html file message', async (t) => {
+test.serial('html file message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
 		from: 'thomas@gmail.com',
@@ -215,7 +277,7 @@ test('html file message', async (t) => {
 	t.is(mail.to?.text, msg.to);
 });
 
-test('html with image embed message', async (t) => {
+test.serial('html with image embed message', async (t) => {
 	const htmlFixture2Url = new URL('attachments/smtp2.html', import.meta.url);
 	const imageFixtureUrl = new URL('attachments/smtp.gif', import.meta.url);
 	const msg = {
@@ -248,7 +310,7 @@ test('html with image embed message', async (t) => {
 	t.is(mail.to?.text, msg.to);
 });
 
-test('html data and attachment message', async (t) => {
+test.serial('html data and attachment message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT+HTML+FILE message from emailjs',
 		from: 'thomas@gmail.com',
@@ -270,7 +332,7 @@ test('html data and attachment message', async (t) => {
 	t.is(mail.to?.text, msg.to);
 });
 
-test('attachment message', async (t) => {
+test.serial('attachment message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT+ATTACHMENT message from emailjs',
 		from: 'washing@gmail.com',
@@ -291,7 +353,7 @@ test('attachment message', async (t) => {
 	t.is(mail.to?.text, msg.to);
 });
 
-test('attachment sent with unicode filename message', async (t) => {
+test.serial('attachment sent with unicode filename message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT+ATTACHMENT message from emailjs',
 		from: 'washing@gmail.com',
@@ -313,7 +375,7 @@ test('attachment sent with unicode filename message', async (t) => {
 	t.is(mail.to?.text, msg.to);
 });
 
-test('attachments message', async (t) => {
+test.serial('attachments message', async (t) => {
 	const msg = {
 		subject: 'this is a test TEXT+2+ATTACHMENTS message from emailjs',
 		from: 'sergey@gmail.com',
@@ -342,7 +404,9 @@ test('attachments message', async (t) => {
 	t.is(mail.to?.text, msg.to);
 });
 
-test('streams message', async (t) => {
+test.serial('streams message', async (t) => {
+	t.timeout(15000);
+
 	const msg = {
 		subject: 'this is a test TEXT+2+STREAMED+ATTACHMENTS message from emailjs',
 		from: 'stanford@gmail.com',
@@ -375,81 +439,43 @@ test('streams message', async (t) => {
 	t.is(mail.to?.text, msg.to);
 });
 
-test('message validation fails without `from` header', async (t) => {
-	const msg = new Message({});
-	const { isValid, validationError } = msg.checkValidity();
-	t.false(isValid);
-	t.is(validationError, 'Message must have a `from` header');
+// thanks to jart+loberstech for this one!
+test.serial('very large text message', async (t) => {
+	t.timeout(15000);
+
+	const msg = {
+		subject: 'this is a test TEXT message from emailjs',
+		from: 'ninjas@gmail.com',
+		to: 'pirates@gmail.com',
+		text: textFixture,
+	};
+
+	const mail = await send(msg);
+	t.is(mail.text, msg.text.replace(/\r/g, '') + '\n\n\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
 
-test('message validation fails without `to`, `cc`, or `bcc` header', async (t) => {
-	const { isValid, validationError } = new Message({
-		from: 'piglet@gmail.com',
-	}).checkValidity();
+test.serial('very large text data message', async (t) => {
+	t.timeout(15000);
 
-	t.false(isValid);
-	t.is(
-		validationError,
-		'Message must have at least one `to`, `cc`, or `bcc` header'
-	);
-});
+	const text = '<html><body><pre>' + textFixture + '</pre></body></html>';
+	const msg = {
+		subject: 'this is a test TEXT+DATA message from emailjs',
+		from: 'lobsters@gmail.com',
+		to: 'lizards@gmail.com',
+		text: 'hello friend if you are seeing this, you can not view html emails. it is attached inline.',
+		attachment: {
+			data: text,
+			alternative: true,
+		},
+	};
 
-test('message validation succeeds with only `to` recipient header (string)', async (t) => {
-	const { isValid, validationError } = new Message({
-		from: 'piglet@gmail.com',
-		to: 'pooh@gmail.com',
-	}).checkValidity();
-
-	t.true(isValid);
-	t.is(validationError, undefined);
-});
-
-test('message validation succeeds with only `to` recipient header (array)', async (t) => {
-	const { isValid, validationError } = new Message({
-		from: 'piglet@gmail.com',
-		to: ['pooh@gmail.com'],
-	}).checkValidity();
-
-	t.true(isValid);
-	t.is(validationError, undefined);
-});
-
-test('message validation succeeds with only `cc` recipient header (string)', async (t) => {
-	const { isValid, validationError } = new Message({
-		from: 'piglet@gmail.com',
-		cc: 'pooh@gmail.com',
-	}).checkValidity();
-
-	t.true(isValid);
-	t.is(validationError, undefined);
-});
-
-test('message validation succeeds with only `cc` recipient header (array)', async (t) => {
-	const { isValid, validationError } = new Message({
-		from: 'piglet@gmail.com',
-		cc: ['pooh@gmail.com'],
-	}).checkValidity();
-
-	t.true(isValid);
-	t.is(validationError, undefined);
-});
-
-test('message validation succeeds with only `bcc` recipient header (string)', async (t) => {
-	const { isValid, validationError } = new Message({
-		from: 'piglet@gmail.com',
-		bcc: 'pooh@gmail.com',
-	}).checkValidity();
-
-	t.true(isValid);
-	t.is(validationError, undefined);
-});
-
-test('message validation succeeds with only `bcc` recipient header (array)', async (t) => {
-	const { isValid, validationError } = new Message({
-		from: 'piglet@gmail.com',
-		bcc: ['pooh@gmail.com'],
-	}).checkValidity();
-
-	t.true(isValid);
-	t.is(validationError, undefined);
+	const mail = await send(msg);
+	t.is(mail.html, text.replace(/\r/g, ''));
+	t.is(mail.text, msg.text + '\n');
+	t.is(mail.subject, msg.subject);
+	t.is(mail.from?.text, msg.from);
+	t.is(mail.to?.text, msg.to);
 });
