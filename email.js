@@ -143,8 +143,8 @@ function convertAddressTokens(tokens) {
             if (addresses.length === 0) {
                 for (let i = texts.length - 1; i >= 0; i--) {
                     const text = texts[i];
-                    texts[i] = text
-                        ? text
+                    if ((text === null || text === void 0 ? void 0 : text.length) > 0) {
+                        texts[i] = text
                             .replace(/\s*\b[^@\s]+@[^@\s]+\b\s*/, (address) => {
                             if (addresses.length === 0) {
                                 addresses = [address.trim()];
@@ -154,8 +154,11 @@ function convertAddressTokens(tokens) {
                                 return address;
                             }
                         })
-                            .trim()
-                        : '';
+                            .trim();
+                    }
+                    else {
+                        texts[i] = '';
+                    }
                     if (addresses.length > 0) {
                         break;
                     }
