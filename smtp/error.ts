@@ -42,7 +42,9 @@ export class SMTPError extends Error {
 		error?: Error | null,
 		smtp?: unknown
 	) {
-		const msg = error?.message ? `${message} (${error.message})` : message;
+		const shouldUseError =
+			error != null && error.message != null && error.message.length > 0;
+		const msg = shouldUseError ? `${message} (${error.message})` : message;
 		const err = new SMTPError(msg);
 
 		err.code = code;

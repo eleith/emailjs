@@ -32,17 +32,17 @@ const OPERATORS = new Map([
  * @return {AddressToken[]} An array of operator|text tokens
  */
 function tokenizeAddress(address = '') {
-    var _a, _b;
     const tokens = [];
     let token = undefined;
     let operator = undefined;
     for (const character of address.toString()) {
-        if (((_a = operator === null || operator === void 0 ? void 0 : operator.length) !== null && _a !== void 0 ? _a : 0) > 0 && character === operator) {
+        const operatorHasLength = operator != null && operator.length > 0;
+        if (operatorHasLength === true && character === operator) {
             tokens.push({ type: 'operator', value: character });
             token = undefined;
             operator = undefined;
         }
-        else if (((_b = operator === null || operator === void 0 ? void 0 : operator.length) !== null && _b !== void 0 ? _b : 0) === 0 && OPERATORS.has(character)) {
+        else if (operatorHasLength === false && OPERATORS.has(character)) {
             tokens.push({ type: 'operator', value: character });
             token = undefined;
             operator = OPERATORS.get(character);
@@ -133,7 +133,11 @@ function convertAddressTokens(tokens) {
         // If no address was found, try to detect one from regular text
         if (addresses.length === 0 && texts.length > 0) {
             for (let i = texts.length - 1; i >= 0; i--) {
-                if (texts[i].match(/^[^@\s]+@[^@\s]+$/)) {
+                const text = texts[i];
+                if (text == null) {
+                    continue;
+                }
+                if (/^[^@\s]+@[^@\s]+$/.test(text)) {
                     addresses = texts.splice(i, 1);
                     break;
                 }
@@ -141,17 +145,23 @@ function convertAddressTokens(tokens) {
             // still no address
             if (addresses.length === 0) {
                 for (let i = texts.length - 1; i >= 0; i--) {
-                    texts[i] = texts[i]
-                        .replace(/\s*\b[^@\s]+@[^@\s]+\b\s*/, (address) => {
-                        if (addresses.length === 0) {
-                            addresses = [address.trim()];
-                            return ' ';
-                        }
-                        else {
-                            return address;
-                        }
-                    })
-                        .trim();
+                    const text = texts[i];
+                    if (text != null && text.length > 0) {
+                        texts[i] = text
+                            .replace(/\s*\b[^@\s]+@[^@\s]+\b\s*/, (address) => {
+                            if (addresses.length === 0) {
+                                addresses = [address.trim()];
+                                return ' ';
+                            }
+                            else {
+                                return address;
+                            }
+                        })
+                            .trim();
+                    }
+                    else {
+                        texts[i] = '';
+                    }
                     if (addresses.length > 0) {
                         break;
                     }
@@ -231,16 +241,12 @@ function getRFC2822Date(date = new Date(), useUtc = false) {
     if (useUtc) {
         return getRFC2822DateUTC(date);
     }
-    const dates = date
+    const [zero, one, two, ...rest] = date
         .toString()
         .replace('GMT', '')
         .replace(/\s\(.*\)$/, '')
         .split(' ');
-    dates[0] = dates[0] + ',';
-    const day = dates[1];
-    dates[1] = dates[2];
-    dates[2] = day;
-    return dates.join(' ');
+    return [zero + ',', two, one, ...rest].join(' ');
 }
 /**
  * @param {Date} [date] an optional date to convert to RFC2822 format (UTC)
@@ -283,7 +289,8 @@ const MAX_CHUNK_LENGTH = 16383; // must be multiple of 3
 const MAX_MIME_WORD_LENGTH = 52;
 const MAX_B64_MIME_WORD_BYTE_LENGTH = 39;
 function tripletToBase64(num) {
-    return (LOOKUP[(num >> 18) & 0x3f] +
+    return ('' +
+        LOOKUP[(num >> 18) & 0x3f] +
         LOOKUP[(num >> 12) & 0x3f] +
         LOOKUP[(num >> 6) & 0x3f] +
         LOOKUP[num & 0x3f]);
@@ -291,7 +298,9 @@ function tripletToBase64(num) {
 function encodeChunk(uint8, start, end) {
     let output = '';
     for (let i = start; i < end; i += 3) {
-        output += tripletToBase64((uint8[i] << 16) + (uint8[i + 1] << 8) + uint8[i + 2]);
+        output += tripletToBase64((Number(uint8[i]) << 16) +
+            (Number(uint8[i + 1]) << 8) +
+            Number(uint8[i + 2]));
     }
     return output;
 }
@@ -305,13 +314,13 @@ function encodeBase64(data) {
     }
     // pad the end with zeros, but make sure to not forget the extra bytes
     if (extraBytes === 1) {
-        const tmp = data[len - 1];
+        const tmp = Number(data[len - 1]);
         output += LOOKUP[tmp >> 2];
         output += LOOKUP[(tmp << 4) & 0x3f];
         output += '==';
     }
     else if (extraBytes === 2) {
-        const tmp = (data[len - 2] << 8) + data[len - 1];
+        const tmp = (Number(data[len - 2]) << 8) + Number(data[len - 1]);
         output += LOOKUP[tmp >> 10];
         output += LOOKUP[(tmp >> 4) & 0x3f];
         output += LOOKUP[(tmp << 2) & 0x3f];
@@ -331,21 +340,22 @@ function splitMimeEncodedString(str, maxlen = 12) {
     const maxWordLength = Math.max(maxlen, minWordLength);
     const lines = [];
     while (str.length) {
-        let curLine = str.substr(0, maxWordLength);
+        let curLine = str.substring(0, maxWordLength);
         const match = curLine.match(/=[0-9A-F]?$/i); // skip incomplete escaped char
         if (match) {
-            curLine = curLine.substr(0, match.index);
+            curLine = curLine.substring(0, match.index);
         }
         let done = false;
         while (!done) {
             let chr;
             done = true;
-            const match = str.substr(curLine.length).match(/^=([0-9A-F]{2})/i); // check if not middle of a unicode char sequence
-            if (match) {
-                chr = parseInt(match[1], 16);
+            const matchset = str.substring(curLine.length).match(/^=([0-9A-F]{2})/i); // check if not middle of a unicode char sequence
+            if (matchset != null) {
+                const [, secondMatch = ''] = matchset;
+                chr = parseInt(secondMatch, 16);
                 // invalid sequence, move one char back anc recheck
                 if (chr < 0xc2 && chr > 0x7f) {
-                    curLine = curLine.substr(0, curLine.length - 3);
+                    curLine = curLine.substring(0, curLine.length - 3);
                     done = false;
                 }
             }
@@ -353,7 +363,7 @@ function splitMimeEncodedString(str, maxlen = 12) {
         if (curLine.length) {
             lines.push(curLine);
         }
-        str = str.substr(curLine.length);
+        str = str.substring(curLine.length);
     }
     return lines;
 }
@@ -365,7 +375,7 @@ function splitMimeEncodedString(str, maxlen = 12) {
 function checkRanges(nr) {
     return RANGES.reduce((val, range) => val ||
         (range.length === 1 && nr === range[0]) ||
-        (range.length === 2 && nr >= range[0] && nr <= range[1]), false);
+        (range.length === 2 && nr >= Number(range[0]) && nr <= Number(range[1])), false);
 }
 /**
  * Encodes all non printable and non ascii bytes to =XX form, where XX is the
@@ -521,8 +531,8 @@ class Message {
                 typeof headers[header] === 'object') {
                 const attachment = headers[header];
                 if (Array.isArray(attachment)) {
-                    for (let i = 0; i < attachment.length; i++) {
-                        this.attach(attachment[i]);
+                    for (const attachmentItem of attachment) {
+                        this.attach(attachmentItem);
                     }
                 }
                 else if (attachment != null) {
@@ -536,7 +546,7 @@ class Message {
                 this.header[header.toLowerCase()] = convertPersonToAddress(headers[header]);
             }
             else {
-                // allow any headers the user wants to set??
+                // allow any headers the user wants to set
                 this.header[header.toLowerCase()] = headers[header];
             }
         }
@@ -751,10 +761,10 @@ class MessageStream extends Stream {
             }
         };
         const outputFile = (attachment, next) => {
-            var _a;
             const chunk = MIME64CHUNK * 16;
             const buffer = Buffer.alloc(chunk);
-            const inputEncoding = ((_a = attachment === null || attachment === void 0 ? void 0 : attachment.headers) === null || _a === void 0 ? void 0 : _a['content-transfer-encoding']) || 'base64';
+            const { headers = {} } = attachment;
+            const inputEncoding = headers['content-transfer-encoding'] || 'base64';
             const encoding = inputEncoding === '7bit'
                 ? 'ascii'
                 : inputEncoding === '8bit'
@@ -799,7 +809,7 @@ class MessageStream extends Stream {
          */
         const outputStream = (attachment, callback) => {
             const { stream } = attachment;
-            if (stream === null || stream === void 0 ? void 0 : stream.readable) {
+            if (stream != null && stream.readable) {
                 let previous = Buffer.alloc(0);
                 stream.resume();
                 stream.on('end', () => {
@@ -850,11 +860,14 @@ class MessageStream extends Stream {
         const outputMessage = (boundary, list, index, callback) => {
             if (index < list.length) {
                 output(`--${boundary}${CRLF$1}`);
-                if (list[index].related) {
-                    outputRelated(list[index], () => outputMessage(boundary, list, index + 1, callback));
-                }
-                else {
-                    outputAttachment(list[index], () => outputMessage(boundary, list, index + 1, callback));
+                const item = list[index];
+                if (item != null) {
+                    if (item.related) {
+                        outputRelated(item, () => outputMessage(boundary, list, index + 1, callback));
+                    }
+                    else {
+                        outputAttachment(item, () => outputMessage(boundary, list, index + 1, callback));
+                    }
                 }
             }
             else {
@@ -881,10 +894,8 @@ class MessageStream extends Stream {
          * @returns {void}
          */
         const outputData = (attachment, callback) => {
-            var _a, _b;
-            outputBase64(attachment.encoded
-                ? (_a = attachment.data) !== null && _a !== void 0 ? _a : ''
-                : Buffer.from((_b = attachment.data) !== null && _b !== void 0 ? _b : '').toString('base64'), callback);
+            const { data = '' } = attachment;
+            outputBase64(attachment.encoded ? data : Buffer.from(data).toString('base64'), callback);
         };
         /**
          * @param {Message} message the message to output
@@ -912,8 +923,8 @@ class MessageStream extends Stream {
             const boundary = generateBoundary();
             output(`Content-Type: multipart/related; boundary="${boundary}"${CRLF$1}${CRLF$1}--${boundary}${CRLF$1}`);
             outputAttachment(message, () => {
-                var _a;
-                outputMessage(boundary, (_a = message.related) !== null && _a !== void 0 ? _a : [], 0, () => {
+                const { related = [] } = message;
+                outputMessage(boundary, related, 0, () => {
                     output(`${CRLF$1}--${boundary}--${CRLF$1}${CRLF$1}`);
                     callback();
                 });
@@ -944,12 +955,13 @@ class MessageStream extends Stream {
             }
         };
         const close$1 = (err) => {
-            var _a, _b;
             if (err) {
                 this.emit('error', err);
             }
             else {
-                this.emit('data', (_b = (_a = this.buffer) === null || _a === void 0 ? void 0 : _a.toString('utf-8', 0, this.bufferIndex)) !== null && _b !== void 0 ? _b : '');
+                this.emit('data', this.buffer != null
+                    ? this.buffer.toString('utf-8', 0, this.bufferIndex)
+                    : '');
                 this.emit('end');
             }
             this.buffer = null;
@@ -1069,7 +1081,8 @@ class SMTPError extends Error {
      * @returns {SMTPError} error
      */
     static create(message, code, error, smtp) {
-        const msg = (error === null || error === void 0 ? void 0 : error.message) ? `${message} (${error.message})` : message;
+        const shouldUseError = error != null && error.message != null && error.message.length > 0;
+        const msg = shouldUseError ? `${message} (${error.message})` : message;
         const err = new SMTPError(msg);
         err.code = code;
         err.smtp = smtp;
@@ -1084,14 +1097,11 @@ class SMTPResponseMonitor {
     constructor(stream, timeout, onerror) {
         let buffer = '';
         const notify = () => {
-            var _a, _b;
             if (buffer.length) {
                 // parse buffer for response codes
                 const line = buffer.replace('\r', '');
-                if (!((_b = (_a = line
-                    .trim()
-                    .split(/\n/)
-                    .pop()) === null || _a === void 0 ? void 0 : _a.match(/^(\d{3})\s/)) !== null && _b !== void 0 ? _b : false)) {
+                const code = line.trim().split(/\n/).pop();
+                if (code == null || /^(\d{3})\s/.test(code) === false) {
                     return;
                 }
                 const match = line ? line.match(/(\d+)\s?(.*)/) : null;
@@ -1197,7 +1207,6 @@ class SMTPConnection extends EventEmitter {
      * NOTE: `host` is trimmed before being used to establish a connection; however, the original untrimmed value will still be visible in configuration.
      */
     constructor({ timeout, host, user, password, domain, port, ssl, tls, logger, authentication, } = {}) {
-        var _a;
         super();
         this.timeout = DEFAULT_TIMEOUT;
         this.log = log;
@@ -1242,14 +1251,14 @@ class SMTPConnection extends EventEmitter {
         }
         this.port = port || (ssl ? SMTP_SSL_PORT : tls ? SMTP_TLS_PORT : SMTP_PORT);
         this.loggedin = user && password ? false : true;
-        if (!user && ((_a = password === null || password === void 0 ? void 0 : password.length) !== null && _a !== void 0 ? _a : 0) > 0) {
+        if (user == null && password != null && password.length > 0) {
             throw new Error('`password` cannot be set without `user`');
         }
         // keep these strings hidden when quicky debugging/logging
         this.user = () => user;
         this.password = () => password;
         if (typeof logger === 'function') {
-            this.log = log;
+            this.log = logger;
         }
     }
     /**
@@ -1502,7 +1511,8 @@ class SMTPConnection extends EventEmitter {
                 // It's actually stricter, in that only spaces are allowed between
                 // parameters, but were not going to check for that here.  Note
                 // that the space isn't present if there are no parameters.
-                this.features[parse[1].toLowerCase()] = parse[2] || true;
+                const [, one = '', two = true] = parse;
+                this.features[one.toLowerCase()] = two;
             }
         });
     }
@@ -1535,8 +1545,7 @@ class SMTPConnection extends EventEmitter {
      * @returns {boolean} whether the extension exists
      */
     has_extn(opt) {
-        var _a;
-        return ((_a = this.features) !== null && _a !== void 0 ? _a : {})[opt.toLowerCase()] === undefined;
+        return this.features != null && this.features[opt.toLowerCase()] != null;
     }
     /**
      * @public
@@ -1604,9 +1613,13 @@ class SMTPConnection extends EventEmitter {
      * @returns {void}
      */
     message(data) {
-        var _a, _b;
         this.log(data);
-        (_b = (_a = this.sock) === null || _a === void 0 ? void 0 : _a.write(data)) !== null && _b !== void 0 ? _b : this.log('no socket to write to');
+        if (this.sock != null) {
+            this.sock.write(data);
+        }
+        else {
+            this.log('no socket to write to');
+        }
     }
     /**
      * @public
@@ -1670,15 +1683,13 @@ class SMTPConnection extends EventEmitter {
      * @returns {void}
      */
     login(callback, user, password, options = {}) {
-        var _a, _b;
         const login = {
             user: user ? () => user : this.user,
             password: password ? () => password : this.password,
-            method: (_b = (_a = options === null || options === void 0 ? void 0 : options.method) === null || _a === void 0 ? void 0 : _a.toUpperCase()) !== null && _b !== void 0 ? _b : '',
+            method: options.method != null ? options.method.toUpperCase() : '',
         };
-        const domain = (options === null || options === void 0 ? void 0 : options.domain) || this.domain;
+        const domain = options.domain || this.domain;
         const initiate = (err, data) => {
-            var _a;
             if (err) {
                 caller(callback, err);
                 return;
@@ -1705,14 +1716,14 @@ class SMTPConnection extends EventEmitter {
             // List of authentication methods we support: from preferred to
             // less preferred methods.
             if (!method) {
-                const preferred = this.authentication;
                 let auth = '';
-                if (typeof ((_a = this.features) === null || _a === void 0 ? void 0 : _a['auth']) === 'string') {
+                if (this.features != null &&
+                    typeof this.features['auth'] === 'string') {
                     auth = this.features['auth'];
                 }
-                for (let i = 0; i < preferred.length; i++) {
-                    if (auth.includes(preferred[i])) {
-                        method = preferred[i];
+                for (const authMethod of this.authentication) {
+                    if (auth.includes(authMethod)) {
+                        method = authMethod;
                         break;
                     }
                 }
@@ -1911,10 +1922,10 @@ class SMTPClient {
     createMessageStack(message, callback = function () {
         /* ø */
     }) {
-        const [{ address: from }] = addressparser(message.header.from);
+        const [{ address: from = '' } = {}] = addressparser(message.header.from);
         const stack = {
             message,
-            to: [],
+            to: new Array(),
             from,
             callback: callback.bind(this),
         };
@@ -1929,10 +1940,10 @@ class SMTPClient {
             stack.to = stack.to.concat(addressparser(bcc).filter((x) => stack.to.some((y) => y.address === x.address) === false));
         }
         if (typeof returnPath === 'string' && returnPath.length > 0) {
-            const parsedReturnPath = addressparser(returnPath);
-            if (parsedReturnPath.length > 0) {
-                const [{ address: returnPathAddress }] = parsedReturnPath;
-                stack.returnPath = returnPathAddress;
+            const parsedAddresses = addressparser(returnPath);
+            if (parsedAddresses.length > 0) {
+                const [{ address = '' } = {}] = parsedAddresses;
+                stack.returnPath = address;
             }
         }
         return stack;
@@ -1945,14 +1956,16 @@ class SMTPClient {
         if (this.timer != null) {
             clearTimeout(this.timer);
         }
-        if (this.queue.length) {
+        const queueItem = this.queue[0];
+        if (queueItem) {
             if (this.smtp.state() == SMTPState.NOTCONNECTED) {
-                this._connect(this.queue[0]);
+                this._connect(queueItem);
             }
             else if (this.smtp.state() == SMTPState.CONNECTED &&
                 !this.sending &&
                 this.ready) {
-                this._sendmail(this.queue.shift());
+                this.queue.shift();
+                this._sendmail(queueItem);
             }
         }
         // wait around 1 seconds in case something does come in,
@@ -2075,12 +2088,11 @@ class SMTPClient {
      * @returns {void}
      */
     _sendrcpt(stack) {
-        var _a;
         if (stack.to == null || typeof stack.to === 'string') {
             throw new TypeError('stack.to must be array');
         }
-        const to = (_a = stack.to.shift()) === null || _a === void 0 ? void 0 : _a.address;
-        this.smtp.rcpt(this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata), `<${to}>`);
+        const to = stack.to.shift();
+        this.smtp.rcpt(this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata), `<${to == null ? '' : to.address || ''}>`);
     }
     /**
      * @protected

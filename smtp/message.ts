@@ -150,8 +150,8 @@ export class Message {
 			) {
 				const attachment = headers[header];
 				if (Array.isArray(attachment)) {
-					for (let i = 0; i < attachment.length; i++) {
-						this.attach(attachment[i]);
+					for (const attachmentItem of attachment) {
+						this.attach(attachmentItem);
 					}
 				} else if (attachment != null) {
 					this.attach(attachment);
@@ -163,7 +163,7 @@ export class Message {
 					headers[header] as string | string[]
 				);
 			} else {
-				// allow any headers the user wants to set??
+				// allow any headers the user wants to set
 				this.header[header.toLowerCase()] = headers[header];
 			}
 		}
@@ -419,9 +419,9 @@ class MessageStream extends Stream {
 		) => {
 			const chunk = MIME64CHUNK * 16;
 			const buffer = Buffer.alloc(chunk);
+			const { headers = {} } = attachment;
 
-			const inputEncoding =
-				attachment?.headers?.['content-transfer-encoding'] || 'base64';
+			const inputEncoding = headers['content-transfer-encoding'] || 'base64';
 			const encoding =
 				inputEncoding === '7bit'
 					? 'ascii'
@@ -479,7 +479,7 @@ class MessageStream extends Stream {
 			callback: () => void
 		) => {
 			const { stream } = attachment;
-			if (stream?.readable) {
+			if (stream != null && stream.readable) {
 				let previous = Buffer.alloc(0);
 
 				stream.resume();
@@ -546,14 +546,17 @@ class MessageStream extends Stream {
 		) => {
 			if (index < list.length) {
 				output(`--${boundary}${CRLF}`);
-				if (list[index].related) {
-					outputRelated(list[index], () =>
-						outputMessage(boundary, list, index + 1, callback)
-					);
-				} else {
-					outputAttachment(list[index], () =>
-						outputMessage(boundary, list, index + 1, callback)
-					);
+				const item = list[index];
+				if (item != null) {
+					if (item.related) {
+						outputRelated(item, () =>
+							outputMessage(boundary, list, index + 1, callback)
+						);
+					} else {
+						outputAttachment(item, () =>
+							outputMessage(boundary, list, index + 1, callback)
+						);
+					}
 				}
 			} else {
 				output(`${CRLF}--${boundary}--${CRLF}${CRLF}`);
@@ -588,10 +591,9 @@ class MessageStream extends Stream {
 			attachment: MessageAttachment,
 			callback: () => void
 		) => {
+			const { data = '' } = attachment;
 			outputBase64(
-				attachment.encoded
-					? attachment.data ?? ''
-					: Buffer.from(attachment.data ?? '').toString('base64'),
+				attachment.encoded ? data : Buffer.from(data).toString('base64'),
 				callback
 			);
 		};
@@ -630,7 +632,8 @@ class MessageStream extends Stream {
 				`Content-Type: multipart/related; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`
 			);
 			outputAttachment(message, () => {
-				outputMessage(boundary, message.related ?? [], 0, () => {
+				const { related = [] } = message;
+				outputMessage(boundary, related, 0, () => {
 					output(`${CRLF}--${boundary}--${CRLF}${CRLF}`);
 					callback();
 				});
@@ -674,7 +677,9 @@ class MessageStream extends Stream {
 			} else {
 				this.emit(
 					'data',
-					this.buffer?.toString('utf-8', 0, this.bufferIndex) ?? ''
+					this.buffer != null
+						? this.buffer.toString('utf-8', 0, this.bufferIndex)
+						: ''
 				);
 				this.emit('end');
 			}

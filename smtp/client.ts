@@ -1,4 +1,4 @@
-import { addressparser } from './address.js';
+import { AddressObject, addressparser } from './address.js';
 import type { MessageAttachment, MessageHeaders } from './message.js';
 import { Message } from './message.js';
 import type { SMTPConnectionOptions } from './connection.js';
@@ -113,10 +113,10 @@ export class SMTPClient {
 			/* ø */
 		}
 	) {
-		const [{ address: from }] = addressparser(message.header.from);
+		const [{ address: from = '' } = {}] = addressparser(message.header.from);
 		const stack = {
 			message,
-			to: [] as ReturnType<typeof addressparser>,
+			to: new Array<AddressObject>(),
 			from,
 			callback: callback.bind(this),
 		} as MessageStack;
@@ -146,10 +146,10 @@ export class SMTPClient {
 		}
 
 		if (typeof returnPath === 'string' && returnPath.length > 0) {
-			const parsedReturnPath = addressparser(returnPath);
-			if (parsedReturnPath.length > 0) {
-				const [{ address: returnPathAddress }] = parsedReturnPath;
-				stack.returnPath = returnPathAddress as string;
+			const parsedAddresses = addressparser(returnPath);
+			if (parsedAddresses.length > 0) {
+				const [{ address = '' } = {}] = parsedAddresses;
+				stack.returnPath = address;
 			}
 		}
 
@@ -165,15 +165,17 @@ export class SMTPClient {
 			clearTimeout(this.timer);
 		}
 
-		if (this.queue.length) {
+		const queueItem = this.queue[0];
+		if (queueItem) {
 			if (this.smtp.state() == SMTPState.NOTCONNECTED) {
-				this._connect(this.queue[0]);
+				this._connect(queueItem);
 			} else if (
 				this.smtp.state() == SMTPState.CONNECTED &&
 				!this.sending &&
 				this.ready
 			) {
-				this._sendmail(this.queue.shift() as MessageStack);
+				this.queue.shift();
+				this._sendmail(queueItem);
 			}
 		}
 		// wait around 1 seconds in case something does come in,
@@ -312,10 +314,10 @@ export class SMTPClient {
 			throw new TypeError('stack.to must be array');
 		}
 
-		const to = stack.to.shift()?.address;
+		const to = stack.to.shift();
 		this.smtp.rcpt(
 			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
-			`<${to}>`
+			`<${to == null ? '' : to.address || ''}>`
 		);
 	}
 

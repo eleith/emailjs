@@ -16,15 +16,8 @@ export class SMTPResponseMonitor {
 			if (buffer.length) {
 				// parse buffer for response codes
 				const line = buffer.replace('\r', '');
-				if (
-					!(
-						line
-							.trim()
-							.split(/\n/)
-							.pop()
-							?.match(/^(\d{3})\s/) ?? false
-					)
-				) {
+				const code = line.trim().split(/\n/).pop();
+				if (code == null || /^(\d{3})\s/.test(code) === false) {
 					return;
 				}
 

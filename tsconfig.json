@@ -1,5 +1,8 @@
 {
 	"extends": "@ledge/configs/tsconfig.json",
+	"compilerOptions": {
+    "noUncheckedIndexedAccess": true,
+	},
 	"include": [
 		"email.ts",
 		"smtp",
