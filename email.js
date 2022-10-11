@@ -32,17 +32,17 @@ const OPERATORS = new Map([
  * @return {AddressToken[]} An array of operator|text tokens
  */
 function tokenizeAddress(address = '') {
-    var _a, _b;
     const tokens = [];
     let token = undefined;
     let operator = undefined;
     for (const character of address.toString()) {
-        if (((_a = operator === null || operator === void 0 ? void 0 : operator.length) !== null && _a !== void 0 ? _a : 0) > 0 && character === operator) {
+        const operatorHasLength = operator != null && operator.length > 0;
+        if (operatorHasLength === true && character === operator) {
             tokens.push({ type: 'operator', value: character });
             token = undefined;
             operator = undefined;
         }
-        else if (((_b = operator === null || operator === void 0 ? void 0 : operator.length) !== null && _b !== void 0 ? _b : 0) === 0 && OPERATORS.has(character)) {
+        else if (operatorHasLength === false && OPERATORS.has(character)) {
             tokens.push({ type: 'operator', value: character });
             token = undefined;
             operator = OPERATORS.get(character);
@@ -71,7 +71,6 @@ function tokenizeAddress(address = '') {
  * @return {AddressObject[]} addresses object array
  */
 function convertAddressTokens(tokens) {
-    var _a, _b;
     const addressObjects = [];
     const groups = [];
     let addresses = [];
@@ -134,7 +133,11 @@ function convertAddressTokens(tokens) {
         // If no address was found, try to detect one from regular text
         if (addresses.length === 0 && texts.length > 0) {
             for (let i = texts.length - 1; i >= 0; i--) {
-                if ((_b = (_a = texts[i]) === null || _a === void 0 ? void 0 : _a.match(/^[^@\s]+@[^@\s]+$/)) !== null && _b !== void 0 ? _b : false) {
+                const text = texts[i];
+                if (text == null) {
+                    continue;
+                }
+                if (/^[^@\s]+@[^@\s]+$/.test(text)) {
                     addresses = texts.splice(i, 1);
                     break;
                 }
@@ -143,7 +146,7 @@ function convertAddressTokens(tokens) {
             if (addresses.length === 0) {
                 for (let i = texts.length - 1; i >= 0; i--) {
                     const text = texts[i];
-                    if ((text === null || text === void 0 ? void 0 : text.length) > 0) {
+                    if (text != null && text.length > 0) {
                         texts[i] = text
                             .replace(/\s*\b[^@\s]+@[^@\s]+\b\s*/, (address) => {
                             if (addresses.length === 0) {
@@ -235,20 +238,15 @@ function addressparser(address) {
  * @returns {string} the converted date
  */
 function getRFC2822Date(date = new Date(), useUtc = false) {
-    var _a, _b;
     if (useUtc) {
         return getRFC2822DateUTC(date);
     }
-    const dates = date
+    const [zero, one, two, ...rest] = date
         .toString()
         .replace('GMT', '')
         .replace(/\s\(.*\)$/, '')
         .split(' ');
-    dates[0] = dates[0] + ',';
-    const day = (_a = dates[1]) !== null && _a !== void 0 ? _a : '';
-    dates[1] = (_b = dates[2]) !== null && _b !== void 0 ? _b : '';
-    dates[2] = day;
-    return dates.join(' ');
+    return [zero + ',', two, one, ...rest].join(' ');
 }
 /**
  * @param {Date} [date] an optional date to convert to RFC2822 format (UTC)
@@ -291,22 +289,22 @@ const MAX_CHUNK_LENGTH = 16383; // must be multiple of 3
 const MAX_MIME_WORD_LENGTH = 52;
 const MAX_B64_MIME_WORD_BYTE_LENGTH = 39;
 function tripletToBase64(num) {
-    var _a, _b;
-    return (((_a = LOOKUP[(num >> 18) & 0x3f]) !== null && _a !== void 0 ? _a : '') +
-        ((_b = LOOKUP[(num >> 12) & 0x3f]) !== null && _b !== void 0 ? _b : '') +
+    return ('' +
+        LOOKUP[(num >> 18) & 0x3f] +
+        LOOKUP[(num >> 12) & 0x3f] +
         LOOKUP[(num >> 6) & 0x3f] +
         LOOKUP[num & 0x3f]);
 }
 function encodeChunk(uint8, start, end) {
-    var _a, _b, _c;
     let output = '';
     for (let i = start; i < end; i += 3) {
-        output += tripletToBase64((((_a = uint8[i]) !== null && _a !== void 0 ? _a : 0) << 16) + (((_b = uint8[i + 1]) !== null && _b !== void 0 ? _b : 0) << 8) + ((_c = uint8[i + 2]) !== null && _c !== void 0 ? _c : 0));
+        output += tripletToBase64((Number(uint8[i]) << 16) +
+            (Number(uint8[i + 1]) << 8) +
+            Number(uint8[i + 2]));
     }
     return output;
 }
 function encodeBase64(data) {
-    var _a, _b, _c;
     const len = data.length;
     const extraBytes = len % 3; // if we have 1 byte left, pad 2 bytes
     let output = '';
@@ -316,13 +314,13 @@ function encodeBase64(data) {
     }
     // pad the end with zeros, but make sure to not forget the extra bytes
     if (extraBytes === 1) {
-        const tmp = (_a = data[len - 1]) !== null && _a !== void 0 ? _a : 0;
+        const tmp = Number(data[len - 1]);
         output += LOOKUP[tmp >> 2];
         output += LOOKUP[(tmp << 4) & 0x3f];
         output += '==';
     }
     else if (extraBytes === 2) {
-        const tmp = (((_b = data[len - 2]) !== null && _b !== void 0 ? _b : 0) << 8) + ((_c = data[len - 1]) !== null && _c !== void 0 ? _c : 0);
+        const tmp = (Number(data[len - 2]) << 8) + Number(data[len - 1]);
         output += LOOKUP[tmp >> 10];
         output += LOOKUP[(tmp >> 4) & 0x3f];
         output += LOOKUP[(tmp << 2) & 0x3f];
@@ -338,7 +336,6 @@ function encodeBase64(data) {
  * @return {string[]} lines
  */
 function splitMimeEncodedString(str, maxlen = 12) {
-    var _a;
     const minWordLength = 12; // require at least 12 symbols to fit possible 4 octet UTF-8 sequences
     const maxWordLength = Math.max(maxlen, minWordLength);
     const lines = [];
@@ -352,9 +349,10 @@ function splitMimeEncodedString(str, maxlen = 12) {
         while (!done) {
             let chr;
             done = true;
-            const match = str.substring(curLine.length).match(/^=([0-9A-F]{2})/i); // check if not middle of a unicode char sequence
-            if (match) {
-                chr = parseInt((_a = match[1]) !== null && _a !== void 0 ? _a : '', 16);
+            const matchset = str.substring(curLine.length).match(/^=([0-9A-F]{2})/i); // check if not middle of a unicode char sequence
+            if (matchset != null) {
+                const [, secondMatch = ''] = matchset;
+                chr = parseInt(secondMatch, 16);
                 // invalid sequence, move one char back anc recheck
                 if (chr < 0xc2 && chr > 0x7f) {
                     curLine = curLine.substring(0, curLine.length - 3);
@@ -377,9 +375,7 @@ function splitMimeEncodedString(str, maxlen = 12) {
 function checkRanges(nr) {
     return RANGES.reduce((val, range) => val ||
         (range.length === 1 && nr === range[0]) ||
-        (range.length === 2 &&
-            nr >= range[0] &&
-            nr <= range[1]), false);
+        (range.length === 2 && nr >= Number(range[0]) && nr <= Number(range[1])), false);
 }
 /**
  * Encodes all non printable and non ascii bytes to =XX form, where XX is the
@@ -550,7 +546,7 @@ class Message {
                 this.header[header.toLowerCase()] = convertPersonToAddress(headers[header]);
             }
             else {
-                // allow any headers the user wants to set??
+                // allow any headers the user wants to set
                 this.header[header.toLowerCase()] = headers[header];
             }
         }
@@ -765,10 +761,10 @@ class MessageStream extends Stream {
             }
         };
         const outputFile = (attachment, next) => {
-            var _a;
             const chunk = MIME64CHUNK * 16;
             const buffer = Buffer.alloc(chunk);
-            const inputEncoding = ((_a = attachment === null || attachment === void 0 ? void 0 : attachment.headers) === null || _a === void 0 ? void 0 : _a['content-transfer-encoding']) || 'base64';
+            const { headers = {} } = attachment;
+            const inputEncoding = headers['content-transfer-encoding'] || 'base64';
             const encoding = inputEncoding === '7bit'
                 ? 'ascii'
                 : inputEncoding === '8bit'
@@ -813,7 +809,7 @@ class MessageStream extends Stream {
          */
         const outputStream = (attachment, callback) => {
             const { stream } = attachment;
-            if (stream === null || stream === void 0 ? void 0 : stream.readable) {
+            if (stream != null && stream.readable) {
                 let previous = Buffer.alloc(0);
                 stream.resume();
                 stream.on('end', () => {
@@ -865,11 +861,13 @@ class MessageStream extends Stream {
             if (index < list.length) {
                 output(`--${boundary}${CRLF$1}`);
                 const item = list[index];
-                if (item === null || item === void 0 ? void 0 : item.related) {
-                    outputRelated(item, () => outputMessage(boundary, list, index + 1, callback));
-                }
-                else if (item) {
-                    outputAttachment(item, () => outputMessage(boundary, list, index + 1, callback));
+                if (item != null) {
+                    if (item.related) {
+                        outputRelated(item, () => outputMessage(boundary, list, index + 1, callback));
+                    }
+                    else {
+                        outputAttachment(item, () => outputMessage(boundary, list, index + 1, callback));
+                    }
                 }
             }
             else {
@@ -896,10 +894,8 @@ class MessageStream extends Stream {
          * @returns {void}
          */
         const outputData = (attachment, callback) => {
-            var _a, _b;
-            outputBase64(attachment.encoded
-                ? (_a = attachment.data) !== null && _a !== void 0 ? _a : ''
-                : Buffer.from((_b = attachment.data) !== null && _b !== void 0 ? _b : '').toString('base64'), callback);
+            const { data = '' } = attachment;
+            outputBase64(attachment.encoded ? data : Buffer.from(data).toString('base64'), callback);
         };
         /**
          * @param {Message} message the message to output
@@ -927,8 +923,8 @@ class MessageStream extends Stream {
             const boundary = generateBoundary();
             output(`Content-Type: multipart/related; boundary="${boundary}"${CRLF$1}${CRLF$1}--${boundary}${CRLF$1}`);
             outputAttachment(message, () => {
-                var _a;
-                outputMessage(boundary, (_a = message.related) !== null && _a !== void 0 ? _a : [], 0, () => {
+                const { related = [] } = message;
+                outputMessage(boundary, related, 0, () => {
                     output(`${CRLF$1}--${boundary}--${CRLF$1}${CRLF$1}`);
                     callback();
                 });
@@ -959,12 +955,13 @@ class MessageStream extends Stream {
             }
         };
         const close$1 = (err) => {
-            var _a, _b;
             if (err) {
                 this.emit('error', err);
             }
             else {
-                this.emit('data', (_b = (_a = this.buffer) === null || _a === void 0 ? void 0 : _a.toString('utf-8', 0, this.bufferIndex)) !== null && _b !== void 0 ? _b : '');
+                this.emit('data', this.buffer != null
+                    ? this.buffer.toString('utf-8', 0, this.bufferIndex)
+                    : '');
                 this.emit('end');
             }
             this.buffer = null;
@@ -1084,7 +1081,8 @@ class SMTPError extends Error {
      * @returns {SMTPError} error
      */
     static create(message, code, error, smtp) {
-        const msg = (error === null || error === void 0 ? void 0 : error.message) ? `${message} (${error.message})` : message;
+        const shouldUseError = error != null && error.message != null && error.message.length > 0;
+        const msg = shouldUseError ? `${message} (${error.message})` : message;
         const err = new SMTPError(msg);
         err.code = code;
         err.smtp = smtp;
@@ -1099,14 +1097,11 @@ class SMTPResponseMonitor {
     constructor(stream, timeout, onerror) {
         let buffer = '';
         const notify = () => {
-            var _a, _b;
             if (buffer.length) {
                 // parse buffer for response codes
                 const line = buffer.replace('\r', '');
-                if (!((_b = (_a = line
-                    .trim()
-                    .split(/\n/)
-                    .pop()) === null || _a === void 0 ? void 0 : _a.match(/^(\d{3})\s/)) !== null && _b !== void 0 ? _b : false)) {
+                const code = line.trim().split(/\n/).pop();
+                if (code == null || /^(\d{3})\s/.test(code) === false) {
                     return;
                 }
                 const match = line ? line.match(/(\d+)\s?(.*)/) : null;
@@ -1212,7 +1207,6 @@ class SMTPConnection extends EventEmitter {
      * NOTE: `host` is trimmed before being used to establish a connection; however, the original untrimmed value will still be visible in configuration.
      */
     constructor({ timeout, host, user, password, domain, port, ssl, tls, logger, authentication, } = {}) {
-        var _a;
         super();
         this.timeout = DEFAULT_TIMEOUT;
         this.log = log;
@@ -1257,7 +1251,7 @@ class SMTPConnection extends EventEmitter {
         }
         this.port = port || (ssl ? SMTP_SSL_PORT : tls ? SMTP_TLS_PORT : SMTP_PORT);
         this.loggedin = user && password ? false : true;
-        if (!user && ((_a = password === null || password === void 0 ? void 0 : password.length) !== null && _a !== void 0 ? _a : 0) > 0) {
+        if (user == null && password != null && password.length > 0) {
             throw new Error('`password` cannot be set without `user`');
         }
         // keep these strings hidden when quicky debugging/logging
@@ -1505,7 +1499,6 @@ class SMTPConnection extends EventEmitter {
         //  MTA's will disconnect on an ehlo. Toss an exception if
         //  that happens -ddm
         data.split('\n').forEach((ext) => {
-            var _a, _b;
             const parse = ext.match(/^(?:\d+[-=]?)\s*?([^\s]+)(?:\s+(.*)\s*?)?$/);
             // To be able to communicate with as many SMTP servers as possible,
             // we have to take the old-style auth advertisement into account,
@@ -1518,7 +1511,8 @@ class SMTPConnection extends EventEmitter {
                 // It's actually stricter, in that only spaces are allowed between
                 // parameters, but were not going to check for that here.  Note
                 // that the space isn't present if there are no parameters.
-                this.features[(_b = (_a = parse[1]) === null || _a === void 0 ? void 0 : _a.toLowerCase()) !== null && _b !== void 0 ? _b : ''] = parse[2] || true;
+                const [, one = '', two = true] = parse;
+                this.features[one.toLowerCase()] = two;
             }
         });
     }
@@ -1551,8 +1545,7 @@ class SMTPConnection extends EventEmitter {
      * @returns {boolean} whether the extension exists
      */
     has_extn(opt) {
-        var _a;
-        return ((_a = this.features) !== null && _a !== void 0 ? _a : {})[opt.toLowerCase()] === undefined;
+        return this.features != null && this.features[opt.toLowerCase()] != null;
     }
     /**
      * @public
@@ -1620,9 +1613,13 @@ class SMTPConnection extends EventEmitter {
      * @returns {void}
      */
     message(data) {
-        var _a, _b;
         this.log(data);
-        (_b = (_a = this.sock) === null || _a === void 0 ? void 0 : _a.write(data)) !== null && _b !== void 0 ? _b : this.log('no socket to write to');
+        if (this.sock != null) {
+            this.sock.write(data);
+        }
+        else {
+            this.log('no socket to write to');
+        }
     }
     /**
      * @public
@@ -1686,15 +1683,13 @@ class SMTPConnection extends EventEmitter {
      * @returns {void}
      */
     login(callback, user, password, options = {}) {
-        var _a, _b;
         const login = {
             user: user ? () => user : this.user,
             password: password ? () => password : this.password,
-            method: (_b = (_a = options === null || options === void 0 ? void 0 : options.method) === null || _a === void 0 ? void 0 : _a.toUpperCase()) !== null && _b !== void 0 ? _b : '',
+            method: options.method != null ? options.method.toUpperCase() : '',
         };
-        const domain = (options === null || options === void 0 ? void 0 : options.domain) || this.domain;
+        const domain = options.domain || this.domain;
         const initiate = (err, data) => {
-            var _a;
             if (err) {
                 caller(callback, err);
                 return;
@@ -1722,7 +1717,8 @@ class SMTPConnection extends EventEmitter {
             // less preferred methods.
             if (!method) {
                 let auth = '';
-                if (typeof ((_a = this.features) === null || _a === void 0 ? void 0 : _a['auth']) === 'string') {
+                if (this.features != null &&
+                    typeof this.features['auth'] === 'string') {
                     auth = this.features['auth'];
                 }
                 for (const authMethod of this.authentication) {
@@ -1926,12 +1922,11 @@ class SMTPClient {
     createMessageStack(message, callback = function () {
         /* ø */
     }) {
-        var _a;
-        const [firstParsedAddress] = addressparser(message.header.from);
+        const [{ address: from = '' } = {}] = addressparser(message.header.from);
         const stack = {
             message,
-            to: [],
-            from: firstParsedAddress === null || firstParsedAddress === void 0 ? void 0 : firstParsedAddress.address,
+            to: new Array(),
+            from,
             callback: callback.bind(this),
         };
         const { header: { to, cc, bcc, 'return-path': returnPath }, } = message;
@@ -1947,8 +1942,8 @@ class SMTPClient {
         if (typeof returnPath === 'string' && returnPath.length > 0) {
             const parsedAddresses = addressparser(returnPath);
             if (parsedAddresses.length > 0) {
-                const [firstParsedAddress] = parsedAddresses;
-                stack.returnPath = (_a = firstParsedAddress === null || firstParsedAddress === void 0 ? void 0 : firstParsedAddress.address) !== null && _a !== void 0 ? _a : '';
+                const [{ address = '' } = {}] = parsedAddresses;
+                stack.returnPath = address;
             }
         }
         return stack;
@@ -2093,12 +2088,11 @@ class SMTPClient {
      * @returns {void}
      */
     _sendrcpt(stack) {
-        var _a;
         if (stack.to == null || typeof stack.to === 'string') {
             throw new TypeError('stack.to must be array');
         }
-        const to = (_a = stack.to.shift()) === null || _a === void 0 ? void 0 : _a.address;
-        this.smtp.rcpt(this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata), `<${to}>`);
+        const to = stack.to.shift();
+        this.smtp.rcpt(this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata), `<${to == null ? '' : to.address || ''}>`);
     }
     /**
      * @protected
