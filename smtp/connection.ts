@@ -174,7 +174,7 @@ export class SMTPConnection extends EventEmitter {
 		this.port = port || (ssl ? SMTP_SSL_PORT : tls ? SMTP_TLS_PORT : SMTP_PORT);
 		this.loggedin = user && password ? false : true;
 
-		if (!user && (password?.length ?? 0) > 0) {
+		if (user == null && password != null && password.length > 0) {
 			throw new Error('`password` cannot be set without `user`');
 		}
 
@@ -520,7 +520,8 @@ export class SMTPConnection extends EventEmitter {
 				// It's actually stricter, in that only spaces are allowed between
 				// parameters, but were not going to check for that here.  Note
 				// that the space isn't present if there are no parameters.
-				this.features[parse[1]?.toLowerCase() ?? ''] = parse[2] || true;
+				const [, one = '', two = true] = parse;
+				this.features[one.toLowerCase()] = two;
 			}
 		});
 	}
@@ -554,7 +555,7 @@ export class SMTPConnection extends EventEmitter {
 	 * @returns {boolean} whether the extension exists
 	 */
 	public has_extn(opt: string) {
-		return (this.features ?? {})[opt.toLowerCase()] === undefined;
+		return this.features != null && this.features[opt.toLowerCase()] != null;
 	}
 
 	/**
@@ -631,7 +632,11 @@ export class SMTPConnection extends EventEmitter {
 	 */
 	public message(data: string) {
 		this.log(data);
-		this.sock?.write(data) ?? this.log('no socket to write to');
+		if (this.sock != null) {
+			this.sock.write(data);
+		} else {
+			this.log('no socket to write to');
+		}
 	}
 
 	/**
@@ -710,10 +715,10 @@ export class SMTPConnection extends EventEmitter {
 		const login = {
 			user: user ? () => user : this.user,
 			password: password ? () => password : this.password,
-			method: options?.method?.toUpperCase() ?? '',
+			method: options.method != null ? options.method.toUpperCase() : '',
 		};
 
-		const domain = options?.domain || this.domain;
+		const domain = options.domain || this.domain;
 
 		const initiate = (err: Error | null | undefined, data: unknown) => {
 			if (err) {
@@ -757,7 +762,10 @@ export class SMTPConnection extends EventEmitter {
 			if (!method) {
 				let auth = '';
 
-				if (typeof this.features?.['auth'] === 'string') {
+				if (
+					this.features != null &&
+					typeof this.features['auth'] === 'string'
+				) {
 					auth = this.features['auth'];
 				}
 

@@ -40,11 +40,12 @@ function tokenizeAddress(address: string | string[] = '') {
 	let operator: string | undefined = undefined;
 
 	for (const character of address.toString()) {
-		if ((operator?.length ?? 0) > 0 && character === operator) {
+		const operatorHasLength = operator != null && operator.length > 0;
+		if (operatorHasLength === true && character === operator) {
 			tokens.push({ type: 'operator', value: character });
 			token = undefined;
 			operator = undefined;
-		} else if ((operator?.length ?? 0) === 0 && OPERATORS.has(character)) {
+		} else if (operatorHasLength === false && OPERATORS.has(character)) {
 			tokens.push({ type: 'operator', value: character });
 			token = undefined;
 			operator = OPERATORS.get(character);
@@ -137,7 +138,11 @@ function convertAddressTokens(tokens: AddressToken[]) {
 		// If no address was found, try to detect one from regular text
 		if (addresses.length === 0 && texts.length > 0) {
 			for (let i = texts.length - 1; i >= 0; i--) {
-				if (texts[i]?.match(/^[^@\s]+@[^@\s]+$/) ?? false) {
+				const text = texts[i];
+				if (text == null) {
+					continue;
+				}
+				if (/^[^@\s]+@[^@\s]+$/.test(text)) {
 					addresses = texts.splice(i, 1);
 					break;
 				}

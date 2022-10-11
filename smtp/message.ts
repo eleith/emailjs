@@ -419,9 +419,9 @@ class MessageStream extends Stream {
 		) => {
 			const chunk = MIME64CHUNK * 16;
 			const buffer = Buffer.alloc(chunk);
+			const { headers = {} } = attachment;
 
-			const inputEncoding =
-				attachment?.headers?.['content-transfer-encoding'] || 'base64';
+			const inputEncoding = headers['content-transfer-encoding'] || 'base64';
 			const encoding =
 				inputEncoding === '7bit'
 					? 'ascii'
@@ -479,7 +479,7 @@ class MessageStream extends Stream {
 			callback: () => void
 		) => {
 			const { stream } = attachment;
-			if (stream?.readable) {
+			if (stream != null && stream.readable) {
 				let previous = Buffer.alloc(0);
 
 				stream.resume();
@@ -547,14 +547,16 @@ class MessageStream extends Stream {
 			if (index < list.length) {
 				output(`--${boundary}${CRLF}`);
 				const item = list[index];
-				if (item?.related) {
-					outputRelated(item, () =>
-						outputMessage(boundary, list, index + 1, callback)
-					);
-				} else if (item) {
-					outputAttachment(item, () =>
-						outputMessage(boundary, list, index + 1, callback)
-					);
+				if (item != null) {
+					if (item.related) {
+						outputRelated(item, () =>
+							outputMessage(boundary, list, index + 1, callback)
+						);
+					} else {
+						outputAttachment(item, () =>
+							outputMessage(boundary, list, index + 1, callback)
+						);
+					}
 				}
 			} else {
 				output(`${CRLF}--${boundary}--${CRLF}${CRLF}`);
@@ -630,7 +632,8 @@ class MessageStream extends Stream {
 				`Content-Type: multipart/related; boundary="${boundary}"${CRLF}${CRLF}--${boundary}${CRLF}`
 			);
 			outputAttachment(message, () => {
-				outputMessage(boundary, message.related ?? [], 0, () => {
+				const { related = [] } = message;
+				outputMessage(boundary, related, 0, () => {
 					output(`${CRLF}--${boundary}--${CRLF}${CRLF}`);
 					callback();
 				});
@@ -674,7 +677,9 @@ class MessageStream extends Stream {
 			} else {
 				this.emit(
 					'data',
-					this.buffer?.toString('utf-8', 0, this.bufferIndex) ?? ''
+					this.buffer != null
+						? this.buffer.toString('utf-8', 0, this.bufferIndex)
+						: ''
 				);
 				this.emit('end');
 			}

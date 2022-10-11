@@ -1,4 +1,4 @@
-import { addressparser } from './address.js';
+import { AddressObject, addressparser } from './address.js';
 import type { MessageAttachment, MessageHeaders } from './message.js';
 import { Message } from './message.js';
 import type { SMTPConnectionOptions } from './connection.js';
@@ -113,11 +113,11 @@ export class SMTPClient {
 			/* ø */
 		}
 	) {
-		const [firstParsedAddress] = addressparser(message.header.from);
+		const [{ address: from = '' } = {}] = addressparser(message.header.from);
 		const stack = {
 			message,
-			to: [] as ReturnType<typeof addressparser>,
-			from: firstParsedAddress?.address,
+			to: new Array<AddressObject>(),
+			from,
 			callback: callback.bind(this),
 		} as MessageStack;
 
@@ -314,10 +314,10 @@ export class SMTPClient {
 			throw new TypeError('stack.to must be array');
 		}
 
-		const to = stack.to.shift()?.address;
+		const to = stack.to.shift();
 		this.smtp.rcpt(
 			this._sendsmtp(stack, stack.to.length ? this._sendrcpt : this._senddata),
-			`<${to}>`
+			`<${to == null ? '' : to.address || ''}>`
 		);
 	}
 

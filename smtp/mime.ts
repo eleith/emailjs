@@ -127,9 +127,7 @@ function checkRanges(nr: number) {
 		(val, range) =>
 			val ||
 			(range.length === 1 && nr === range[0]) ||
-			(range.length === 2 &&
-				nr >= (range[0] as typeof nr) &&
-				nr <= (range[1] as typeof nr)),
+			(range.length === 2 && nr >= Number(range[0]) && nr <= Number(range[1])),
 		false
 	);
 }
