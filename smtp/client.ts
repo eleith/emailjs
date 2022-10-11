@@ -148,8 +148,8 @@ export class SMTPClient {
 		if (typeof returnPath === 'string' && returnPath.length > 0) {
 			const parsedAddresses = addressparser(returnPath);
 			if (parsedAddresses.length > 0) {
-				const [firstParsedAddress] = parsedAddresses;
-				stack.returnPath = firstParsedAddress?.address ?? '';
+				const [{ address = '' } = {}] = parsedAddresses;
+				stack.returnPath = address;
 			}
 		}
 

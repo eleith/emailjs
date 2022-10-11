@@ -21,8 +21,9 @@ const MAX_B64_MIME_WORD_BYTE_LENGTH = 39;
 
 function tripletToBase64(num: number) {
 	return (
-		(LOOKUP[(num >> 18) & 0x3f] ?? '') +
-		(LOOKUP[(num >> 12) & 0x3f] ?? '') +
+		'' +
+		LOOKUP[(num >> 18) & 0x3f] +
+		LOOKUP[(num >> 12) & 0x3f] +
 		LOOKUP[(num >> 6) & 0x3f] +
 		LOOKUP[num & 0x3f]
 	);
@@ -32,7 +33,9 @@ function encodeChunk(uint8: Uint8Array, start: number, end: number) {
 	let output = '';
 	for (let i = start; i < end; i += 3) {
 		output += tripletToBase64(
-			((uint8[i] ?? 0) << 16) + ((uint8[i + 1] ?? 0) << 8) + (uint8[i + 2] ?? 0)
+			(Number(uint8[i]) << 16) +
+				(Number(uint8[i + 1]) << 8) +
+				Number(uint8[i + 2])
 		);
 	}
 	return output;
@@ -54,12 +57,12 @@ function encodeBase64(data: Uint8Array) {
 
 	// pad the end with zeros, but make sure to not forget the extra bytes
 	if (extraBytes === 1) {
-		const tmp = data[len - 1] ?? 0;
+		const tmp = Number(data[len - 1]);
 		output += LOOKUP[tmp >> 2];
 		output += LOOKUP[(tmp << 4) & 0x3f];
 		output += '==';
 	} else if (extraBytes === 2) {
-		const tmp = ((data[len - 2] ?? 0) << 8) + (data[len - 1] ?? 0);
+		const tmp = (Number(data[len - 2]) << 8) + Number(data[len - 1]);
 		output += LOOKUP[tmp >> 10];
 		output += LOOKUP[(tmp >> 4) & 0x3f];
 		output += LOOKUP[(tmp << 2) & 0x3f];
@@ -93,9 +96,10 @@ function splitMimeEncodedString(str: string, maxlen = 12) {
 		while (!done) {
 			let chr;
 			done = true;
-			const match = str.substring(curLine.length).match(/^=([0-9A-F]{2})/i); // check if not middle of a unicode char sequence
-			if (match) {
-				chr = parseInt(match[1] ?? '', 16);
+			const matchset = str.substring(curLine.length).match(/^=([0-9A-F]{2})/i); // check if not middle of a unicode char sequence
+			if (matchset != null) {
+				const [, secondMatch = ''] = matchset;
+				chr = parseInt(secondMatch, 16);
 				// invalid sequence, move one char back anc recheck
 				if (chr < 0xc2 && chr > 0x7f) {
 					curLine = curLine.substring(0, curLine.length - 3);

@@ -8,19 +8,13 @@ export function getRFC2822Date(date = new Date(), useUtc = false) {
 		return getRFC2822DateUTC(date);
 	}
 
-	const dates = date
+	const [zero, one, two, ...rest] = date
 		.toString()
 		.replace('GMT', '')
 		.replace(/\s\(.*\)$/, '')
 		.split(' ');
 
-	dates[0] = dates[0] + ',';
-
-	const day = dates[1] ?? '';
-	dates[1] = dates[2] ?? '';
-	dates[2] = day;
-
-	return dates.join(' ');
+	return [zero + ',', two, one, ...rest].join(' ');
 }
 
 /**

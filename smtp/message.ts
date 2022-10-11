@@ -163,7 +163,7 @@ export class Message {
 					headers[header] as string | string[]
 				);
 			} else {
-				// allow any headers the user wants to set??
+				// allow any headers the user wants to set
 				this.header[header.toLowerCase()] = headers[header];
 			}
 		}
@@ -589,10 +589,9 @@ class MessageStream extends Stream {
 			attachment: MessageAttachment,
 			callback: () => void
 		) => {
+			const { data = '' } = attachment;
 			outputBase64(
-				attachment.encoded
-					? attachment.data ?? ''
-					: Buffer.from(attachment.data ?? '').toString('base64'),
+				attachment.encoded ? data : Buffer.from(data).toString('base64'),
 				callback
 			);
 		};
