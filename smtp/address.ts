@@ -130,7 +130,7 @@ function convertAddressTokens(tokens: AddressToken[]) {
 	// http://tools.ietf.org/html/rfc2822#appendix-A.1.3
 	if (isGroup) {
 		addressObjects.push({
-			name: texts.length === 0 ? undefined : texts.join(' '),
+			...(texts.length === 0 ? {} : { name: texts.join(' ') }),
 			group: groups.length > 0 ? addressparser(groups.join(',')) : [],
 		});
 	} else {
