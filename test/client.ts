@@ -63,7 +63,7 @@ test.after(async (t) => {
 	server.close(t.pass);
 });
 
-test.skip('client invokes callback exactly once for invalid connection', async (t) => {
+test('client invokes callback exactly once for invalid connection', async (t) => {
 	const msg = {
 		from: 'foo@bar.baz',
 		to: 'foo@bar.baz',
