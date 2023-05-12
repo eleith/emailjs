@@ -14,15 +14,15 @@ function send(
 		authMethods = [],
 		authOptional = false,
 		secure = false,
+		password = 'honey',
 	}: {
 		authMethods?: (keyof typeof AUTH_METHODS)[];
 		authOptional?: boolean;
 		secure?: boolean;
+		password?: string;
 	} = {}
 ) {
 	return new Promise<void>((resolve, reject) => {
-		t.plan(5);
-
 		const msg = {
 			subject: 'this is a test TEXT message from emailjs',
 			from: 'piglet@gmail.com',
@@ -44,9 +44,14 @@ function send(
 						? accessToken === 'honey'
 						: password === 'honey')
 				) {
+					t.plan(5);
 					callback(null, { user: 'pooh' });
 				} else {
-					return callback(new Error('invalid user / pass'));
+					return callback(
+						new Error(
+							`invalid user or pass: ${username || accessToken} ${password}`
+						)
+					);
 				}
 			},
 			async onData(stream, _session, callback: () => void) {
@@ -68,12 +73,12 @@ function send(
 		server.listen(p, () => {
 			const options = Object.assign(
 				{ port: p, ssl: secure, authentication: authMethods },
-				authOptional ? {} : { user: 'pooh', password: 'honey' }
+				authOptional ? {} : { user: 'pooh', password }
 			);
 			new SMTPClient(options).send(new Message(msg), (err) => {
 				server.close(() => {
 					if (err) {
-						reject(err.message);
+						reject(err);
 					} else {
 						resolve();
 					}
@@ -119,4 +124,17 @@ test('XOAUTH2 authentication (encrypted) should succeed', async (t) => {
 	await t.notThrowsAsync(
 		send(t, { authMethods: [AUTH_METHODS.XOAUTH2], secure: true })
 	);
+});
+
+test('on authentication.failed error message should not contain password', async (t) => {
+	t.plan(1);
+
+	const password = 'passpot';
+	await send(t, {
+		authMethods: [AUTH_METHODS.LOGIN],
+		secure: true,
+		password,
+	}).catch((err) => {
+		t.false(err.message.includes(password));
+	});
 });

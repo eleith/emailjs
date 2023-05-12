@@ -779,6 +779,9 @@ export class SMTPConnection extends EventEmitter {
 			const failed = (err: Error, data: unknown) => {
 				this.loggedin = false;
 				this.close(); // if auth is bad, close the connection, it won't get better by itself
+
+				err.message = err.message.replace(this.password(), 'REDACTED');
+
 				caller(
 					callback,
 					SMTPError.create(
