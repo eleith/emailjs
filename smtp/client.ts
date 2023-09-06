@@ -30,7 +30,7 @@ export class SMTPClient {
 
 	protected sending = false;
 	protected ready = false;
-	protected timer: NodeJS.Timer | null = null;
+	protected timer: NodeJS.Timeout | null = null;
 
 	/**
 	 * Create a standard SMTP client backed by a self-managed SMTP connection.
