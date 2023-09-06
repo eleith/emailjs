@@ -1,7 +1,7 @@
 {
 	"name": "emailjs",
 	"description": "send text/html emails and attachments (files, streams and strings) from node.js to any smtp server",
-	"version": "4.0.2",
+	"version": "4.0.3",
 	"author": "eleith",
 	"contributors": [
 		"izuzak",
