@@ -1,5 +1,8 @@
 .vscode
 node_modules
+coverage
+dist
+mailpit
 
 *.ini
 *.log

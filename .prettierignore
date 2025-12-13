@@ -1,0 +1,7 @@
+node_modules
+dist
+coverage
+test/attachments
+pnpm-lock.yaml
+yarn.lock
+package-lock.json

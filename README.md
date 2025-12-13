@@ -1,320 +1,292 @@
-# emailjs [![Test Status](https://github.com/eleith/emailjs/workflows/.github/workflows/test.yml/badge.svg)](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Ftest.yml) [![Lint Status](https://github.com/eleith/emailjs/workflows/.github/workflows/lint.yml/badge.svg)](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Flint.yml)
+# emailjs 📧✨
 
-send emails, html and attachments (files, streams and strings) from node.js to any smtp server
+Send emails with ease!
 
-## INSTALLING
+This library lets you send rich HTML emails,
+attachments (from files, streams, or strings), and plain text messages to any
+SMTP server.
 
-    npm install emailjs
+[![Test Status](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Ftest.yml/badge.svg)](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Ftest.yml)
+[![Lint Status](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Flint.yml/badge.svg)](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Flint.yml)
 
-## FEATURES
+## What's to expect from emailjs? 🚀
 
-- works with SSL and TLS smtp servers
-- supports smtp authentication ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
-- emails are queued and the queue is sent asynchronously
-- supports sending html emails and emails with multiple attachments (MIME)
-- attachments can be added as strings, streams or file paths
-- supports utf-8 headers and body
-- built-in type declarations
-- automatically handles [greylisting](http://projects.puremagic.com/greylisting/whitepaper.html)
+* **SSL and TLS Support:** Secure connections to your SMTP servers.
+* **Authentication Galore:** Supports popular SMTP authentication methods like
+`PLAIN`, `LOGIN`, `CRAM-MD5`, and `XOAUTH2`.
+* **Asynchronous Sending:** Emails are queued and sent in the
+background.
+* **Rich Content:** Send HTML emails and include multiple attachments.
+* **Flexible Attachments:** Attachments can be files, data streams, or plain
+strings.
+* **UTF-8 Ready:** Full support for UTF-8 in headers and body.
+* **Built-in Type Declarations:** first-class TypeScript support.
+* **Greylisting Awareness:** Automatically handles
+[greylisting](http://projects.puremagic.com/greylisting/whitepaper.html) to
+improve deliverability.
 
-## REQUIRES
+## Get Started! 🛠️
 
-- auth access to an SMTP Server
-- if your service (ex: gmail) uses two-step authentication, use an application specific password
+### Installing
 
-## EXAMPLE USAGE - text only emails
+It's super simple!
 
-```js
-import { SMTPClient } from 'emailjs';
-
-const client = new SMTPClient({
-	user: 'user',
-	password: 'password',
-	host: 'smtp.your-email.com',
-	ssl: true,
-});
-
-// send the message and get a callback with an error or details of the message that was sent
-client.send(
-	{
-		text: 'i hope this works',
-		from: 'you <username@your-email.com>',
-		to: 'someone <someone@your-email.com>, another <another@your-email.com>',
-		cc: 'else <else@your-email.com>',
-		subject: 'testing emailjs',
-	},
-	(err, message) => {
-		console.log(err || message);
-	}
-);
+```bash
+npm install emailjs
 ```
 
-## EXAMPLE USAGE - using async/await
+### Requirements
 
-```js
-// assuming top-level await for brevity
+* Access to an SMTP Server.
+* If your email service (like Gmail) uses two-step verification, you'll need an
+application-specific password.
+
+### Quick Examples 🧑‍💻
+
+Here's how easy it is to send emails:
+
+#### Text-Only Emails
+
+```javascript
 import { SMTPClient } from 'emailjs';
 
 const client = new SMTPClient({
-	user: 'user',
-	password: 'password',
-	host: 'smtp.your-email.com',
-	ssl: true,
+    user: 'your-username',
+    password: 'your-password',
+    host: 'smtp.your-email.com',
+    ssl: true, // Use SSL for secure connection
 });
 
+async function sendMyEmail() {
+    try {
+        const message = await client.sendAsync({
+            text: 'Hello from emailjs! This is a test message.',
+            from: 'You <your-email@example.com>',
+            to: 'Someone <someone@example.com>',
+            subject: 'Exciting News from emailjs! 🎉',
+        });
+        console.log('Email sent successfully:', message);
+    } catch (err) {
+        console.error('Failed to send email:', err);
+    } finally {
+        client.smtp.close(); // Don't forget to close the connection!
+    }
+}
+
+sendMyEmail();
+```
+
+#### HTML Emails & Attachments
+
+```javascript
+import { SMTPClient, Message } from 'emailjs';
+
+const client = new SMTPClient({
+    user: 'your-username',
+    password: 'your-password',
+    host: 'smtp.your-email.com',
+    tls: {
+        // Use TLS for secure connection, might be needed for STARTTLS
+        rejectUnauthorized: false, // Set to true in production with valid certs!
+    },
+});
+
+async function sendRichEmail() {
+    const htmlContent = `
+        <h1>Greetings!</h1>
+        <p>This is an <b>HTML email</b> with a lovely picture and an attachment.</p>
+        <img src="cid:my-image" alt="Embedded Image" width="150" height="100">
+        <p>Check out the attached file!</p>
+    `;
+
+    const message = new Message({
+        from: 'You <your-email@example.com>',
+        to: 'Someone <someone@example.com>',
+        subject: 'Your Awesome HTML Email! 🖼️📄',
+        attachment: [
+            {
+                data: htmlContent,
+                alternative: true, // This part is the HTML body
+                contentType: 'text/html',
+            },
+            {
+                path: 'path/to/your/document.pdf', // Attach a file from disk
+                type: 'application/pdf',
+                name: 'document.pdf',
+            },
+            {
+                path: 'path/to/your/image.jpg', // Embed an image for the HTML
+                type: 'image/jpeg',
+                name: 'cool_image.jpg',
+                // Reference in HTML with cid:my-image
+                headers: { 'Content-ID': '<my-image>' },
+            },
+        ],
+    });
+
+    try {
+        await client.sendAsync(message);
+        console.log('Rich email sent successfully!');
+    } catch (err) {
+        console.error('Failed to send rich email:', err);
+    } finally {
+        client.smtp.close();
+    }
+}
+
+sendRichEmail();
+```
+
+## API Reference 📖
+
+The `emailjs` library is fully typed, here is a brief overview of most likely to
+be used methods
+
+### `new SMTPClient(options)`
+
+Create a new client instance to connect to your SMTP server.
+
+```javascript
+const options = {
+    user: 'your-username', // 🔑 Username for logging into SMTP
+    password: 'your-password', // 🤫 Password for logging into SMTP
+    host: 'smtp.your-email.com', // 🌐 SMTP server host (defaults to 'localhost')
+    port: 587, // 🔌 SMTP port (defaults: 25 unencrypted, 465 SSL, 587 TLS)
+    ssl: true, // 🔒 Boolean or object for immediate SSL connection
+    tls: { rejectUnauthorized: false }, // 🔐 Boolean or object to initiate STARTTLS
+    timeout: 5000, // ⏳ Max milliseconds to wait for SMTP responses
+    domain: 'your-domain.com', // 🏠 Domain to greet SMTP with (defaults to os.hostname)
+    authentication: ['PLAIN', 'LOGIN'], // 🤝 Preferred authentication methods
+    logger: console, // 📝 Override the built-in logger (e.g., custom logging)
+};
+```
+
+### `SMTPClient#send(message, callback)`
+
+Sends an email message. You can pass a `Message` instance or a headers object.
+
+```javascript
+client.send(messageObject, (err, details) => {
+    if (err) console.error(err);
+    else console.log('Message sent:', details);
+});
+```
+
+### `SMTPClient#sendAsync(message)`
+
+a promise-based way to send emails! ✨
+
+```javascript
 try {
-	const message = await client.sendAsync({
-		text: 'i hope this works',
-		from: 'you <username@your-email.com>',
-		to: 'someone <someone@your-email.com>, another <another@your-email.com>',
-		cc: 'else <else@your-email.com>',
-		subject: 'testing emailjs',
-	});
-	console.log(message);
+    const details = await client.sendAsync(messageObject);
+    console.log('Message sent:', details);
 } catch (err) {
-	console.error(err);
+    console.error('Failed to send:', err);
 }
 ```
 
-## EXAMPLE USAGE - html emails and attachments
+### `new Message(headers)`
 
-```js
-import { SMTPClient } from 'emailjs';
+Constructs an RFC2822-compliant message object.
 
-const client = new SMTPClient({
-	user: 'user',
-	password: 'password',
-	host: 'smtp.your-email.com',
-	ssl: true,
-});
-
-const message = {
-	text: 'i hope this works',
-	from: 'you <username@your-email.com>',
-	to: 'someone <someone@your-email.com>, another <another@your-email.com>',
-	cc: 'else <else@your-email.com>',
-	subject: 'testing emailjs',
-	attachment: [
-		{ data: '<html>i <i>hope</i> this works!</html>', alternative: true },
-		{ path: 'path/to/file.zip', type: 'application/zip', name: 'renamed.zip' },
-	],
-};
-
-// send the message and get a callback with an error or details of the message that was sent
-client.send(message, function (err, message) {
-	console.log(err || message);
-});
-
-// you can continue to send more messages with successive calls to 'client.send',
-// they will be queued on the same smtp connection
-
-// or instead of using the built-in client you can create an instance of 'smtp.SMTPConnection'
-```
-
-## EXAMPLE USAGE - sending through outlook
-
-```js
-import { SMTPClient, Message } from 'emailjs';
-
-const client = new SMTPClient({
-	user: 'user',
-	password: 'password',
-	host: 'smtp-mail.outlook.com',
-	tls: {
-		ciphers: 'SSLv3',
-	},
-});
-
-const message = new Message({
-	text: 'i hope this works',
-	from: 'you <username@outlook.com>',
-	to: 'someone <someone@your-email.com>, another <another@your-email.com>',
-	cc: 'else <else@your-email.com>',
-	subject: 'testing emailjs',
-	attachment: [
-		{ data: '<html>i <i>hope</i> this works!</html>', alternative: true },
-		{ path: 'path/to/file.zip', type: 'application/zip', name: 'renamed.zip' },
-	],
-});
-
-// send the message and get a callback with an error or details of the message that was sent
-client.send(message, (err, message) => {
-	console.log(err || message);
-});
-```
-
-## EXAMPLE USAGE - attaching and embedding an image
-
-```js
-import { SMTPClient, Message } from 'emailjs';
-
-const client = new SMTPClient({
-	user: 'user',
-	password: 'password',
-	host: 'smtp-mail.outlook.com',
-	tls: {
-		ciphers: 'SSLv3',
-	},
-});
-
-const message = new Message({
-	text: 'i hope this works',
-	from: 'you <username@outlook.com>',
-	to: 'someone <someone@your-email.com>, another <another@your-email.com>',
-	cc: 'else <else@your-email.com>',
-	subject: 'testing emailjs',
-	attachment: [
-		{
-			data:
-				'<html>i <i>hope</i> this works! here is an image: <img src="cid:my-image" width="100" height ="50"> </html>',
-		},
-		{ path: 'path/to/file.zip', type: 'application/zip', name: 'renamed.zip' },
-		{
-			path: 'path/to/image.jpg',
-			type: 'image/jpg',
-			headers: { 'Content-ID': '<my-image>' },
-		},
-	],
-});
-
-// send the message and get a callback with an error or details of the message that was sent
-client.send(message, (err, message) => {
-	console.log(err || message);
-});
-```
-
-# API
-
-## new SMTPClient(options)
-
-```js
-// options is an object with the following recognized schema:
-const options = {
-	user, // username for logging into smtp
-	password, // password for logging into smtp
-	host, // smtp host (defaults to 'localhost')
-	port, // smtp port (defaults to 25 for unencrypted, 465 for `ssl`, and 587 for `tls`)
-	ssl, // boolean or object (if true or object, ssl connection will be made)
-	tls, // boolean or object (if true or object, starttls will be initiated)
-	timeout, // max number of milliseconds to wait for smtp responses (defaults to 5000)
-	domain, // domain to greet smtp with (defaults to os.hostname)
-	authentication, // array of preferred authentication methods ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
-	logger, // override the built-in logger (useful for e.g. Azure Function Apps, where console.log doesn't work)
-};
-// ssl/tls objects are an abbreviated form of [`tls.connect`](https://nodejs.org/dist/latest-v14.x/docs/api/tls.html#tls_tls_connect_options_callback)'s options
-// the missing items are: `port`, `host`, `path`, `socket`, `timeout` and `secureContext`
-// NOTE: `host` is trimmed before being used to establish a connection;
-// however, the original untrimmed value will still be visible in configuration.
-```
-
-## SMTPClient#send(message, callback)
-
-```js
-// message can be a smtp.Message (as returned by email.message.create)
-// or an object identical to the first argument accepted by email.message.create
-
-// callback will be executed with (err, message)
-// either when message is sent or an error has occurred
-```
-
-## new Message(headers)
-
-```js
-// headers is an object with the following recognized schema:
+```javascript
 const headers = {
-	from, // sender of the format (address or name <address> or "name" <address>)
-	to, // recipients (same format as above), multiple recipients are separated by a comma
-	cc, // carbon copied recipients (same format as above)
-	bcc, // blind carbon copied recipients (same format as above)
-	text, // text of the email
-	subject, // string subject of the email
-	attachment, // one attachment or array of attachments
-};
-// the `from` field is required.
-// at least one `to`, `cc`, or `bcc` header is also required.
-// you can also add whatever other headers you want.
-```
-
-## Message#attach(options)
-
-Can be called multiple times, each adding a new attachment.
-
-```js
-// options is an object with the following recognized schema:
-const options = {
-	// one of these fields is required
-	path, // string to where the file is located
-	data, // string of the data you want to attach
-	stream, // binary stream that will provide attachment data (make sure it is in the paused state)
-	// better performance for binary streams is achieved if buffer.length % (76*6) == 0
-	// current max size of buffer must be no larger than Message.BUFFERSIZE
-
-	// optionally these fields are also accepted
-	type, // string of the file mime type
-	name, // name to give the file as perceived by the recipient
-	charset, // charset to encode attatchment in
-	method, // method to send attachment as (used by calendar invites)
-	alternative, // if true, will be attached inline as an alternative (also defaults type='text/html')
-	inline, // if true, will be attached inline
-	encoded, // set this to true if the data is already base64 encoded, (avoid this if possible)
-	headers, // object containing header=>value pairs for inclusion in this attachment's header
-	related, // an array of attachments that you want to be related to the parent attachment
+    from: 'sender@example.com', // 💌 Sender (required!)
+    to: 'recipient@example.com', // 📬 Recipients (at least one of to, cc, or bcc)
+    cc: 'carbon-copy@example.com', // 👥 CC recipients
+    bcc: 'blind-copy@example.com', // 🕵️‍♀️ BCC recipients
+    subject: 'Your Subject Here', // 📝 Email subject
+    text: 'Plain text body.', // 🗒️ Plain text content
+    attachment: [{ data: 'Hello!' }], // 📎 One or more attachments
 };
 ```
 
-## Message#checkValidity()
+### `Message#attach(options)`
 
-Synchronously validate that a Message is properly formed.
+Adds an attachment to the message. Can be called multiple times.
 
-```js
-const message = new Message(options);
+```javascript
+message.attach({
+    path: 'path/to/file.zip', // 📁 Path to a file on disk
+    data: 'Binary content as string or buffer', // 📄 Raw data
+    stream: fs.createReadStream('file.jpg'), // 🌊 A readable stream
+    type: 'application/zip', // MIME type
+    name: 'custom-name.zip', // Filename perceived by recipient
+    alternative: true, // attach inline as an alternative (e.g., HTML body)
+    inline: true, // If true, attached inline (e.g., for <img src="cid:...">)
+    headers: { 'X-Custom-Header': 'value' }, // Custom attachment headers
+});
+```
+
+### `Message#checkValidity()`
+
+Synchronously validates that a `Message` is properly formed before sending.
+
+```javascript
 const { isValid, validationError } = message.checkValidity();
-if (isValid) {
-	// ...
-} else {
-	// first error encountered
-	console.error(validationError);
+if (!isValid) {
+    console.error('Message is invalid:', validationError);
 }
 ```
 
-## new SMTPConnection(options={})
+## Authors ✍️
 
-```js
-// options is an object with the following recognized schema:
-const options = {
-	user, // username for logging into smtp
-	password, // password for logging into smtp
-	host, // smtp host (defaults to 'localhost')
-	port, // smtp port (defaults to 25 for unencrypted, 465 for `ssl`, and 587 for `tls`)
-	ssl, // boolean or object (if true or object, ssl connection will be made)
-	tls, // boolean or object (if true or object, starttls will be initiated)
-	timeout, // max number of milliseconds to wait for smtp responses (defaults to 5000)
-	domain, // domain to greet smtp with (defaults to os.hostname)
-	authentication, // array of preferred authentication methods ('PLAIN', 'LOGIN', 'CRAM-MD5', 'XOAUTH2')
-	logger, // override the built-in logger (useful for e.g. Azure Function Apps, where console.log doesn't work)
-};
-// ssl/tls objects are an abbreviated form of [`tls.connect`](https://nodejs.org/dist/latest-v14.x/docs/api/tls.html#tls_tls_connect_options_callback)'s options
-// the missing items are: `port`, `host`, `path`, `socket`, `timeout` and `secureContext`
-// NOTE: `host` is trimmed before being used to establish a connection;
-// however, the original untrimmed value will still be visible in configuration.
+* eleith
+* zackschuster
+
+## Testing 🧪
+
+```bash
+# Run all tests
+npm test
+
+# Run tests with code coverage report
+npm run test:coverage
 ```
 
-To target a Message Transfer Agent (MTA), omit all options.
+## Development 🧑‍💻🌱
 
-## SMTPConnection#authentication
+for a local smtp testing experience, use our
+[Mailpit](https://mailpit.axllent.org/) compose service
 
-associative array of currently supported SMTP authentication mechanisms
+### 1. Start Mailpit with Docker Compose
 
-## Authors
+Ensure you have Docker and Docker Compose installed.
 
-eleith
-zackschuster
+```bash
+# From the project root, start Mailpit
+docker compose up
+```
 
-## Testing
+Mailpit will be accessible via:
 
-    npm install -d
-    npm test
+* **Web UI:** `http://localhost:8025`
+* **SMTP Server:** `localhost:1025`
 
-## Contributions
+### 2. Run Example Sending Scripts
 
-issues and pull requests are welcome
+You can use the provided scripts to send different types of emails to your local
+Mailpit instance.
+
+First, make sure the `emailjs` library is built:
+
+```bash
+npm run build
+```
+
+Then, run any of the example scripts:
+
+```bash
+# Send a plain text email
+node scripts/send-text.js
+
+# Send an HTML email
+node scripts/send-html.js
+
+# Send an email with attachments
+node scripts/send-attachment.js
+```
+
+After running a script, open your Mailpit Web UI (`http://localhost:8025`) to
+see the emails stream in! 📩
+

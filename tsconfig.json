@@ -1,11 +1,18 @@
 {
-	"extends": "@ledge/configs/tsconfig.json",
-	"include": [
-		"email.ts",
-		"smtp",
-		"test",
-	],
-	"ts-node": {
-		"transpileOnly": true
-	}
+	"compilerOptions": {
+		"target": "ES2022",
+		"module": "NodeNext",
+		"moduleResolution": "NodeNext",
+		"lib": ["ES2022"],
+		"outDir": "./dist",
+		"rootDir": "./src",
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
+		"declaration": true,
+		"sourceMap": true,
+		"types": ["node", "vitest/globals"]
+	},
+	"include": ["src/**/*"]
 }

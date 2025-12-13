@@ -16,27 +16,24 @@
 	},
 	"type": "module",
 	"devDependencies": {
-		"@ledge/configs": "23.3.23322",
-		"@rollup/plugin-typescript": "8.3.2",
+		"@eslint/js": "^9.17.0",
 		"@types/mailparser": "3.4.0",
-		"@types/node": "12.12.6",
+		"@types/node": "^22.10.2",
 		"@types/smtp-server": "3.5.7",
-		"@typescript-eslint/eslint-plugin": "5.21.0",
-		"@typescript-eslint/parser": "5.21.0",
-		"ava": "4.2.0",
-		"eslint": "8.14.0",
-		"eslint-config-prettier": "8.5.0",
-		"eslint-plugin-prettier": "4.0.0",
-		"mailparser": "3.5.0",
-		"prettier": "2.6.2",
-		"rollup": "2.70.2",
-		"smtp-server": "3.11.0",
-		"ts-node": "10.9.1",
-		"tslib": "2.4.0",
-		"typescript": "4.3.5"
+		"@vitest/coverage-v8": "4.0.15",
+		"eslint": "^9.17.0",
+		"eslint-config-prettier": "^9.1.0",
+		"eslint-plugin-prettier": "^5.2.1",
+		"mailparser": "3.9.1",
+		"prettier": "^3.4.2",
+		"smtp-server": "3.17.1",
+		"ts-node": "^10.9.2",
+		"typescript": "^5.7.2",
+		"typescript-eslint": "^8.18.1",
+		"vitest": "4.0.15"
 	},
 	"peerDependencies": {
-		"typescript": ">=4.3.5"
+		"typescript": ">=5.0.0"
 	},
 	"peerDependenciesMeta": {
 		"typescript": {
@@ -47,22 +44,27 @@
 		"nodemailer": "6.7.4"
 	},
 	"engines": {
-		"node": ">=12"
+		"node": ">=18"
 	},
 	"files": [
-		"email.js",
-		"email.ts",
-		"smtp"
+		"dist",
+		"LICENSE",
+		"README.md"
 	],
-	"types": "./email.ts",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
 	"exports": {
-		"default": "./email.js"
+		".": {
+			"types": "./dist/index.d.ts",
+			"default": "./dist/index.js"
+		}
 	},
 	"scripts": {
-		"build": "rollup -c rollup.config.ts",
-		"lint": "eslint *.ts \"+(smtp|test)/*.ts\"",
-		"pretest": "yarn build",
-		"test": "ava"
+		"build": "tsc",
+		"lint": "eslint src/*.ts",
+		"test": "vitest run",
+		"test:coverage": "vitest run --coverage",
+		"prepublishOnly": "npm run build"
 	},
 	"license": "MIT"
 }
