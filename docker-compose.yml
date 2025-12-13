@@ -1,0 +1,28 @@
+services:
+  mailpit:
+    image: axllent/mailpit
+    container_name: mailpit
+    restart: unless-stopped
+    # Run as the current user, defaulting to 1000:1000 if variables aren't set.
+    user: "${UID:-1000}:${GID:-1000}"
+    ports:
+      - '8025:8025' # Web UI
+      - '1025:1025' # SMTP Port
+    environment:
+      # 1. AUTHENTICATION
+      # Format is "username:password". You can add multiple separated by spaces.
+      MP_SMTP_AUTH: 'user:password123 dev:secret'
+
+      # 2. TLS / SSL
+      # "sans:localhost" tells Mailpit to auto-generate a self-signed cert
+      MP_SMTP_TLS_CERT: 'sans:localhost'
+      MP_SMTP_TLS_KEY: 'sans:localhost'
+
+      # Optional: Force clients to use STARTTLS (mimics strict servers)
+      # MP_SMTP_REQUIRE_STARTTLS: "true"
+
+      # Optional: Allow auth over unencrypted connection?
+      # Set to "false" to force your library to use TLS before sending creds.
+      MP_SMTP_AUTH_ALLOW_INSECURE: 'true'
+    volumes:
+      - ./mailpit:/data
