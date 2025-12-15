@@ -11,14 +11,7 @@ describe('SMTPConnection (Extended Commands)', () => {
 		server = new SMTPServer({
 			secure: false,
 			authOptional: true,
-			onVrfy(address, _session, callback) {
-				callback(null, { user: address.address })
-			},
-			// smtp-server doesn't have onExpn? It might treat it as unknown or custom.
-			// Checking types or docs... assumes standard commands.
 		})
-		// Handle custom commands or overrides if needed?
-		// SMTPServer handles basic commands.
 		await new Promise<void>((resolve) => {
 			server.listen(PORT, '127.0.0.1', () => resolve())
 		})
