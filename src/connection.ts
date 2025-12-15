@@ -615,7 +615,7 @@ export class SMTPConnection extends EventEmitter {
 
 			// List of authentication methods we support: from preferred to
 			// less preferred methods.
-			if (!method) {
+			if (method === null) {
 				const preferred = this.authentication
 				let auth = ''
 
