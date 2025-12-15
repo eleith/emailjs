@@ -71,7 +71,7 @@ export interface MessageHeaders {
 	cc?: string | string[]
 	bcc?: string | string[]
 	subject: string
-	text: string | null
+	text?: string | null
 	attachment?: MessageAttachment | MessageAttachment[]
 }
 
@@ -207,7 +207,7 @@ export class Message {
 			})
 			return {
 				isValid: failed.length === 0,
-				validationError: failed.join(', '),
+				validationError: failed.length > 0 ? failed.join(', ') : undefined,
 			}
 		}
 
@@ -434,9 +434,13 @@ class MessageStream extends Stream {
 					outputBase64(buffer.toString('base64', 0, buffer.length - padded))
 				})
 
-				this.on('pause', stream.pause)
-				this.on('resume', stream.resume)
-				this.on('error', stream.resume)
+				stream.on('error', (err) => {
+					this.emit('error', err)
+				})
+
+				this.on('pause', () => stream.pause())
+				this.on('resume', () => stream.resume())
+				this.on('error', () => stream.resume())
 			} else {
 				this.emit('error', { message: 'stream not readable' })
 			}

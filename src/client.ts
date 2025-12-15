@@ -17,7 +17,7 @@ export interface MessageStack {
 	message: Message
 	attachment: MessageAttachment
 	text: string
-	returnPath: string
+	returnPath?: string
 	from: string
 	to: ReturnType<typeof addressparser>
 	cc: string[]
@@ -67,14 +67,12 @@ export class SMTPClient {
 	}
 
 	public sendAsync<T extends Message | MessageHeaders>(msg: T) {
-		return new Promise<Message>((resolve, reject) => {
+		return new Promise<Message | MessageHeaders>((resolve, reject) => {
 			this.send(msg, (err, message) => {
 				if (err != null) {
 					reject(err)
 				} else {
-					// unfortunately, the conditional type doesn't reach here
-					// fortunately, we only return a `Message` when err is null, so this is safe
-					resolve(message as Message)
+					resolve(message)
 				}
 			})
 		})
@@ -122,7 +120,7 @@ export class SMTPClient {
 			const parsedReturnPath = addressparser(returnPath)
 			if (parsedReturnPath.length > 0) {
 				const [{ address: returnPathAddress }] = parsedReturnPath
-				stack.returnPath = returnPathAddress as string
+				stack.returnPath = returnPathAddress
 			}
 		}
 
