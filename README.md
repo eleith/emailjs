@@ -6,8 +6,7 @@ This library lets you send rich HTML emails,
 attachments (from files, streams, or strings), and plain text messages to any
 SMTP server.
 
-[![Test Status](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Ftest.yml/badge.svg)](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Ftest.yml)
-[![Lint Status](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Flint.yml/badge.svg)](https://github.com/eleith/emailjs/actions?query=workflow%3A.github%2Fworkflows%2Flint.yml)
+[![checks](https://github.com/eleith/emailjs/actions/workflows/check.yml/badge.svg)](https://github.com/eleith/emailjs/actions/workflows/check.yml)
 
 ## What's to expect from emailjs? 🚀
 
