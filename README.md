@@ -85,10 +85,7 @@ const client = new SMTPClient({
     user: 'your-username',
     password: 'your-password',
     host: 'smtp.your-email.com',
-    tls: {
-        // Use TLS for secure connection, might be needed for STARTTLS
-        rejectUnauthorized: false, // Set to true in production with valid certs!
-    },
+    tls: true,
 });
 
 async function sendRichEmail() {
@@ -153,7 +150,7 @@ const options = {
     host: 'smtp.your-email.com', // 🌐 SMTP server host (defaults to 'localhost')
     port: 587, // 🔌 SMTP port (defaults: 25 unencrypted, 465 SSL, 587 TLS)
     ssl: true, // 🔒 Boolean or object for immediate SSL connection
-    tls: { rejectUnauthorized: false }, // 🔐 Boolean or object to initiate STARTTLS
+    tls: true, // 🔐 Boolean or object (see typescript types) to initiate STARTTLS
     timeout: 5000, // ⏳ Max milliseconds to wait for SMTP responses
     domain: 'your-domain.com', // 🏠 Domain to greet SMTP with (defaults to os.hostname)
     authentication: ['PLAIN', 'LOGIN'], // 🤝 Preferred authentication methods
