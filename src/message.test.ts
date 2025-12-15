@@ -196,7 +196,6 @@ describe('Message', () => {
 		const msg = new Message({
 			from: 'me',
 			to: 'you',
-			// @ts-expect-error testing invalid attachment
 			attachment: [{ name: 'empty' }],
 		})
 		const { isValid, validationError } = msg.checkValidity()
@@ -212,10 +211,8 @@ describe('Message', () => {
 		})
 		const stream = msg.stream()
 		stream.pause()
-		// @ts-expect-error accessing protected
 		expect(stream.paused).toBe(true)
 		stream.resume()
-		// @ts-expect-error accessing protected
 		expect(stream.paused).toBe(false)
 	})
 
