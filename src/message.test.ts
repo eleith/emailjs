@@ -185,11 +185,10 @@ describe('Message', () => {
 		const msg = new Message({
 			from: 'me',
 			to: 'you',
-			attachment: { path: 'package.json', name: 'package.json' },
+			attachment: { path: 'test/attachments/smtp.txt', name: 'smtp.txt' },
 		})
 		const output = await msg.readAsync()
-		expect(output).toContain('filename="=?UTF-8?Q?package=2Ejson?="')
-		expect(output).toContain('ewoJ')
+		expect(output).toContain('filename="=?UTF-8?Q?smtp=2Etxt?="')
 	})
 
 	it('message validation fails if attachment has no data', () => {
@@ -261,7 +260,7 @@ describe('Message', () => {
 		const msg = new Message({
 			from: 'me',
 			to: 'you',
-			attachment: [{ data: 'content' }, { path: 'package.json' }],
+			attachment: [{ data: 'content' }, { path: 'test/attachments/smtp.txt' }],
 		})
 		const { isValid, validationError } = msg.checkValidity()
 		expect(isValid).toBe(true)

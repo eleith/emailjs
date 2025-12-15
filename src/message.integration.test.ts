@@ -13,8 +13,9 @@ import type { MessageAttachment, MessageHeaders } from './index.js'
 // Resolve paths to fixtures relative to the project root
 const FIXTURES_DIR = resolve('test/attachments')
 
-const textFixtureUrl = new URL(`file://${resolve(FIXTURES_DIR, 'smtp.txt')}`)
-const textFixture = readFileSync(textFixtureUrl, 'utf-8')
+// Generate a large text fixture (~200KB) instead of reading the 5MB file
+// This is sufficient to test chunking/buffering without slowing down tests
+const textFixture = '0123456789'.repeat(20 * 1024)
 
 const htmlFixtureUrl = new URL(`file://${resolve(FIXTURES_DIR, 'smtp.html')}`)
 const htmlFixture = readFileSync(htmlFixtureUrl, 'utf-8')
