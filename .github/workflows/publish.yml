@@ -1,0 +1,58 @@
+name: Publish
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  check:
+    name: check
+    uses: ./.github/workflows/check.yml
+
+  publish:
+    name: Publish to NPM
+    needs: check
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write # Required for provenance/trusted publishing
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          registry-url: 'https://registry.npmjs.org'
+          cache: 'npm'
+
+      # Ensure latest npm for trusted publishing support
+      - name: Install npm
+        run: npm install -g npm@latest
+
+      - name: Install Dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Check Version
+        run: |
+          VERSION_FROM_PKG=$(npm pkg get version | tr -d '"')
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION_FROM_TAG=${TAG_NAME#v}
+
+          if [ "$VERSION_FROM_TAG" != "$VERSION_FROM_PKG" ]; then
+            echo "Version mismatch: Tag version $VERSION_FROM_TAG does not match package.json version $VERSION_FROM_PKG"
+            exit 1
+          fi
+          echo "Version $VERSION_FROM_PKG matches."
+
+      - name: Publish
+        run: npm publish
