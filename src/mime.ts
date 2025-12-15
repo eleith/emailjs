@@ -72,23 +72,23 @@ function splitMimeEncodedString(str: string, maxlen = 12) {
 	const lines: string[] = []
 
 	while (str.length) {
-		let curLine = str.substr(0, maxWordLength)
+		let curLine = str.slice(0, maxWordLength)
 
 		const match = curLine.match(/=[0-9A-F]?$/i) // skip incomplete escaped char
 		if (match) {
-			curLine = curLine.substr(0, match.index)
+			curLine = curLine.slice(0, match.index)
 		}
 
 		let done = false
 		while (!done) {
 			let chr
 			done = true
-			const match = str.substr(curLine.length).match(/^=([0-9A-F]{2})/i) // check if not middle of a unicode char sequence
+			const match = str.slice(curLine.length).match(/^=([0-9A-F]{2})/i) // check if not middle of a unicode char sequence
 			if (match) {
 				chr = parseInt(match[1], 16)
 				// invalid sequence, move one char back anc recheck
 				if (chr < 0xc2 && chr > 0x7f) {
-					curLine = curLine.substr(0, curLine.length - 3)
+					curLine = curLine.slice(0, curLine.length - 3)
 					done = false
 				}
 			}
@@ -97,7 +97,7 @@ function splitMimeEncodedString(str: string, maxlen = 12) {
 		if (curLine.length) {
 			lines.push(curLine)
 		}
-		str = str.substr(curLine.length)
+		str = str.slice(curLine.length)
 	}
 
 	return lines

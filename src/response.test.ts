@@ -108,6 +108,21 @@ describe('SMTPResponseMonitor', () => {
 		monitor.stop()
 	})
 
+	it('should handle null data', () => {
+		const monitor = new SMTPResponseMonitor(
+			mockStream as unknown as Socket,
+			TIMEOUT,
+			mockOnError
+		)
+		const responseSpy = vi.fn()
+		mockStream.on('response', responseSpy)
+
+		mockStream.emit('data', null)
+
+		expect(responseSpy).not.toHaveBeenCalled()
+		monitor.stop()
+	})
+
 	it('should emit error on stream "error" event', () => {
 		const monitor = new SMTPResponseMonitor(
 			mockStream as unknown as Socket,

@@ -484,7 +484,7 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	public has_extn(opt: string) {
-		return (this.features ?? {})[opt.toLowerCase()] === undefined
+		return this.features != null && this.features[opt.toLowerCase()] != null;
 	}
 
 	public help(
@@ -760,8 +760,8 @@ export class SMTPConnection extends EventEmitter {
 		this.command(
 			'quit',
 			(err, data) => {
-				caller(callback, err, data)
 				this.close()
+				caller(callback, err, data)
 			},
 			[221, 250]
 		)

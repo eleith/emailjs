@@ -11,6 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 - Added `docker-compose.yml` to run mailpit for manual end-to-end testing.
 - Added test emails in `scripts/` to be run agains mailpit.
+- Increased test coverage
 
 ### Migrated
 
@@ -30,6 +31,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Rollup build system and its configurations.
 - Removed JSDoc comments.
 - Legacy source files and build artifacts (`email.js`, `email.ts`, `smtp/` directory).
+- Dropped legacy dual support (CommonJS/ESM) in favor of the latest Node.js standards.
 
 ## [4.0.2] - 2023-05-12
 

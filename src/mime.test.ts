@@ -52,4 +52,55 @@ describe('mime', () => {
 			'=?UTF-8?B?0YDQuNCy0LXRgiDQuCDQtNC+INGB0LLQuNC00LDQvdC40Y8=?='
 		expect(mimeWordEncode(payload, 'B')).toBe(expected)
 	})
+
+	it('splitMimeEncodedString should split long encoded strings', () => {
+		const input =
+			'This is a very long encoded string that needs to be split into multiple parts because it exceeds the maximum length allowed for mime words in email headers'
+		const output = mimeWordEncode(input, 'Q')
+		expect(output).toContain('?= =?UTF-8?Q?')
+		expect(output.length).toBeGreaterThan(100)
+	})
+
+	it('handles invalid QP sequences in split', () => {
+		const input = 'a'.repeat(60) + '€'
+		const output = mimeWordEncode(input, 'Q')
+		expect(output).toContain('?= =?UTF-8?Q?')
+	})
+
+	it('encodes base64 with 1 byte padding', () => {
+		expect(mimeWordEncode('a', 'B')).toContain('YQ==')
+	})
+
+	it('encodes base64 with 2 byte padding', () => {
+		expect(mimeWordEncode('ab', 'B')).toContain('YWI=')
+	})
+
+	it('encodes base64 with 0 byte padding', () => {
+		expect(mimeWordEncode('abc', 'B')).toContain('YWJj')
+	})
+
+	it('mimeEncode encodes specific control characters and spaces correctly', () => {
+		expect(mimeEncode('a b ')).toBe('a b=20')
+		expect(mimeEncode('a\t')).toBe('a=09')
+		expect(mimeEncode(' \n')).toBe('=20\n')
+		expect(mimeEncode('\t\r')).toBe('=09\r')
+	})
+
+	it('handles split inside incomplete escape sequence (case 1: ends with =)', () => {
+		const input = 'a'.repeat(51) + ' '
+		const output = mimeWordEncode(input, 'Q')
+		expect(output).toContain('?= =?UTF-8?Q?=20')
+	})
+
+	it('handles split inside incomplete escape sequence (case 2: ends with =X)', () => {
+		const input = 'a'.repeat(50) + ' '
+		const output = mimeWordEncode(input, 'Q')
+		expect(output).toContain('?= =?UTF-8?Q?=20')
+	})
+
+	it('handles split inside UTF-8 multibyte sequence', () => {
+		const input = 'a'.repeat(49) + 'Õ'
+		const output = mimeWordEncode(input, 'Q')
+		expect(output).toContain('?= =?UTF-8?Q?=C3=95')
+	})
 })
