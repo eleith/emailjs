@@ -34,6 +34,12 @@ export class SMTPClient {
 
 	constructor(server: Partial<SMTPConnectionOptions>) {
 		this.smtp = new SMTPConnection(server)
+		this.smtp.on('close', () => {
+			if (this.timer != null) {
+				clearTimeout(this.timer)
+				this.timer = null
+			}
+		})
 	}
 
 	public send<T extends Message | MessageHeaders>(

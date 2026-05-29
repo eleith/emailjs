@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { Readable } from 'stream'
 import { SMTPClient } from './client.js'
 import { Message } from './message.js'
@@ -316,9 +316,51 @@ describe('SMTPClient', () => {
 		// First send
 		await client.sendAsync(msg)
 		// Timer should be set in _poll now because queue is empty
+		// @ts-expect-error accessing protected
+		const firstTimer = client.timer
+		expect(firstTimer).not.toBeNull()
+
+		const spy = vi.spyOn(global, 'clearTimeout')
 
 		// Second send immediately
 		await client.sendAsync(msg)
 		// Should clear previous timer
+		expect(spy).toHaveBeenCalledWith(firstTimer)
+
+		spy.mockRestore()
+	})
+
+	it('client clears poll timer when connection is closed', async () => {
+		const client = new SMTPClient({ host: 'localhost' })
+
+		// @ts-expect-error mocking internals
+		client.ready = true
+		// @ts-expect-error mocking internals
+		client._connect = (stack) => {
+			// @ts-expect-error mocking internals
+			client.ready = true
+			// @ts-expect-error mocking internals
+			client._sendmail(stack)
+		}
+		// @ts-expect-error mocking internals
+		client._sendmail = (stack) => {
+			// @ts-expect-error mocking internals
+			client._senddone(null, stack)
+		}
+		client.smtp.state = () => SMTPState.CONNECTED
+
+		const msg = new Message({ from: 'me@example.com', to: 'you@example.com', text: 'hi' })
+
+		await client.sendAsync(msg)
+		// Now queue is empty, and client.timer should be set:
+		// @ts-expect-error accessing protected
+		expect(client.timer).not.toBeNull()
+
+		// When connection is closed manually, the timer should be cleared
+		client.smtp.close()
+
+		// @ts-expect-error accessing protected
+		expect(client.timer).toBeNull()
 	})
 })
+

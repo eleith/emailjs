@@ -4,6 +4,8 @@ coverage
 dist
 mailpit
 
+.antigravitycli
+
 *.ini
 *.log
 *.swp

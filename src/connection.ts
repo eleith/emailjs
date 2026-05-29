@@ -754,6 +754,7 @@ export class SMTPConnection extends EventEmitter {
 		this.sock = null
 		this.features = null
 		this.loggedin = !(this.user() && this.password())
+		this.emit('close')
 	}
 
 	public quit(callback?: (...rest: unknown[]) => void) {
