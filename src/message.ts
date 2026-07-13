@@ -105,6 +105,13 @@ function convertDashDelimitedTextToSnakeCase(text: string) {
 		.replace(/^(.)|-(.)/g, (match) => match.toUpperCase())
 }
 
+/**
+ * Sanitizes a header value to prevent CRLF header injection (CWE-93)
+ */
+function sanitizeHeaderValue(value: string): string {
+	return value.replace(/\r?\n|\r/g, '')
+}
+
 export class Message {
 	public readonly attachments: MessageAttachment[] = []
 	public readonly header: Partial<MessageHeaders> = {
@@ -144,7 +151,9 @@ export class Message {
 				)
 			} else {
 				// allow any headers the user wants to set??
-				this.header[header.toLowerCase()] = headers[header]
+				this.header[header.toLowerCase()] = typeof headers[header] === 'string'
+					? sanitizeHeaderValue(headers[header] as string)
+					: headers[header]
 			}
 		}
 	}
@@ -327,7 +336,7 @@ class MessageStream extends Stream {
 				data = data.concat([
 					convertDashDelimitedTextToSnakeCase(header),
 					': ',
-					headers[header] as string,
+					sanitizeHeaderValue(headers[header] as string),
 					CRLF,
 				])
 			}
@@ -610,7 +619,7 @@ class MessageStream extends Stream {
 					data = data.concat([
 						convertDashDelimitedTextToSnakeCase(header),
 						': ',
-						this.message.header[header] as string,
+						sanitizeHeaderValue(this.message.header[header] as string),
 						CRLF,
 					])
 				}

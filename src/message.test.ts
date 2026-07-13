@@ -289,4 +289,40 @@ describe('Message', () => {
 		expect(output).toContain('X-Custom: value')
 		expect(output).not.toContain('Bcc:')
 	})
+
+	it('strips CRLF from custom header values to prevent header injection', async () => {
+		const msg = new Message({
+			from: 'sender@example.com',
+			to: 'recipient@example.com',
+			subject: 'Test',
+			text: 'Hello',
+			'x-custom': 'benign\r\nBcc: injected@evil.com',
+		})
+		const output = await msg.readAsync()
+		expect(output).toContain('X-Custom: benignBcc: injected@evil.com')
+		expect(output).not.toMatch(/^Bcc:/m)
+	})
+
+	it('strips lone CR and LF from custom header values', async () => {
+		const msg = new Message({
+			from: 'sender@example.com',
+			to: 'recipient@example.com',
+			text: 'Hello',
+			'x-test': 'value1\rReply-To: evil@example.com',
+		})
+		const output = await msg.readAsync()
+		expect(output).not.toMatch(/^Reply-To:/m)
+	})
+
+	it('strips CRLF from header values set after construction', async () => {
+		const msg = new Message({
+			from: 'sender@example.com',
+			to: 'recipient@example.com',
+			text: 'Hello',
+		})
+		// Simulate programmatic header injection after construction
+		msg.header['x-injected'] = 'safe\r\nBcc: hacker@evil.com'
+		const output = await msg.readAsync()
+		expect(output).not.toMatch(/^Bcc:/m)
+	})
 })
