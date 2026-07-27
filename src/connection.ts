@@ -95,7 +95,7 @@ export class SMTPConnection extends EventEmitter {
 	protected sock: Socket | TLSSocket | null = null
 	protected features: { [index: string]: string | boolean } | null = null
 	protected monitor: SMTPResponseMonitor | null = null
-	protected domain = hostname()
+	protected _domain = hostname()
 	protected host = 'localhost'
 	protected ssl: boolean | SMTPSocketOptions = false
 	protected tls: boolean | SMTPSocketOptions = false
@@ -128,7 +128,7 @@ export class SMTPConnection extends EventEmitter {
 		}
 
 		if (typeof domain === 'string') {
-			this.domain = domain
+			this._domain = domain
 		}
 
 		if (typeof host === 'string') {
@@ -393,7 +393,7 @@ export class SMTPConnection extends EventEmitter {
 		callback: (err: Error | null | undefined, data?: unknown) => void,
 		domain?: string
 	) {
-		this.command(`helo ${domain || this.domain}`, (err, data) => {
+		this.command(`helo ${domain || this._domain}`, (err, data) => {
 			if (err) {
 				caller(callback, err)
 			} else {
@@ -468,7 +468,7 @@ export class SMTPConnection extends EventEmitter {
 		domain?: string
 	) {
 		this.features = {}
-		this.command(`ehlo ${domain || this.domain}`, (err, data) => {
+		this.command(`ehlo ${domain || this._domain}`, (err, data) => {
 			if (err) {
 				caller(callback, err)
 			} else {
@@ -585,7 +585,7 @@ export class SMTPConnection extends EventEmitter {
 			method: options?.method?.toUpperCase() ?? '',
 		}
 
-		const domain = options?.domain || this.domain
+		const domain = options?.domain || this._domain
 
 		const initiate = (err: Error | null | undefined, data?: unknown) => {
 			if (err) {

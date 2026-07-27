@@ -21,7 +21,7 @@ describe('SMTPConnection (Unit)', () => {
 		// Since they are protected, we can just assume they are set if no error.
 		// Or inspect via any:
 		const c = conn as unknown as Record<string, unknown>
-		expect(c.domain).toBe('example.com')
+		expect(c._domain).toBe('example.com')
 		expect(c.host).toBe('mail.example.com')
 		expect(c.ssl).toBe(true)
 		expect(c.tls).toBe(true)
@@ -53,5 +53,14 @@ describe('SMTPConnection (Unit)', () => {
 		})
 		// @ts-expect-error accessing protected
 		expect(conn.tls).toEqual({ rejectUnauthorized: false })
+	})
+
+	it('does not clash with the node:domain emit hook', async () => {
+		// Loading node:domain flips EventEmitter.usingDomains on, which makes
+		// emit() call `this.domain.enter()`. A string `domain` field used to
+		// shadow that and throw `domain.enter is not a function`.
+		await import('node:domain')
+		const conn = new SMTPConnection({ domain: 'example.com' })
+		expect(() => conn.emit('connect')).not.toThrow()
 	})
 })
