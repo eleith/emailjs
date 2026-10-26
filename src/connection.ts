@@ -202,7 +202,7 @@ export class SMTPConnection extends EventEmitter {
 					typeof this.ssl !== 'boolean' &&
 					this.sock instanceof TLSSocket &&
 					!this.sock.authorized &&
-					// eslint-disable-next-line @typescript-eslint/no-explicit-any
+					// oxlint-disable-next-line typescript/no-explicit-any
 					(this.ssl as any).rejectUnauthorized !== false
 				) {
 					this.close(true)

@@ -16,17 +16,13 @@
 	},
 	"type": "module",
 	"devDependencies": {
-		"@eslint/js": "^9.17.0",
 		"@types/node": "^22.10.2",
 		"@vitest/coverage-v8": "4.1.12",
-		"eslint": "^9.17.0",
-		"eslint-config-prettier": "^9.1.0",
-		"eslint-plugin-prettier": "^5.2.1",
 		"mailparser": "3.12.4",
+		"oxlint": "1.89.0",
 		"prettier": "^3.4.2",
 		"smtp-server": "3.21.1",
 		"typescript": "^5.7.2",
-		"typescript-eslint": "^8.18.1",
 		"vitest": "4.1.12"
 	},
 	"peerDependencies": {
@@ -58,7 +54,7 @@
 	},
 	"scripts": {
 		"build": "tsc",
-		"lint": "eslint src/*.ts",
+		"lint": "oxlint --deny-warnings src",
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
 		"prepublishOnly": "npm run build"

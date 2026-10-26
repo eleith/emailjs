@@ -25,7 +25,7 @@ const server = new SMTPServer({
 		// Greylisting simulation
 		if (address.address.endsWith('greylist') && !extSession.greylistChecked) {
 			const err = new Error('greylist')
-			// eslint-disable-next-line @typescript-eslint/no-explicit-any
+			// oxlint-disable-next-line typescript/no-explicit-any
 			;(err as any).responseCode = 450
 			extSession.greylistChecked = true // Mark as checked so next retry succeeds
 			return callback(err)

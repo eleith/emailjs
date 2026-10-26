@@ -79,7 +79,7 @@ function send({
 
 			// If we want "encrypted" in the test sense, we enable TLS on client.
 			if (secure) {
-				// eslint-disable-next-line @typescript-eslint/no-explicit-any
+				// oxlint-disable-next-line typescript/no-explicit-any
 				;(options as any).tls = { rejectUnauthorized: false }
 			}
 
