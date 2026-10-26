@@ -20,7 +20,7 @@
 		"@types/mailparser": "3.4.0",
 		"@types/node": "^22.10.2",
 		"@types/smtp-server": "3.5.7",
-		"@vitest/coverage-v8": "4.0.15",
+		"@vitest/coverage-v8": "4.1.12",
 		"eslint": "^9.17.0",
 		"eslint-config-prettier": "^9.1.0",
 		"eslint-plugin-prettier": "^5.2.1",
@@ -29,7 +29,7 @@
 		"smtp-server": "3.17.1",
 		"typescript": "^5.7.2",
 		"typescript-eslint": "^8.18.1",
-		"vitest": "4.0.15"
+		"vitest": "4.1.12"
 	},
 	"peerDependencies": {
 		"typescript": ">=5.0.0"
@@ -38,6 +38,9 @@
 		"typescript": {
 			"optional": true
 		}
+	},
+	"overrides": {
+		"vite": "^7.3.7"
 	},
 	"engines": {
 		"node": ">=18"
