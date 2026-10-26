@@ -406,10 +406,7 @@ export class SMTPConnection extends EventEmitter {
 	public starttls(
 		callback: (err: Error | null | undefined, data?: unknown) => void
 	) {
-		const response = (
-			err: Error | null | undefined,
-			data?: unknown
-		) => {
+		const response = (err: Error | null | undefined, data?: unknown) => {
 			if (this.sock == null) {
 				throw new Error('null socket')
 			}
@@ -484,7 +481,7 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	public has_extn(opt: string) {
-		return this.features != null && this.features[opt.toLowerCase()] != null;
+		return this.features != null && this.features[opt.toLowerCase()] != null
 	}
 
 	public help(

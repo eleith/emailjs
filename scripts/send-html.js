@@ -1,10 +1,10 @@
-import { Message } from '../dist/index.js';
-import { getMailpitClient } from './mailpit-client.js';
+import { Message } from '../dist/index.js'
+import { getMailpitClient } from './mailpit-client.js'
 
 async function sendHtmlEmail() {
-    const client = getMailpitClient();
+	const client = getMailpitClient()
 
-    const htmlContent = `
+	const htmlContent = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -16,26 +16,26 @@ async function sendHtmlEmail() {
             <p>It was sent on ${new Date().toLocaleString()}.</p>
         </body>
         </html>
-    `;
+    `
 
-    const message = new Message({
-        from: 'sender@example.com',
-        to: 'recipient@example.com',
-        subject: 'Test HTML Email to Mailpit',
-        attachment: [
-            { data: htmlContent, alternative: true, contentType: 'text/html' }
-        ],
-    });
+	const message = new Message({
+		from: 'sender@example.com',
+		to: 'recipient@example.com',
+		subject: 'Test HTML Email to Mailpit',
+		attachment: [
+			{ data: htmlContent, alternative: true, contentType: 'text/html' },
+		],
+	})
 
-    try {
-        console.log('Attempting to send HTML email...');
-        await client.sendAsync(message);
-        console.log('HTML email sent successfully to Mailpit!');
-    } catch (error) {
-        console.error('Failed to send HTML email:', error);
-    } finally {
-        client.smtp.close();
-    }
+	try {
+		console.log('Attempting to send HTML email...')
+		await client.sendAsync(message)
+		console.log('HTML email sent successfully to Mailpit!')
+	} catch (error) {
+		console.error('Failed to send HTML email:', error)
+	} finally {
+		client.smtp.close()
+	}
 }
 
-sendHtmlEmail();
+sendHtmlEmail()

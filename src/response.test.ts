@@ -199,7 +199,7 @@ describe('SMTPResponseMonitor', () => {
 
 		// Add a generic error handler to the mock stream to prevent unhandled promise rejections
 		// if errors are emitted after monitor stops listening.
-		mockStream.on('error', () => { })
+		mockStream.on('error', () => {})
 
 		monitor.stop()
 

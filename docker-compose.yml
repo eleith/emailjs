@@ -4,7 +4,7 @@ services:
     container_name: mailpit
     restart: unless-stopped
     # Run as the current user, defaulting to 1000:1000 if variables aren't set.
-    user: "${UID:-1000}:${GID:-1000}"
+    user: '${UID:-1000}:${GID:-1000}'
     ports:
       - '8025:8025' # Web UI
       - '1025:1025' # SMTP Port

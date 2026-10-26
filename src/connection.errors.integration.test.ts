@@ -25,7 +25,7 @@ describe('SMTPConnection (Error Handling)', () => {
 
 	it('handles connection timeout', async () => {
 		// Server that accepts connection but sends nothing
-		await startServer(() => { })
+		await startServer(() => {})
 
 		const conn = new SMTPConnection({
 			port,
@@ -150,40 +150,40 @@ describe('SMTPConnection (Error Handling)', () => {
 		conn.close()
 	})
 
-	    it('handles socket error during STARTTLS handshake', async () => {
-	        await startServer((socket) => {
-	            socket.write('220 welcome\r\n')
-	            socket.on('data', (data) => {
-	                const str = data.toString().toLowerCase()
-	                if (str.includes('ehlo')) socket.write('250-STARTTLS\r\n250 OK\r\n')
-	                else if (str.includes('starttls')) {
-	                    socket.write('220 Go ahead\r\n')
-	                }
-	            })
-	        })
-	
-	        const conn = new SMTPConnection({
-	            port,
-	            host: '127.0.0.1',
-	            tls: { rejectUnauthorized: false },
-	            timeout: 1000,
-	        })
-	        await new Promise<void>((resolve, reject) => {
-	            conn.connect((err) => {
-	                if (err) return reject(err)
-	                conn.starttls((err) => {
-	                    if (err) {
-	                        expect(err.message).toBeDefined()
-	                        resolve()
-	                    }
-	                    // Inject error after success callback
-	                    setTimeout(() => {
-	                        // @ts-expect-error accessing protected
-	                        if (conn.sock) conn.sock.emit('error', new Error('TLS Error'))
-	                    }, 10)
-	                })
-	            })
-	        })
+	it('handles socket error during STARTTLS handshake', async () => {
+		await startServer((socket) => {
+			socket.write('220 welcome\r\n')
+			socket.on('data', (data) => {
+				const str = data.toString().toLowerCase()
+				if (str.includes('ehlo')) socket.write('250-STARTTLS\r\n250 OK\r\n')
+				else if (str.includes('starttls')) {
+					socket.write('220 Go ahead\r\n')
+				}
+			})
+		})
+
+		const conn = new SMTPConnection({
+			port,
+			host: '127.0.0.1',
+			tls: { rejectUnauthorized: false },
+			timeout: 1000,
+		})
+		await new Promise<void>((resolve, reject) => {
+			conn.connect((err) => {
+				if (err) return reject(err)
+				conn.starttls((err) => {
+					if (err) {
+						expect(err.message).toBeDefined()
+						resolve()
+					}
+					// Inject error after success callback
+					setTimeout(() => {
+						// @ts-expect-error accessing protected
+						if (conn.sock) conn.sock.emit('error', new Error('TLS Error'))
+					}, 10)
+				})
+			})
+		})
 		conn.close()
 	})
 })

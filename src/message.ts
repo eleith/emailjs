@@ -151,9 +151,10 @@ export class Message {
 				)
 			} else {
 				// allow any headers the user wants to set??
-				this.header[header.toLowerCase()] = typeof headers[header] === 'string'
-					? sanitizeHeaderValue(headers[header] as string)
-					: headers[header]
+				this.header[header.toLowerCase()] =
+					typeof headers[header] === 'string'
+						? sanitizeHeaderValue(headers[header] as string)
+						: headers[header]
 			}
 		}
 	}

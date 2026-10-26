@@ -210,8 +210,8 @@ describe('SMTPClient', () => {
 		client.smtp.mail = (cb) => cb(null)
 		client.smtp.rcpt = (cb) => cb(null)
 		client.smtp.data = (cb) => cb(null)
-		client.smtp.message = () => { }
-		client.smtp.close = () => { }
+		client.smtp.message = () => {}
+		client.smtp.close = () => {}
 		client.smtp.login = (cb) => cb(null)
 
 		const stream = new Readable({
@@ -349,7 +349,11 @@ describe('SMTPClient', () => {
 		}
 		client.smtp.state = () => SMTPState.CONNECTED
 
-		const msg = new Message({ from: 'me@example.com', to: 'you@example.com', text: 'hi' })
+		const msg = new Message({
+			from: 'me@example.com',
+			to: 'you@example.com',
+			text: 'hi',
+		})
 
 		await client.sendAsync(msg)
 		// Now queue is empty, and client.timer should be set:
@@ -363,4 +367,3 @@ describe('SMTPClient', () => {
 		expect(client.timer).toBeNull()
 	})
 })
-

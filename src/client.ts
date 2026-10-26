@@ -6,7 +6,7 @@ import { SMTPConnection, SMTPState } from './connection.js'
 
 export type MessageCallback<T = Message | MessageHeaders> = <
 	U extends Error | null,
-	V extends U extends Error ? T : Message,
+	V extends (U extends Error ? T : Message),
 >(
 	err: U,
 	msg: V

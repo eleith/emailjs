@@ -146,7 +146,7 @@ describe('Message', () => {
 			from: 'me',
 			to: 'you',
 			bcc: 'secret',
-			text: 'hi'
+			text: 'hi',
 		})
 		const output = await msg.readAsync()
 		// Header should not be present
@@ -199,7 +199,9 @@ describe('Message', () => {
 		})
 		const { isValid, validationError } = msg.checkValidity()
 		expect(isValid).toBe(false)
-		expect(validationError).toContain('attachment has no data associated with it')
+		expect(validationError).toContain(
+			'attachment has no data associated with it'
+		)
 	})
 
 	it('MessageStream handles pause and resume', async () => {

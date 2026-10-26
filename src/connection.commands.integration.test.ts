@@ -47,13 +47,10 @@ describe('SMTPConnection (Extended Commands)', () => {
 					if (err) return reject(err)
 					conn.mail((err) => {
 						if (err) return reject(err)
-						conn.rcpt(
-							(err) => {
-								if (err) reject(err)
-								else resolve()
-							},
-							'<user@example.com>'
-						)
+						conn.rcpt((err) => {
+							if (err) reject(err)
+							else resolve()
+						}, '<user@example.com>')
 					}, '<me@example.com>')
 				})
 			})

@@ -157,7 +157,9 @@ describe('Auth Integration', () => {
 
 	it('XOAUTH2 authentication (unencrypted) should succeed', async () => {
 		// XOAUTH2 might be allowed unencrypted
-		await expect(send({ authMethods: [AUTH_METHODS.XOAUTH2] })).rejects.toThrow()
+		await expect(
+			send({ authMethods: [AUTH_METHODS.XOAUTH2] })
+		).rejects.toThrow()
 	})
 
 	it('XOAUTH2 authentication (encrypted) should succeed', async () => {

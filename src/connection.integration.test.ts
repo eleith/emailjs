@@ -200,7 +200,9 @@ describe('SMTPConnection (Integration)', () => {
 				conn.login(
 					(err) => {
 						if (err) {
-							expect(err.message).toContain('no form of authorization supported')
+							expect(err.message).toContain(
+								'no form of authorization supported'
+							)
 							resolve()
 						} else {
 							reject(new Error('Should have failed'))
@@ -229,7 +231,9 @@ describe('SMTPConnection (Integration)', () => {
 				conn.login(
 					(err) => {
 						if (err) {
-							expect(err.message).toContain('no form of authorization supported')
+							expect(err.message).toContain(
+								'no form of authorization supported'
+							)
 							resolve()
 						} else {
 							reject(new Error('Should have failed'))

@@ -104,7 +104,7 @@ describe('Message Integration', () => {
 	beforeAll(async () => {
 		return new Promise<void>((resolve) => {
 			server.listen(port, '127.0.0.1', () => {
-				client.smtp['sock']?.on('error', () => { })
+				client.smtp['sock']?.on('error', () => {})
 				resolve()
 			})
 		})
