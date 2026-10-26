@@ -19,8 +19,8 @@
 		"@types/node": "^22.10.2",
 		"@vitest/coverage-v8": "4.1.12",
 		"mailparser": "3.12.4",
+		"oxfmt": "0.74.0",
 		"oxlint": "1.89.0",
-		"prettier": "^3.4.2",
 		"smtp-server": "3.21.1",
 		"typescript": "^5.7.2",
 		"vitest": "4.1.12"
@@ -54,6 +54,8 @@
 	},
 	"scripts": {
 		"build": "tsc",
+		"format": "oxfmt --write .",
+		"format:check": "oxfmt --check .",
 		"lint": "oxlint --deny-warnings src",
 		"test": "vitest run",
 		"test:coverage": "vitest run --coverage",
