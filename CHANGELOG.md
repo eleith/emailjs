@@ -5,6 +5,20 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [5.0.4] - 2026-10-26
+
+### Fixed
+
+- Prevent addresses hidden in nested comments from becoming delivery recipients,
+  and preserve semicolons inside quoted strings, comments, and angle addresses.
+  Thanks to Vishal Suwalka for reporting the issue.
+
+### Changed
+
+- Update development dependencies and remove unused packages.
+- Replace ESLint and Prettier with Oxlint and Oxfmt, preserving existing rules
+  and formatting conventions.
+
 ## [5.0.0] - 2025-12-12
 
 ### Added
