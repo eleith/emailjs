@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import { addressparser } from './address.js'
+import { SMTPClient } from './client.js'
+import { Message } from './message.js'
 
 describe('addressparser', () => {
 	it('should handle single address correctly', () => {
@@ -146,4 +148,103 @@ describe('addressparser', () => {
 			},
 		])
 	})
+})
+
+// Reserved-domain fixtures verify parser composition without creating a transport.
+describe('addressparser contexts', () => {
+	const destination = 'route@delivery.test'
+	const annotation = 'memo@annotation.test'
+	const backup = 'backup@delivery.test'
+	const nestedComment = `Dispatch (zone (west) note <${annotation}>) <${destination}>`
+
+	it('keeps nested comment contents out of the recipient list', () => {
+		expect(addressparser(`${nestedComment}, Backup <${backup}>`)).toEqual([
+			{ name: 'Dispatch', address: destination },
+			{ name: 'Backup', address: backup },
+		])
+	})
+
+	it('preserves ordinary nested comment text', () => {
+		expect(addressparser(`${destination} (region (west) desk)`)).toEqual([
+			{ name: 'region (west) desk', address: destination },
+		])
+	})
+
+	it('keeps a semicolon inside a group member comment', () => {
+		const input = `Review: Lead (tag; note <${annotation}>) <${destination}>, Backup <${backup}>;`
+		expect(addressparser(input)).toEqual([
+			{
+				name: 'Review',
+				group: [
+					{ name: 'Lead', address: destination },
+					{ name: 'Backup', address: backup },
+				],
+			},
+		])
+	})
+
+	it('keeps a semicolon inside a quoted group member name', () => {
+		const input = `Review: "Quarterly; <${annotation}>" <${destination}>, Backup <${backup}>;`
+		expect(addressparser(input)).toEqual([
+			{
+				name: 'Review',
+				group: [
+					{ name: `Quarterly; <${annotation}>`, address: destination },
+					{ name: 'Backup', address: backup },
+				],
+			},
+		])
+	})
+
+	it('still handles a quoted semicolon outside a group', () => {
+		expect(addressparser(`"Dispatch; west" <${destination}>`)).toEqual([
+			{ name: 'Dispatch; west', address: destination },
+		])
+	})
+
+	it('still handles ordinary group members and a following mailbox', () => {
+		expect(
+			addressparser(`Review: Dispatch <${destination}>; Backup <${backup}>`)
+		).toEqual([
+			{
+				name: 'Review',
+				group: [{ name: 'Dispatch', address: destination }],
+			},
+			{ name: 'Backup', address: backup },
+		])
+	})
+
+	it.each([
+		['nested comments', '(outer (inner); tail)', 'outer (inner); tail'],
+		['escaped comment closer', String.raw`(outer \) ; tail)`, 'outer ) ; tail'],
+		['escaped comment opener', String.raw`(outer \( ; tail)`, 'outer ( ; tail'],
+		['quotes in a comment', '(outer "quoted; text")', 'outer "quoted; text"'],
+		['escaped quote', String.raw`"Desk \"; west"`, 'Desk "; west'],
+		['parentheses in a quoted name', '"Desk (; west)"', 'Desk (; west)'],
+		['escaped backslash', String.raw`"Desk \\"`, 'Desk \\'],
+	])('decodes %s once when parsing group members', (_label, prefix, name) => {
+		expect(
+			addressparser(`Review: ${prefix} <${destination}>; <${backup}>`)
+		).toEqual([
+			{ name: 'Review', group: [{ name, address: destination }] },
+			{ name: '', address: backup },
+		])
+	})
+
+	it.each(['to', 'cc', 'bcc'] as const)(
+		'preserves the intended %s recipient through Message construction',
+		(field) => {
+			// Bypass the constructor entirely: createMessageStack needs no socket,
+			// SMTP connection, credentials, queue polling, or delivery methods.
+			const client = Object.create(SMTPClient.prototype) as SMTPClient
+			const message = new Message({
+				from: 'sender@origin.test',
+				[field]: nestedComment,
+				text: 'Local regression fixture',
+			})
+			expect(message.checkValidity().isValid).toBe(true)
+			const stack = client.createMessageStack(message)
+			expect(stack.to.map(({ address }) => address)).toEqual([destination])
+		}
+	)
 })

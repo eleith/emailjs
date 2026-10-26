@@ -1,7 +1,5 @@
-interface AddressToken {
-	type: 'operator' | 'text'
-	value: string
-}
+import { tokenizeAddress } from './address-tokenizer.js'
+import type { AddressToken } from './address-tokenizer.js'
 
 export interface AddressObject {
 	address?: string
@@ -9,57 +7,7 @@ export interface AddressObject {
 	group?: AddressObject[]
 }
 
-/*
- * Operator tokens and which tokens are expected to end the sequence
- */
-const OPERATORS = new Map([
-	['"', '"'],
-	['(', ')'],
-	['<', '>'],
-	[',', ''],
-	// Groups are ended by semicolons
-	[':', ';'],
-	// Semicolons are not a legal delimiter per the RFC2822 grammar other
-	// than for terminating a group, but they are also not valid for any
-	// other use in this context.  Given that some mail clients have
-	// historically allowed the semicolon as a delimiter equivalent to the
-	// comma in their UI, it makes sense to treat them the same as a comma
-	// when used outside of a group.
-	[';', ''],
-])
-
-function tokenizeAddress(address: string | string[] = '') {
-	const tokens: AddressToken[] = []
-	let token: AddressToken | undefined = undefined
-	let operator: string | undefined = undefined
-
-	for (const character of address.toString()) {
-		if ((operator?.length ?? 0) > 0 && character === operator) {
-			tokens.push({ type: 'operator', value: character })
-			token = undefined
-			operator = undefined
-		} else if ((operator?.length ?? 0) === 0 && OPERATORS.has(character)) {
-			tokens.push({ type: 'operator', value: character })
-			token = undefined
-			operator = OPERATORS.get(character)
-		} else {
-			if (token == null) {
-				token = { type: 'text', value: character }
-				tokens.push(token)
-			} else {
-				token.value += character
-			}
-		}
-	}
-
-	return tokens
-		.map((x) => {
-			x.value = x.value.trim()
-			return x
-		})
-		.filter((x) => x.value.length > 0)
-}
-
+// Convert one mailbox or group token sequence into structured addresses.
 function convertAddressTokens(tokens: AddressToken[]) {
 	const addressObjects: AddressObject[] = []
 	const groups: string[] = []
@@ -69,6 +17,7 @@ function convertAddressTokens(tokens: AddressToken[]) {
 
 	let state = 'text'
 	let isGroup = false
+	// Collect each text token according to its current address context.
 	function handleToken(token: AddressToken) {
 		if (token.type === 'operator') {
 			switch (token.value) {
@@ -181,6 +130,7 @@ function convertAddressTokens(tokens: AddressToken[]) {
 	return addressObjects
 }
 
+// Split top-level address tokens and convert each mailbox or group.
 export function addressparser(address?: string | string[]) {
 	const addresses: AddressObject[] = []
 	let tokens: AddressToken[] = []
