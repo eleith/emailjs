@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   delivery, without treating empty groups as recipients. Thanks to
   [@trackoor](https://github.com/trackoor) for reporting this in
   [#354](https://github.com/eleith/emailjs/issues/354).
+- Keep supplementary Unicode characters intact when splitting Base64 MIME words,
+  while preserving otherwise-correct encoding output. Thanks to
+  [@trackoor](https://github.com/trackoor) for reporting this in
+  [#354](https://github.com/eleith/emailjs/issues/354).
 
 ## [5.0.4] - 2026-10-26
 
