@@ -13,6 +13,11 @@ import type { Readable } from 'stream'
 import { addressparser } from './address.js'
 import { getRFC2822Date } from './date.js'
 import { mimeWordEncode } from './mime.js'
+import {
+	foldSubject,
+	formatHeaderName,
+	sanitizeHeaderValue,
+} from './mime-header.js'
 
 const CRLF = '\r\n'
 
@@ -97,19 +102,6 @@ function convertPersonToAddress(person: string | string[]) {
 				: address
 		})
 		.join(', ')
-}
-
-function convertDashDelimitedTextToSnakeCase(text: string) {
-	return text
-		.toLowerCase()
-		.replace(/^(.)|-(.)/g, (match) => match.toUpperCase())
-}
-
-/**
- * Sanitizes a header value to prevent CRLF header injection (CWE-93)
- */
-function sanitizeHeaderValue(value: string): string {
-	return value.replace(/\r?\n|\r/g, '')
 }
 
 export class Message {
@@ -335,7 +327,7 @@ class MessageStream extends Stream {
 
 			for (const header in headers) {
 				data = data.concat([
-					convertDashDelimitedTextToSnakeCase(header),
+					formatHeaderName(header),
 					': ',
 					sanitizeHeaderValue(headers[header] as string),
 					CRLF,
@@ -609,7 +601,7 @@ class MessageStream extends Stream {
 		}
 
 		const outputHeader = () => {
-			let data: string[] = []
+			const data: string[] = []
 
 			for (const header in this.message.header) {
 				// do not output BCC in the headers (regex) nor custom Object.prototype functions...
@@ -617,12 +609,15 @@ class MessageStream extends Stream {
 					!/bcc/i.test(header) &&
 					Object.prototype.hasOwnProperty.call(this.message.header, header)
 				) {
-					data = data.concat([
-						convertDashDelimitedTextToSnakeCase(header),
-						': ',
-						sanitizeHeaderValue(this.message.header[header] as string),
-						CRLF,
-					])
+					const value = sanitizeHeaderValue(
+						this.message.header[header] as string
+					)
+					data.push(formatHeaderName(header), ': ')
+					if (header.toLowerCase() === 'subject') {
+						data.push(foldSubject(value), CRLF)
+					} else {
+						data.push(value, CRLF)
+					}
 				}
 			}
 
