@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { Readable } from 'stream'
+import { simpleParser } from 'mailparser'
 import { Message } from './message.js'
 
 describe('Message', () => {
@@ -165,6 +166,116 @@ describe('Message', () => {
 		expect(output).toContain('To: you@example.com')
 		expect(output).toContain('Subject: =?UTF-8?Q?test_subject?=')
 		expect(output).toContain('X-Custom: custom value')
+	})
+
+	describe('Subject folding', () => {
+		function subjectLines(output: string) {
+			const match = output.match(/^Subject:.*(?:\r\n[ \t].*)*/m)
+			if (match === null) {
+				throw new Error('Missing Subject header')
+			}
+			return match[0].split('\r\n')
+		}
+
+		it.each([
+			['ASCII', 'Deployment window confirmed '.repeat(45)],
+			['multilingual', '京都の配達予定 '.repeat(24)],
+			['supplementary characters', 'Signal 𝄢 ready '.repeat(30)],
+		])(
+			'folds long %s subjects without changing their text',
+			async (_label, subject) => {
+				const msg = new Message({
+					from: 'sender@origin.test',
+					to: 'reader@delivery.test',
+					subject,
+					text: 'Local regression fixture',
+				})
+				const encoded = msg.header.subject
+				const output = await msg.readAsync()
+				const lines = subjectLines(output)
+
+				expect(lines.length).toBeGreaterThan(1)
+				expect(lines.every((line) => line.length <= 76)).toBe(true)
+				expect(
+					lines.slice(1).every((line) => line.startsWith(' =?UTF-8?Q?'))
+				).toBe(true)
+				const unfoldedSubject = lines.join('').slice('Subject: '.length)
+				expect(unfoldedSubject).toBe(encoded)
+				expect(msg.header.subject).toBe(encoded)
+				expect(encoded).not.toContain('\r\n')
+				expect((await simpleParser(output)).subject).toBe(subject)
+			}
+		)
+
+		it.each(['', 'Board approval', 'Résumé accepté'])(
+			'preserves an unfolded short subject: %s',
+			async (subject) => {
+				const msg = new Message({
+					from: 'sender@origin.test',
+					to: 'reader@delivery.test',
+					subject,
+				})
+				expect(subjectLines(await msg.readAsync())).toEqual([
+					`Subject: ${msg.header.subject}`,
+				])
+			}
+		)
+
+		it.each([
+			['cd', false],
+			['cde', true],
+		] as const)(
+			'accounts for the header prefix at the folding boundary: %s',
+			async (suffix, folded) => {
+				const msg = new Message({
+					from: 'sender@origin.test',
+					to: 'reader@delivery.test',
+				})
+				const first = `=?UTF-8?Q?${'a'.repeat(40)}?=`
+				const second = `=?UTF-8?Q?${suffix}?=`
+				msg.header.subject = `${first} ${second}`
+
+				const output = await msg.readAsync()
+				const lines = subjectLines(output)
+				expect(lines).toEqual(
+					folded
+						? [`Subject: ${first}`, ` ${second}`]
+						: [`Subject: ${first} ${second}`]
+				)
+				expect(lines.every((line) => line.length <= 76)).toBe(true)
+				expect((await simpleParser(output)).subject).toBe(
+					'a'.repeat(40) + suffix
+				)
+			}
+		)
+
+		it.each(['\r\n', '\r', '\n'])(
+			'sanitizes modified subjects before adding trusted folds: %j',
+			async (newline) => {
+				const msg = new Message({
+					from: 'sender@origin.test',
+					to: 'reader@delivery.test',
+					subject: 'Routine receipt confirmation '.repeat(12),
+				})
+				msg.header.subject += `${newline}Bcc: hidden@injection.test`
+
+				const output = await msg.readAsync()
+				expect(subjectLines(output).length).toBeGreaterThan(1)
+				expect(output).not.toMatch(/^Bcc:/m)
+				expect((await simpleParser(output)).bcc).toBeUndefined()
+			}
+		)
+
+		it('leaves unrelated header folding unchanged', async () => {
+			const note = 'Review status '.repeat(30)
+			const msg = new Message({
+				from: 'sender@origin.test',
+				to: 'reader@delivery.test',
+				subject: 'Routine update',
+				'x-note': note,
+			})
+			expect(await msg.readAsync()).toContain(`X-Note: ${note}\r\n`)
+		})
 	})
 
 	it('accepts array of attachments in constructor', async () => {
