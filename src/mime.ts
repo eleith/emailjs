@@ -138,6 +138,14 @@ export function mimeEncode(data: string | Uint8Array = '', encoding = 'utf-8') {
 	)
 }
 
+function getCodePointSafeSplitIndex(value: string, index: number): number {
+	const previousCodePoint = value.codePointAt(index - 1)
+	if (previousCodePoint !== undefined && previousCodePoint > 0xffff) {
+		return index - 1
+	}
+	return index
+}
+
 export function mimeWordEncode(
 	data: string | Uint8Array,
 	mimeWordEncoding: 'Q' | 'B' = 'Q',
@@ -170,9 +178,9 @@ export function mimeWordEncode(
 				encoder.encode(str.substring(j, i)).length >
 				MAX_B64_MIME_WORD_BYTE_LENGTH
 			) {
-				// we went one character too far, substring at the char before
-				parts.push(str.substring(j, i - 1))
-				j = i - 1
+				const splitIndex = getCodePointSafeSplitIndex(str, i - 1)
+				parts.push(str.substring(j, splitIndex))
+				j = splitIndex
 			} else {
 				i++
 			}
