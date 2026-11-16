@@ -1,4 +1,5 @@
-export * from './address.js'
+export { addressparser } from './address.js'
+export type { AddressObject } from './address.js'
 export * from './client.js'
 export * from './connection.js'
 export * from './date.js'

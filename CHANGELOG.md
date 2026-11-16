@@ -12,6 +12,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Fold long Subject headers between encoded words to respect MIME line limits.
   Thanks to [@trackoor](https://github.com/trackoor) for reporting this in
   [#354](https://github.com/eleith/emailjs/issues/354).
+- Preserve recipient groups in headers and use their member mailboxes for SMTP
+  delivery, without treating empty groups as recipients. Thanks to
+  [@trackoor](https://github.com/trackoor) for reporting this in
+  [#354](https://github.com/eleith/emailjs/issues/354).
 
 ## [5.0.4] - 2026-10-26
 
