@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { addressparser } from './address.js'
+import {
+	addressparser,
+	convertPersonToAddress,
+	convertRecipientsToAddress,
+	flattenAddressGroups,
+} from './address.js'
 import { SMTPClient } from './client.js'
 import { Message } from './message.js'
 
@@ -147,6 +152,73 @@ describe('addressparser', () => {
 				],
 			},
 		])
+	})
+})
+
+describe('address formatting', () => {
+	it('preserves ordinary mailbox-list formatting for senders', () => {
+		expect(convertPersonToAddress('Mira <mira@origin.test>')).toBe(
+			'=?UTF-8?Q?Mira?= <mira@origin.test>'
+		)
+		expect(
+			convertPersonToAddress(['first@origin.test', 'last@origin.test'])
+		).toBe('first@origin.test, last@origin.test')
+	})
+
+	it.each([
+		[
+			'Dispatch: Mira <mira@delivery.test>, otis@delivery.test;',
+			'=?UTF-8?Q?Dispatch?=: =?UTF-8?Q?Mira?= <mira@delivery.test>, otis@delivery.test;',
+		],
+		['Private:;', '=?UTF-8?Q?Private?=:;'],
+		[
+			'Dispatch:: Otis <otis@delivery.test>;',
+			'=?UTF-8?Q?Dispatch?=: =?UTF-8?Q?Otis?= <otis@delivery.test>;',
+		],
+	])(
+		'formats recipient groups without discarding members: %s',
+		(input, expected) => {
+			expect(convertRecipientsToAddress(input)).toBe(expected)
+		}
+	)
+
+	it('formats mixed mailboxes and groups supplied as an array', () => {
+		expect(
+			convertRecipientsToAddress([
+				'mira@delivery.test',
+				'Dispatch: otis@delivery.test;',
+			])
+		).toBe('mira@delivery.test, =?UTF-8?Q?Dispatch?=: otis@delivery.test;')
+	})
+})
+
+describe('flattenAddressGroups', () => {
+	it('preserves mailbox objects, order, case, and duplicates', () => {
+		const first = { name: 'Mira', address: 'mira@delivery.test' }
+		const second = { name: 'Mira', address: 'Mira@delivery.test' }
+		const result = flattenAddressGroups([first, second, first])
+
+		expect(result).toEqual([first, second, first])
+		expect(result[0]).toBe(first)
+		expect(result[1]).toBe(second)
+		expect(result[2]).toBe(first)
+	})
+
+	it('collects nested mailbox members and skips empty groups without mutating them', () => {
+		const first = { address: 'mira@delivery.test' }
+		const second = { address: 'otis@delivery.test' }
+		const nested = { name: 'Inner', group: [second] }
+		const group = { name: 'Workshop', group: [first, nested] }
+		const empty = { name: 'Private', group: [] }
+
+		expect(flattenAddressGroups([empty, group])).toEqual([first, second])
+		expect(group.group).toEqual([first, nested])
+		expect(nested.group).toEqual([second])
+		expect(empty.group).toEqual([])
+	})
+
+	it('accepts an empty address list', () => {
+		expect(flattenAddressGroups([])).toEqual([])
 	})
 })
 

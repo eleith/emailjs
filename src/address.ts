@@ -1,10 +1,51 @@
 import { tokenizeAddress } from './address-tokenizer.js'
 import type { AddressToken } from './address-tokenizer.js'
+import { mimeWordEncode } from './mime.js'
 
 export interface AddressObject {
 	address?: string
 	name?: string
 	group?: AddressObject[]
+}
+
+export function flattenAddressGroups(
+	addresses: AddressObject[]
+): AddressObject[] {
+	return addresses.flatMap((person) => {
+		if (person.group) {
+			return flattenAddressGroups(person.group)
+		}
+		return [person]
+	})
+}
+
+function formatMailbox({ name, address }: AddressObject) {
+	return name
+		? `${mimeWordEncode(name).replace(/,/g, '=2C')} <${address}>`
+		: address
+}
+
+export function convertPersonToAddress(person: string | string[]) {
+	return addressparser(person).map(formatMailbox).join(', ')
+}
+
+export function convertRecipientsToAddress(person: string | string[]) {
+	return addressparser(person)
+		.map((recipient) => {
+			if (!recipient.group) {
+				return formatMailbox(recipient)
+			}
+
+			const name = mimeWordEncode(recipient.name || '')
+			const members = flattenAddressGroups(recipient.group)
+				.map(formatMailbox)
+				.join(', ')
+			if (members.length === 0) {
+				return `${name}:;`
+			}
+			return `${name}: ${members};`
+		})
+		.join(', ')
 }
 
 // Convert one mailbox or group token sequence into structured addresses.

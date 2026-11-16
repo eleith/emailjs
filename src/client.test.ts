@@ -36,6 +36,119 @@ describe('SMTPClient', () => {
 		expect(stack.to[0].address).toBe('gannon@gmail.com')
 	})
 
+	describe('recipient groups', () => {
+		it.each(['to', 'cc', 'bcc'] as const)(
+			'uses the members of %s groups as envelope recipients',
+			(field) => {
+				const client = new SMTPClient({ host: '127.0.0.1' })
+				const msg = new Message({
+					from: 'sender@origin.test',
+					[field]:
+						'Dispatch: Mira <mira@delivery.test>, Otis <otis@delivery.test>;',
+				})
+				const stack = client.createMessageStack(msg)
+				expect(stack.to.map(({ address }) => address)).toEqual([
+					'mira@delivery.test',
+					'otis@delivery.test',
+				])
+				expect(stack.from).toBe('sender@origin.test')
+			}
+		)
+
+		it.each(['to', 'cc', 'bcc'] as const)(
+			'flattens groups in %s arrays assigned after construction',
+			(field) => {
+				const client = new SMTPClient({ host: '127.0.0.1' })
+				const msg = new Message({
+					from: 'sender@origin.test',
+					[field]: 'initial@delivery.test',
+				})
+				msg.header[field] = [
+					'first@delivery.test',
+					'Dispatch: mira@delivery.test, otis@delivery.test;',
+					'Private:;',
+					'last@delivery.test',
+				]
+				expect(
+					client.createMessageStack(msg).to.map(({ address }) => address)
+				).toEqual([
+					'first@delivery.test',
+					'mira@delivery.test',
+					'otis@delivery.test',
+					'last@delivery.test',
+				])
+			}
+		)
+
+		it('preserves case-sensitive cross-header deduplication and duplicates within each header', () => {
+			const client = new SMTPClient({ host: '127.0.0.1' })
+			const msg = new Message({
+				from: 'sender@origin.test',
+				to: 'Dispatch: mira@delivery.test, mira@delivery.test, Mira@delivery.test;',
+				cc: 'Review: mira@delivery.test, otis@delivery.test, otis@delivery.test;',
+				bcc: 'Archive: otis@delivery.test, archive@delivery.test;',
+			})
+			expect(
+				client.createMessageStack(msg).to.map(({ address }) => address)
+			).toEqual([
+				'mira@delivery.test',
+				'mira@delivery.test',
+				'Mira@delivery.test',
+				'otis@delivery.test',
+				'otis@delivery.test',
+				'archive@delivery.test',
+			])
+		})
+
+		it.each(['to', 'cc', 'bcc'] as const)(
+			'rejects an empty %s group before attempting a connection',
+			async (field) => {
+				const client = new SMTPClient({ host: '127.0.0.1' })
+				const connect = vi
+					.spyOn(client.smtp, 'connect')
+					.mockImplementation((callback) => {
+						callback(new Error('Unexpected SMTP connection'))
+					})
+				const msg = new Message({
+					from: 'sender@origin.test',
+					[field]: 'Private:;',
+					text: 'Local regression fixture',
+				})
+
+				await expect(client.sendAsync(msg)).rejects.toThrow(
+					'No recipients found in message'
+				)
+				expect(connect).not.toHaveBeenCalled()
+				expect(client.queue).toEqual([])
+			}
+		)
+
+		it('generates RCPT commands for BCC members with only empty visible groups', () => {
+			const client = new SMTPClient({ host: '127.0.0.1' })
+			const msg = new Message({
+				from: 'sender@origin.test',
+				to: 'Private:;',
+				cc: 'Review:;',
+				bcc: 'Archive: mira@delivery.test, otis@delivery.test;, archive@delivery.test',
+			})
+			const stack = client.createMessageStack(msg)
+			const command = vi
+				.spyOn(client.smtp, 'command')
+				.mockImplementation((_cmd, callback) => callback(null))
+			const data = vi.spyOn(client.smtp, 'data').mockImplementation(() => {})
+
+			// @ts-expect-error accessing protected method for transport-free command capture
+			client._sendrcpt(stack)
+
+			expect(command.mock.calls.map(([cmd]) => cmd)).toEqual([
+				'RCPT TO:<mira@delivery.test>',
+				'RCPT TO:<otis@delivery.test>',
+				'RCPT TO:<archive@delivery.test>',
+			])
+			expect(data).toHaveBeenCalledOnce()
+		})
+	})
+
 	it('client accepts return path', () => {
 		const msg = {
 			from: 'zelda@gmail.com',

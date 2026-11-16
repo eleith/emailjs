@@ -168,6 +168,93 @@ describe('Message', () => {
 		expect(output).toContain('X-Custom: custom value')
 	})
 
+	describe('recipient groups', () => {
+		it.each(['to', 'cc', 'bcc'] as const)(
+			'preserves group syntax and member names in %s',
+			async (field) => {
+				const msg = new Message({
+					from: 'Sender <sender@origin.test>',
+					[field]:
+						'Dispatch desk: "Mira; west" <mira@delivery.test>, Otis <otis@delivery.test>;',
+				})
+				const header = msg.header[field] as string
+				expect(header).toMatch(/^=\?UTF-8\?Q\?Dispatch_desk\?=: /)
+				expect(header.endsWith(';')).toBe(true)
+				expect(header).toContain('mira@delivery.test')
+				expect(header).toContain('otis@delivery.test')
+				expect(header).not.toContain('undefined')
+
+				const output = await msg.readAsync()
+				const parsed = await simpleParser(output)
+				if (field === 'bcc') {
+					expect(parsed.bcc).toBeUndefined()
+					expect(output).not.toContain('Dispatch_desk')
+					expect(output).not.toContain('mira@delivery.test')
+					expect(output).not.toContain('otis@delivery.test')
+				} else {
+					expect(parsed[field]).toMatchObject({
+						value: [
+							{
+								name: 'Dispatch desk',
+								group: [
+									{ name: 'Mira; west', address: 'mira@delivery.test' },
+									{ name: 'Otis', address: 'otis@delivery.test' },
+								],
+							},
+						],
+					})
+				}
+			}
+		)
+
+		it('preserves an empty group with a Unicode name', async () => {
+			const msg = new Message({
+				from: 'sender@origin.test',
+				to: 'Réseau:;',
+			})
+			expect(msg.header.to).toBe('=?UTF-8?Q?R=C3=A9seau?=:;')
+			expect((await simpleParser(await msg.readAsync())).to).toMatchObject({
+				value: [{ name: 'Réseau', group: [] }],
+			})
+		})
+
+		it('preserves the order of mailboxes and multiple groups supplied as an array', async () => {
+			const msg = new Message({
+				from: 'sender@origin.test',
+				to: [
+					'first@delivery.test',
+					'Morning: mira@delivery.test;',
+					'Evening: otis@delivery.test;',
+					'last@delivery.test',
+				],
+			})
+			expect((await simpleParser(await msg.readAsync())).to).toMatchObject({
+				value: [
+					{ address: 'first@delivery.test' },
+					{ name: 'Morning', group: [{ address: 'mira@delivery.test' }] },
+					{ name: 'Evening', group: [{ address: 'otis@delivery.test' }] },
+					{ address: 'last@delivery.test' },
+				],
+			})
+		})
+
+		it('retains mailbox members recovered from malformed nested groups', async () => {
+			const msg = new Message({
+				from: 'sender@origin.test',
+				to: 'Dispatch:: Otis <otis@delivery.test>;',
+			})
+			expect(msg.header.to).not.toContain('undefined')
+			expect((await simpleParser(await msg.readAsync())).to).toMatchObject({
+				value: [
+					{
+						name: 'Dispatch',
+						group: [{ name: 'Otis', address: 'otis@delivery.test' }],
+					},
+				],
+			})
+		})
+	})
+
 	describe('Subject folding', () => {
 		function subjectLines(output: string) {
 			const match = output.match(/^Subject:.*(?:\r\n[ \t].*)*/m)

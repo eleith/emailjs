@@ -1,4 +1,4 @@
-import { addressparser } from './address.js'
+import { addressparser, flattenAddressGroups } from './address.js'
 import type { MessageAttachment, MessageHeaders } from './message.js'
 import { Message } from './message.js'
 import type { SMTPConnectionOptions } from './connection.js'
@@ -103,12 +103,12 @@ export class SMTPClient {
 		} = message
 
 		if ((typeof to === 'string' || Array.isArray(to)) && to.length > 0) {
-			stack.to = addressparser(to)
+			stack.to = flattenAddressGroups(addressparser(to))
 		}
 
 		if ((typeof cc === 'string' || Array.isArray(cc)) && cc.length > 0) {
 			stack.to = stack.to.concat(
-				addressparser(cc).filter(
+				flattenAddressGroups(addressparser(cc)).filter(
 					(x) => stack.to.some((y) => y.address === x.address) === false
 				)
 			)
@@ -116,7 +116,7 @@ export class SMTPClient {
 
 		if ((typeof bcc === 'string' || Array.isArray(bcc)) && bcc.length > 0) {
 			stack.to = stack.to.concat(
-				addressparser(bcc).filter(
+				flattenAddressGroups(addressparser(bcc)).filter(
 					(x) => stack.to.some((y) => y.address === x.address) === false
 				)
 			)

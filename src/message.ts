@@ -9,8 +9,10 @@ import {
 import { hostname } from 'os'
 import { Stream } from 'stream'
 import type { Readable } from 'stream'
-
-import { addressparser } from './address.js'
+import {
+	convertPersonToAddress,
+	convertRecipientsToAddress,
+} from './address.js'
 import { getRFC2822Date } from './date.js'
 import { mimeWordEncode } from './mime.js'
 import {
@@ -94,16 +96,6 @@ function generateBoundary() {
 	return text
 }
 
-function convertPersonToAddress(person: string | string[]) {
-	return addressparser(person)
-		.map(({ name, address }) => {
-			return name
-				? `${mimeWordEncode(name).replace(/,/g, '=2C')} <${address}>`
-				: address
-		})
-		.join(', ')
-}
-
 export class Message {
 	public readonly attachments: MessageAttachment[] = []
 	public readonly header: Partial<MessageHeaders> = {
@@ -118,6 +110,8 @@ export class Message {
 
 	constructor(headers: Partial<MessageHeaders>) {
 		for (const header in headers) {
+			const isRecipientHeader = /^(to|cc|bcc)$/i.test(header)
+
 			// allow user to override default content-type to override charset or send a single non-text message
 			if (/^content-type$/i.test(header)) {
 				this.content = headers[header] as string
@@ -137,6 +131,10 @@ export class Message {
 				}
 			} else if (header === 'subject') {
 				this.header.subject = mimeWordEncode(headers.subject as string)
+			} else if (isRecipientHeader) {
+				this.header[header.toLowerCase()] = convertRecipientsToAddress(
+					headers[header] as string | string[]
+				)
 			} else if (/^(cc|bcc|to|from)/i.test(header)) {
 				this.header[header.toLowerCase()] = convertPersonToAddress(
 					headers[header] as string | string[]
