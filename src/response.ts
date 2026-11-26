@@ -1,4 +1,4 @@
-import { SMTPError, SMTPErrorStates } from './error.js'
+import { SMTPError, SMTPErrorStates, type SMTPErrorState } from './error.js'
 import type { Socket } from 'net'
 import type { TLSSocket } from 'tls'
 
@@ -70,26 +70,28 @@ export class SMTPResponseMonitor {
 			}
 		}
 
-		const error = (err: Error) => {
-			stream.emit(
-				'response',
-				SMTPError.create(
-					'connection encountered an error',
-					SMTPErrorStates.ERROR,
-					err
-				)
-			)
+		const disconnect = (
+			message: string,
+			code: SMTPErrorState,
+			cause?: Error
+		) => {
+			const err = SMTPError.create(message, code, cause)
+			// Stop resets the connection and clears its listeners. Report the error
+			// afterward so a command callback cannot reuse the failed socket.
+			const pendingResponses = stream.rawListeners('response')
+			this.stop(err)
+			for (const respond of pendingResponses) respond.call(stream, err)
 		}
+
+		const error = (err: Error) =>
+			disconnect('connection encountered an error', SMTPErrorStates.ERROR, err)
 
 		const timedout = (err?: Error) => {
 			stream.end()
-			stream.emit(
-				'response',
-				SMTPError.create(
-					'timedout while connecting to smtp server',
-					SMTPErrorStates.TIMEDOUT,
-					err
-				)
+			disconnect(
+				'timedout while connecting to smtp server',
+				SMTPErrorStates.TIMEDOUT,
+				err
 			)
 		}
 
@@ -100,27 +102,11 @@ export class SMTPResponseMonitor {
 			}
 		}
 
-		const close = (err: Error) => {
-			stream.emit(
-				'response',
-				SMTPError.create(
-					'connection has closed',
-					SMTPErrorStates.CONNECTIONCLOSED,
-					err
-				)
-			)
-		}
+		const close = (err: Error) =>
+			disconnect('connection has closed', SMTPErrorStates.CONNECTIONCLOSED, err)
 
-		const end = (err: Error) => {
-			stream.emit(
-				'response',
-				SMTPError.create(
-					'connection has ended',
-					SMTPErrorStates.CONNECTIONENDED,
-					err
-				)
-			)
-		}
+		const end = (err: Error) =>
+			disconnect('connection has ended', SMTPErrorStates.CONNECTIONENDED, err)
 
 		this.stop = (err) => {
 			stream.removeAllListeners('response')
@@ -128,6 +114,7 @@ export class SMTPResponseMonitor {
 			stream.removeListener('end', end)
 			stream.removeListener('close', close)
 			stream.removeListener('error', error)
+			stream.removeListener('timeout', timedout)
 
 			if (err != null && typeof onerror === 'function') {
 				onerror(err)

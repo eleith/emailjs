@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { createServer, Server, Socket } from 'net'
-import { SMTPConnection } from './connection.js'
+import { SMTPConnection, SMTPState } from './connection.js'
+import { SMTPErrorStates } from './error.js'
 
 describe('SMTPConnection (Error Handling)', () => {
 	let server: Server
@@ -150,40 +151,69 @@ describe('SMTPConnection (Error Handling)', () => {
 		conn.close()
 	})
 
-	it('handles socket error during STARTTLS handshake', async () => {
+	it('fails if the server accepts STARTTLS but never completes the handshake', async () => {
 		await startServer((socket) => {
 			socket.write('220 welcome\r\n')
-			socket.on('data', (data) => {
-				const str = data.toString().toLowerCase()
-				if (str.includes('ehlo')) socket.write('250-STARTTLS\r\n250 OK\r\n')
-				else if (str.includes('starttls')) {
-					socket.write('220 Go ahead\r\n')
-				}
-			})
+			socket.once('data', () => socket.write('220 Go ahead\r\n'))
 		})
 
-		const conn = new SMTPConnection({
-			port,
-			host: '127.0.0.1',
-			tls: { rejectUnauthorized: false },
-			timeout: 1000,
-		})
-		await new Promise<void>((resolve, reject) => {
-			conn.connect((err) => {
-				if (err) return reject(err)
-				conn.starttls((err) => {
-					if (err) {
-						expect(err.message).toBeDefined()
-						resolve()
+		const conn = new SMTPConnection({ port, host: '127.0.0.1', timeout: 500 })
+		try {
+			await new Promise<void>((resolve, reject) => {
+				conn.connect((err) => (err ? reject(err) : resolve()))
+			})
+			const upgrade = new Promise<void>((resolve, reject) => {
+				conn.starttls((err) => (err ? reject(err) : resolve()))
+			})
+			await expect(upgrade).rejects.toMatchObject({
+				code: SMTPErrorStates.TIMEDOUT,
+				message: expect.stringContaining('STARTTLS handshake'),
+			})
+			expect(conn.state()).toBe(SMTPState.NOTCONNECTED)
+		} finally {
+			conn.close(true)
+		}
+	})
+
+	it.each(['ehlo', 'starttls'])(
+		'closes without falling back to HELO when %s is refused',
+		async (refusedCommand) => {
+			const commands: string[] = []
+			await startServer((socket) => {
+				socket.write('220 welcome\r\n')
+				let pending = ''
+				socket.on('data', (data) => {
+					const lines = (pending + data.toString()).split('\r\n')
+					pending = lines.pop() ?? ''
+					for (const line of lines) {
+						const command = line.split(' ')[0]
+						commands.push(command)
+						if (command === refusedCommand)
+							socket.write(`454 ${command} refused\r\n`)
+						else if (command === 'ehlo')
+							socket.write('250-localhost\r\n250 STARTTLS\r\n')
+						else socket.write('250 hello\r\n')
 					}
-					// Inject error after success callback
-					setTimeout(() => {
-						// @ts-expect-error accessing protected
-						if (conn.sock) conn.sock.emit('error', new Error('TLS Error'))
-					}, 10)
 				})
 			})
-		})
-		conn.close()
-	})
+
+			const conn = new SMTPConnection({ port, host: '127.0.0.1', tls: true })
+			try {
+				await new Promise<void>((resolve, reject) => {
+					conn.connect((err) => (err ? reject(err) : resolve()))
+				})
+				const greeting = new Promise<void>((resolve, reject) => {
+					conn.ehlo_or_helo_if_needed((err) => (err ? reject(err) : resolve()))
+				})
+				await expect(greeting).rejects.toMatchObject({
+					code: SMTPErrorStates.BADRESPONSE,
+					message: expect.stringContaining(`${refusedCommand} refused`),
+				})
+				expect(commands).not.toContain('helo')
+				expect(conn.state()).toBe(SMTPState.NOTCONNECTED)
+			} finally {
+				conn.close(true)
+			}
+		}
+	)
 })

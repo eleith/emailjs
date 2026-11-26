@@ -1,6 +1,21 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import { readFileSync } from 'fs'
+import type { AddressInfo } from 'net'
+import {
+	describe,
+	it,
+	expect,
+	beforeAll,
+	afterAll,
+	afterEach,
+	vi,
+} from 'vitest'
 import { SMTPServer } from 'smtp-server'
-import { SMTPConnection, SMTPState } from './connection.js'
+import {
+	SMTPConnection,
+	SMTPState,
+	type SMTPSocketOptions,
+} from './connection.js'
+import { SMTPErrorStates } from './error.js'
 
 const PORT = 5561 // Use a different port to avoid conflicts
 
@@ -92,28 +107,6 @@ describe('SMTPConnection (Integration)', () => {
 					'user',
 					'pass'
 				)
-			})
-		})
-		conn.close()
-	})
-
-	it('upgrades with starttls', async () => {
-		const conn = new SMTPConnection({
-			port: PORT,
-			host: '127.0.0.1',
-			tls: { rejectUnauthorized: false },
-		})
-
-		await new Promise<void>((resolve, reject) => {
-			conn.connect((err) => {
-				if (err) return reject(err)
-				conn.starttls((err) => {
-					if (err) reject(err)
-					else {
-						expect(conn.state()).toBe(SMTPState.CONNECTED)
-						resolve()
-					}
-				})
 			})
 		})
 		conn.close()
@@ -245,5 +238,102 @@ describe('SMTPConnection (Integration)', () => {
 			})
 		})
 		conn.close()
+	})
+})
+
+describe('STARTTLS relay verification', () => {
+	const certificate = readFileSync(
+		new URL('../test/fixtures/starttls/localhost-cert.pem', import.meta.url)
+	)
+	const privateKey = readFileSync(
+		new URL('../test/fixtures/starttls/localhost-key.pem', import.meta.url)
+	)
+	const onAuthAttempt = vi.fn()
+	const relay = new SMTPServer({
+		cert: certificate,
+		key: privateKey,
+		authMethods: ['PLAIN'],
+		allowInsecureAuth: true, // Count AUTH attempts even if the client skips TLS.
+		onAuth(_auth, session, callback) {
+			onAuthAttempt(session.secure)
+			callback(null, { user: 'test-user' })
+		},
+	})
+	let address: AddressInfo
+	let activeConnection: SMTPConnection | undefined
+
+	beforeAll(async () => {
+		await new Promise<void>((resolve, reject) => {
+			relay.once('error', reject)
+			const listener = relay.listen(0, 'localhost', () => {
+				relay.off('error', reject)
+				address = listener.address() as AddressInfo
+				resolve()
+			})
+		})
+	})
+
+	afterAll(async () => {
+		await new Promise<void>((resolve) => relay.close(resolve))
+	})
+
+	afterEach(() => {
+		activeConnection?.close(true)
+		activeConnection = undefined
+		onAuthAttempt.mockClear()
+	})
+
+	async function login(tls: true | SMTPSocketOptions, host = 'localhost') {
+		const connection = new SMTPConnection({
+			host,
+			port: address.port,
+			tls,
+			user: 'test-user',
+			password: 'test-password',
+		})
+		activeConnection = connection
+		await new Promise<void>((resolve, reject) => {
+			connection.connect((err) => (err ? reject(err) : resolve()))
+		})
+		await new Promise<void>((resolve, reject) => {
+			connection.login((err) => (err ? reject(err) : resolve()))
+		})
+		return connection
+	}
+
+	it('rejects an untrusted certificate before AUTH', async () => {
+		await expect(login(true)).rejects.toMatchObject({
+			code: 'DEPTH_ZERO_SELF_SIGNED_CERT',
+		})
+		expect(onAuthAttempt).not.toHaveBeenCalled()
+	})
+
+	it('rejects a trusted certificate for the wrong host before AUTH', async () => {
+		// The certificate identifies localhost, not its numeric loopback address.
+		await expect(
+			login({ ca: certificate }, address.address)
+		).rejects.toMatchObject({ code: 'ERR_TLS_CERT_ALTNAME_INVALID' })
+		expect(onAuthAttempt).not.toHaveBeenCalled()
+	})
+
+	it('allows AUTH over TLS with a trusted certificate for the relay host', async () => {
+		await login({ ca: certificate })
+		expect(onAuthAttempt).toHaveBeenCalledExactlyOnceWith(true)
+	})
+
+	it('fails the next command if the relay disconnects while TLS is idle', async () => {
+		const connection = await login({ ca: certificate })
+		const disconnected = new Promise<void>((resolve) =>
+			connection.once('close', resolve)
+		)
+		for (const relayConnection of relay.connections) relayConnection.close()
+		await disconnected
+
+		const command = new Promise<void>((resolve, reject) => {
+			connection.command('noop', (err) => (err ? reject(err) : resolve()))
+		})
+		await expect(command).rejects.toMatchObject({
+			code: SMTPErrorStates.NOCONNECTION,
+		})
 	})
 })
