@@ -377,20 +377,36 @@ describe('SMTPClient', () => {
 		stack.callback(null, msg) // Execute it to ensure it does nothing safely
 	})
 
-	it('client handles login error', async () => {
-		const client = new SMTPClient({ host: 'localhost' })
-		const mockSmtp = {
-			connect: (cb: (err?: Error | null) => void) => cb(),
-			authorized: () => false,
-			login: (cb: (err?: Error | null) => void) =>
-				cb(new Error('Login failed')),
-			state: () => SMTPState.NOTCONNECTED,
+	it('keeps a retry queued when the login failure callback sends again', () => {
+		const client = new SMTPClient({ user: 'user', password: 'password' })
+		const error = new Error('Login failed')
+		let state: 0 | 1 | 2 = SMTPState.NOTCONNECTED
+		let failPendingLogin: () => void = () => {
+			throw new Error('No login pending')
 		}
-		// @ts-expect-error mocking internals
-		client.smtp = mockSmtp
+		client.smtp.state = () => state
+		client.smtp.connect = (callback) => {
+			state = SMTPState.CONNECTED
+			callback(null)
+		}
+		client.smtp.login = (callback) => {
+			failPendingLogin = () => {
+				state = SMTPState.NOTCONNECTED
+				callback(error)
+			}
+		}
 
 		const msg = new Message({ from: 'me', to: 'you', text: 'hi' })
-		await expect(client.sendAsync(msg)).rejects.toThrow('Login failed')
+		const onRetry = vi.fn()
+		const onFirstSend = vi
+			.fn()
+			.mockImplementationOnce(() => client.send(msg, onRetry))
+		client.send(msg, onFirstSend)
+		failPendingLogin()
+		failPendingLogin()
+
+		expect(onFirstSend).toHaveBeenCalledExactlyOnceWith(error, msg)
+		expect(onRetry).toHaveBeenCalledExactlyOnceWith(error, msg)
 	})
 
 	it('sendAsync rejects if _canMakeMessage fails', async () => {

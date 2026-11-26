@@ -157,37 +157,25 @@ export class SMTPClient {
 	}
 
 	protected _connect(stack: MessageStack) {
-		const connect = (err?: Error | null) => {
-			if (!err) {
-				const begin = (err?: Error | null) => {
-					if (!err) {
-						this.ready = true
-						this._poll()
-					} else {
-						stack.callback(err, stack.message)
-
-						// clear out the queue so all callbacks can be called with the same error message
-						this.queue.shift()
-						this._poll()
-					}
-				}
-
-				if (!this.smtp.authorized()) {
-					this.smtp.login(begin)
-				} else {
-					this.smtp.ehlo_or_helo_if_needed(begin)
-				}
-			} else {
-				stack.callback(err, stack.message)
-
-				// clear out the queue so all callbacks can be called with the same error message
+		const finishSetup = (err?: Error | null) => {
+			if (err) {
+				// The callback may immediately enqueue a retry.
 				this.queue.shift()
-				this._poll()
+				stack.callback(err, stack.message)
+			} else {
+				this.ready = true
 			}
+			this._poll()
 		}
 
 		this.ready = false
-		this.smtp.connect(connect)
+		this.smtp.connect((err) => {
+			if (err) return finishSetup(err)
+
+			const needsLogin = !this.smtp.authorized()
+			if (needsLogin) this.smtp.login(finishSetup)
+			else this.smtp.ehlo_or_helo_if_needed(finishSetup)
+		})
 	}
 
 	protected _canMakeMessage(msg: MessageHeaders) {
