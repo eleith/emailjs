@@ -17,7 +17,6 @@ export class SMTPResponseMonitor {
 		const notify = () => {
 			const lines = buffer.split(CRLF)
 			let processedChars = 0
-			let responseFound = false
 
 			for (let i = 0; i < lines.length; i++) {
 				const line = lines[i]
@@ -48,25 +47,20 @@ export class SMTPResponseMonitor {
 							processedChars += line.length + CRLF.length
 							continue
 						}
+						const replyEnd = processedChars + line.length + CRLF.length
+						const data = buffer.substring(0, replyEnd).replace(/\r/g, '')
+						buffer = buffer.substring(replyEnd)
 						stream.emit('response', null, {
-							code: code,
+							code,
 							message: message.trim(),
-							data: buffer
-								.substring(0, processedChars + line.length + CRLF.length)
-								.replace(/\r/g, ''), // Send the full data for this response
+							data,
 						})
-						responseFound = true
-						processedChars += line.length + CRLF.length
-						break // Only process one full response at a time
+						return // Only process one full response at a time
 					}
 					// If it's a multi-line response (separator is '-'), we continue accumulating in the buffer.
 					// We only emit a response when a final line (' ') is encountered.
 				}
 				processedChars += line.length + CRLF.length
-			}
-
-			if (responseFound) {
-				buffer = buffer.substring(processedChars) // Remove the processed part from the buffer
 			}
 		}
 

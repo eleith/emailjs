@@ -48,6 +48,24 @@ describe('SMTPResponseMonitor', () => {
 		monitor.stop()
 	})
 
+	it('consumes a reply before a listener delivers more data', () => {
+		const monitor = new SMTPResponseMonitor(
+			mockStream as unknown as Socket,
+			TIMEOUT,
+			mockOnError
+		)
+		const replies: string[] = []
+		mockStream.on('response', (_err, reply: { message: string }) => {
+			replies.push(reply.message)
+			if (replies.length === 1) mockStream.emit('data', '250 second reply\r\n')
+		})
+
+		mockStream.emit('data', '250 first reply\r\n')
+
+		expect(replies).toEqual(['first reply', 'second reply'])
+		monitor.stop()
+	})
+
 	it('should parse multi-line SMTP response', () => {
 		const monitor = new SMTPResponseMonitor(
 			mockStream as unknown as Socket,
