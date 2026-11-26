@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Security
+
+- Verify the SMTP relay's certificate and hostname before resuming SMTP over
+  STARTTLS. Thanks to Dickson Wu for reporting the issue.
+
+### Fixed
+
+- Preserve queued mail when a connection or login failure callback retries a send.
+
 ## [5.0.5] - 2026-11-16
 
 ### Fixed
