@@ -2,11 +2,12 @@ import { createHmac } from 'crypto'
 import { EventEmitter } from 'events'
 import { Socket } from 'net'
 import { hostname } from 'os'
-import { connect, createSecureContext, TLSSocket } from 'tls'
+import { connect, TLSSocket } from 'tls'
 import type { ConnectionOptions } from 'tls'
 
 import { SMTPError, SMTPErrorStates } from './error.js'
 import { SMTPResponseMonitor } from './response.js'
+import { startTlsHandshake } from './tls-upgrade.js'
 
 export const AUTH_METHODS = {
 	PLAIN: 'PLAIN',
@@ -242,10 +243,6 @@ export class SMTPConnection extends EventEmitter {
 			message?: string
 		) => {
 			if (err) {
-				if (this._state === SMTPState.NOTCONNECTED && !this.sock) {
-					return
-				}
-				this.close(true)
 				caller(callback, err)
 			} else {
 				const payload = data as { code: string; message: string; data: string }
@@ -292,11 +289,8 @@ export class SMTPConnection extends EventEmitter {
 			this.sock.connect(this.port, this.host.trim(), connectedErrBack)
 		}
 
-		this.monitor = new SMTPResponseMonitor(this.sock, this.timeout, () =>
-			this.close(true)
-		)
+		this.watchSmtpReplies(this.sock)
 		this.sock.once('response', response)
-		this.sock.once('error', response) // the socket could reset or throw, so let's handle it and let the user know
 	}
 
 	public send(
@@ -406,34 +400,85 @@ export class SMTPConnection extends EventEmitter {
 	public starttls(
 		callback: (err: Error | null | undefined, data?: unknown) => void
 	) {
-		const response = (err: Error | null | undefined, data?: unknown) => {
-			if (this.sock == null) {
-				throw new Error('null socket')
+		const plaintextSocket = this.sock
+		const onStartTlsReply: CallbackFn = (err, reply) => {
+			if (!plaintextSocket || this.sock !== plaintextSocket) {
+				return caller(
+					callback,
+					err ??
+						SMTPError.create(
+							'connection closed before STARTTLS handshake',
+							SMTPErrorStates.CONNECTIONCLOSED
+						)
+				)
+			}
+			if (err) {
+				this.close(true)
+				return caller(callback, err)
 			}
 
-			if (err) {
-				err.message += ' while establishing a starttls session'
-				caller(callback, err)
-			} else {
-				const secureContext = createSecureContext(
-					typeof this.tls === 'object' ? this.tls : {}
-				)
-				const secureSocket = new TLSSocket(this.sock, { secureContext })
+			this.prepareForStartTlsHandshake(plaintextSocket)
 
-				secureSocket.on('error', (err: Error) => {
+			const onHandshake = (err: Error | null, tlsSocket: TLSSocket) => {
+				if (this.sock !== tlsSocket) {
+					return caller(
+						callback,
+						err ??
+							SMTPError.create(
+								'connection closed during STARTTLS handshake',
+								SMTPErrorStates.CONNECTIONCLOSED
+							)
+					)
+				}
+				if (err) {
 					this.close(true)
-					caller(callback, err)
-				})
+					return caller(callback, err)
+				}
 
-				this._secure = true
-				this.sock = secureSocket
+				this.resumeSmtpOverTls(tlsSocket)
+				caller(callback, null, reply)
+			}
 
-				new SMTPResponseMonitor(this.sock, this.timeout, () => this.close(true))
-				caller(callback, err, data)
+			try {
+				const tlsOptions = typeof this.tls === 'object' ? this.tls : {}
+				this.sock = startTlsHandshake(
+					plaintextSocket,
+					this.host.trim(),
+					tlsOptions,
+					this.timeout,
+					onHandshake
+				)
+			} catch (err) {
+				this.close(true)
+				caller(callback, err as Error)
 			}
 		}
+		this.command('starttls', onStartTlsReply, [220])
+	}
 
-		this.command('starttls', response, [220])
+	private prepareForStartTlsHandshake(plaintextSocket: Socket) {
+		this.monitor?.stop()
+		this.monitor = null
+		plaintextSocket.setTimeout(0)
+		this.features = null
+		this._secure = false
+		this._state = SMTPState.CONNECTING
+	}
+
+	private resumeSmtpOverTls(tlsSocket: TLSSocket) {
+		this.watchSmtpReplies(tlsSocket)
+		this._secure = true
+		this._state = SMTPState.CONNECTED
+	}
+
+	private watchSmtpReplies(socket: Socket) {
+		this.monitor = new SMTPResponseMonitor(socket, this.timeout, () => {
+			if (this.sock === socket) this.close(true)
+		})
+	}
+
+	private needsStartTls() {
+		return Boolean(this.tls) && !this._secure
 	}
 
 	public parse_smtp_features(data: string) {
@@ -464,19 +509,23 @@ export class SMTPConnection extends EventEmitter {
 		callback: (err: Error | null | undefined, data?: unknown) => void,
 		domain?: string
 	) {
-		this.features = {}
+		const socket = this.sock
 		this.command(`ehlo ${domain || this._domain}`, (err, data) => {
 			if (err) {
-				caller(callback, err)
-			} else {
-				this.parse_smtp_features(data as string)
-
-				if (this.tls && !this._secure) {
-					this.starttls(() => this.ehlo(callback, domain))
-				} else {
-					caller(callback, err, data)
-				}
+				if (this.tls && socket && this.sock === socket) this.close(true)
+				return caller(callback, err)
 			}
+
+			if (this.needsStartTls()) {
+				return this.starttls((err) => {
+					if (err) caller(callback, err)
+					else this.ehlo(callback, domain)
+				})
+			}
+
+			this.features = {}
+			this.parse_smtp_features(data as string)
+			caller(callback, null, data)
 		})
 	}
 
@@ -557,15 +606,10 @@ export class SMTPConnection extends EventEmitter {
 		domain?: string
 	) {
 		const domainName = domain || this._domain
-		if (!this.features) {
-			const response = (err: Error | null | undefined, data?: unknown) =>
-				caller(callback, err, data)
+		if (!this.features || this.needsStartTls()) {
 			this.ehlo((err, data) => {
-				if (err) {
-					this.helo(response, domainName)
-				} else {
-					caller(callback, err, data)
-				}
+				if (err && !this.tls) return this.helo(callback, domainName)
+				caller(callback, err, data)
 			}, domainName)
 		}
 	}

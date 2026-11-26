@@ -123,18 +123,23 @@ describe('SMTPResponseMonitor', () => {
 		monitor.stop()
 	})
 
-	it('should emit error on stream "error" event', () => {
+	it('cleans up the connection before reporting socket errors to a pending command', () => {
 		const monitor = new SMTPResponseMonitor(
 			mockStream as unknown as Socket,
 			TIMEOUT,
 			mockOnError
 		)
 		const responseSpy = vi.fn()
-		mockStream.on('response', responseSpy)
+		mockStream.once('response', responseSpy)
 		const testError = new Error('Socket error')
 
 		mockStream.emit('error', testError)
+		mockStream.emit('close')
 
+		expect(mockOnError).toHaveBeenCalledExactlyOnceWith(
+			responseSpy.mock.calls[0][0]
+		)
+		expect(mockOnError).toHaveBeenCalledBefore(responseSpy)
 		expect(responseSpy).toHaveBeenCalledTimes(1)
 		const emittedError = responseSpy.mock.calls[0][0]
 		expect(emittedError).toBeInstanceOf(SMTPError)
