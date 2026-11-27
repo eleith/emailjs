@@ -31,6 +31,7 @@ export class SMTPClient {
 	protected sending = false
 	protected ready = false
 	protected timer: NodeJS.Timeout | null = null
+	private waitingForQuitToFinish = false
 
 	constructor(server: Partial<SMTPConnectionOptions>) {
 		this.smtp = new SMTPConnection(server)
@@ -39,6 +40,7 @@ export class SMTPClient {
 				clearTimeout(this.timer)
 				this.timer = null
 			}
+			if (this.waitingForQuitToFinish) this.resumeQueueAfterQuit()
 		})
 	}
 
@@ -133,7 +135,18 @@ export class SMTPClient {
 		return stack
 	}
 
+	private resumeQueueAfterQuit() {
+		// Defer reconnecting so the old QUIT callback can't close the new connection.
+		queueMicrotask(() => {
+			if (!this.waitingForQuitToFinish) return
+			this.waitingForQuitToFinish = false
+			this._poll()
+		})
+	}
+
 	protected _poll() {
+		if (this.waitingForQuitToFinish) return
+
 		if (this.timer != null) {
 			clearTimeout(this.timer)
 		}
@@ -152,7 +165,12 @@ export class SMTPClient {
 		// wait around 1 seconds in case something does come in,
 		// otherwise close out SMTP connection if still open
 		else if (this.smtp.state() == SMTPState.CONNECTED) {
-			this.timer = setTimeout(() => this.smtp.quit(), 1000)
+			this.timer = setTimeout(() => {
+				this.timer = null
+				this.waitingForQuitToFinish = true
+				this.ready = false
+				this.smtp.quit()
+			}, 1000)
 		}
 	}
 

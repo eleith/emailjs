@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest'
 import { Readable } from 'stream'
-import { SMTPClient } from './client.js'
+import { SMTPClient, type MessageStack } from './client.js'
 import { Message } from './message.js'
 import { DEFAULT_TIMEOUT, SMTPState } from './connection.js'
 
@@ -458,6 +458,79 @@ describe('SMTPClient', () => {
 
 		spy.mockRestore()
 	})
+
+	it.each(['relay reply', 'explicit close', 'relay disconnect'])(
+		'resumes queued mail after idle QUIT ends with %s',
+		async (shutdown) => {
+			class TestClient extends SMTPClient {
+				protected override ready = true
+				protected override _sendmail(stack: MessageStack) {
+					this._senddone(null, stack)
+				}
+			}
+
+			vi.useFakeTimers()
+			try {
+				const client = new TestClient({ host: 'localhost' })
+				let state: ReturnType<SMTPClient['smtp']['state']> = SMTPState.CONNECTED
+				vi.spyOn(client.smtp, 'state').mockImplementation(() => state)
+				const close = client.smtp.close.bind(client.smtp)
+				vi.spyOn(client.smtp, 'close').mockImplementation(() => {
+					state = SMTPState.NOTCONNECTED
+					close()
+				})
+				const connect = vi
+					.spyOn(client.smtp, 'connect')
+					.mockImplementation((done) => {
+						state = SMTPState.CONNECTED
+						done(null)
+					})
+				vi.spyOn(client.smtp, 'ehlo_or_helo_if_needed').mockImplementation(
+					(done) => done(null)
+				)
+				let replyToQuit: (err?: Error | null) => void = () => {
+					throw new Error('No QUIT pending')
+				}
+				const quit = vi
+					.spyOn(client.smtp, 'command')
+					.mockImplementation((command, done) => {
+						expect(command).toBe('quit')
+						replyToQuit = done
+					})
+				const message = new Message({ from: 'me', to: 'you', text: 'hi' })
+				await client.sendAsync(message)
+				vi.advanceTimersByTime(1000)
+				expect(quit).toHaveBeenCalledTimes(1)
+
+				const onQueuedSend = vi.fn()
+				const sendDuringQuit = () => client.send(message, onQueuedSend)
+				if (shutdown === 'relay disconnect') {
+					client.smtp.once('close', sendDuringQuit)
+				} else {
+					sendDuringQuit()
+				}
+				expect(onQueuedSend).not.toHaveBeenCalled()
+				expect(connect).not.toHaveBeenCalled()
+
+				if (shutdown === 'relay reply') {
+					replyToQuit(null)
+				} else {
+					client.smtp.close()
+					if (shutdown === 'relay disconnect') {
+						expect(connect).not.toHaveBeenCalled()
+						replyToQuit(new Error('Relay disconnected'))
+					}
+				}
+
+				expect(connect).not.toHaveBeenCalled()
+				await Promise.resolve()
+				expect(connect).toHaveBeenCalledTimes(1)
+				expect(onQueuedSend).toHaveBeenCalledExactlyOnceWith(null, message)
+			} finally {
+				vi.useRealTimers()
+			}
+		}
+	)
 
 	it('client clears poll timer when connection is closed', async () => {
 		const client = new SMTPClient({ host: 'localhost' })
