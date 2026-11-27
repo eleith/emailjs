@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Security
 
+- Keep the failure category, but omit command, reply, and transport error text
+  from failed AUTH exchanges so returned errors do not expose credentials.
 - Verify the SMTP relay's certificate and hostname before resuming SMTP over
   STARTTLS. Thanks to Dickson Wu for reporting the issue.
 

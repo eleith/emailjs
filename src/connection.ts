@@ -672,19 +672,22 @@ export class SMTPConnection extends EventEmitter {
 				}
 			}
 
-			const failed = (err: Error, data?: unknown) => {
+			const failed = (err: Error) => {
 				this.loggedin = false
 				this.close() // if auth is bad, close the connection, it won't get better by itself
 
-				err.message = err.message.replace(login.password(), 'REDACTED')
+				// AUTH commands and replies may contain credentials. Keep only the failure category.
+				const sanitizedCause =
+					err instanceof SMTPError && typeof err.code === 'number'
+						? SMTPError.create('AUTH exchange failed', err.code)
+						: null
 
 				caller(
 					callback,
 					SMTPError.create(
 						'authorization.failed',
 						SMTPErrorStates.AUTHFAILED,
-						err,
-						data
+						sanitizedCause
 					)
 				)
 			}
@@ -695,7 +698,7 @@ export class SMTPConnection extends EventEmitter {
 				message?: string
 			) => {
 				if (err) {
-					failed(err as Error, data)
+					failed(err)
 				} else {
 					this.loggedin = true
 					caller(callback, err, data, message)
@@ -704,11 +707,11 @@ export class SMTPConnection extends EventEmitter {
 
 			const attempt = (
 				err: Error | null | undefined,
-				data?: unknown,
+				_data?: unknown,
 				msg?: string
 			) => {
 				if (err) {
-					failed(err as Error, data)
+					failed(err)
 				} else {
 					if (method === AUTH_METHODS['CRAM-MD5']) {
 						this.command(encodeCramMd5(msg as string), response, [235, 503])
@@ -722,9 +725,9 @@ export class SMTPConnection extends EventEmitter {
 				}
 			}
 
-			const attemptUser = (err: Error | null | undefined, data?: unknown) => {
+			const attemptUser = (err: Error | null | undefined) => {
 				if (err) {
-					failed(err, data)
+					failed(err)
 				} else {
 					if (method === AUTH_METHODS.LOGIN) {
 						this.command(

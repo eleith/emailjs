@@ -1,4 +1,5 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { SMTPError, SMTPErrorStates } from './error.js'
 import { Socket } from 'net'
 import { SMTPConnection, DEFAULT_TIMEOUT, SMTPState } from './connection.js'
 
@@ -32,6 +33,37 @@ describe('SMTPConnection (Unit)', () => {
 		expect(() => new SMTPConnection({ password: '123' })).toThrow(
 			'`password` cannot be set without `user`'
 		)
+	})
+
+	it('preserves the AUTH timeout category without forwarding transport diagnostics', () => {
+		const conn = new SMTPConnection({ user: 'user', password: 'pass' })
+		const timeout = SMTPError.create(
+			'private transport detail',
+			SMTPErrorStates.TIMEDOUT,
+			new Error('private cause'),
+			'private reply'
+		)
+		vi.spyOn(conn, 'send')
+			.mockImplementationOnce((_line, reply) =>
+				reply(null, { code: '250', data: '250 AUTH PLAIN' })
+			)
+			.mockImplementationOnce((_line, reply) => reply(timeout))
+
+		const done = vi.fn()
+		conn.login(done)
+		expect(done).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				code: SMTPErrorStates.AUTHFAILED,
+				previous: expect.objectContaining({
+					code: SMTPErrorStates.TIMEDOUT,
+					previous: null,
+					smtp: undefined,
+				}),
+			})
+		)
+		const [err] = done.mock.calls[0]
+		expect(err.message).not.toContain('private')
+		expect(err.previous.message).not.toContain('private')
 	})
 
 	it('accepts a custom logger', () => {
