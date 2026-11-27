@@ -15,7 +15,7 @@ import {
 	SMTPState,
 	type SMTPSocketOptions,
 } from './connection.js'
-import { SMTPErrorStates } from './error.js'
+import { SMTPError, SMTPErrorStates } from './error.js'
 
 const PORT = 5561 // Use a different port to avoid conflicts
 
@@ -30,7 +30,7 @@ describe('SMTPConnection (Integration)', () => {
 				if (auth.username === 'user' && auth.password === 'pass') {
 					callback(null, { user: 'user' })
 				} else {
-					callback(new Error('Invalid username or password'))
+					callback(new Error(`Rejected test credentials: ${auth.password}`))
 				}
 			},
 		})
@@ -112,31 +112,39 @@ describe('SMTPConnection (Integration)', () => {
 		conn.close()
 	})
 
-	it('fails authentication with wrong credentials', async () => {
+	it('reports rejected AUTH LOGIN without including the password in either error', async () => {
 		const conn = new SMTPConnection({
+			authentication: ['LOGIN'],
 			port: PORT,
 			host: '127.0.0.1',
 			tls: { rejectUnauthorized: false },
 		})
 
-		await new Promise<void>((resolve, reject) => {
-			conn.connect((err) => {
-				if (err) return reject(err)
-				conn.login(
-					(err) => {
-						if (err) {
-							expect(err.message).toContain('authorization.failed')
-							resolve()
-						} else {
-							reject(new Error('Should have failed'))
-						}
-					},
-					'user',
-					'wrong'
-				)
+		try {
+			await new Promise<void>((resolve, reject) =>
+				conn.connect((err) => (err ? reject(err) : resolve()))
+			)
+			const password = 'wrong-password'
+			const err = await new Promise<Error | null | undefined>((resolve) =>
+				conn.login(resolve, 'user', password)
+			)
+			expect(err).toMatchObject({
+				code: SMTPErrorStates.AUTHFAILED,
+				previous: { code: SMTPErrorStates.BADRESPONSE },
 			})
-		})
-		conn.close()
+			const previous = (err as SMTPError).previous
+			for (const detail of [
+				String(err),
+				String(previous),
+				JSON.stringify(err),
+			]) {
+				expect(detail).not.toContain('Rejected test credentials')
+				expect(detail).not.toContain(password)
+				expect(detail).not.toContain(Buffer.from(password).toString('base64'))
+			}
+		} finally {
+			conn.close(true)
+		}
 	})
 
 	it('quits the connection', async () => {
