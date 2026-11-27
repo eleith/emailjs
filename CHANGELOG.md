@@ -19,6 +19,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
   when a listener processes more data synchronously.
 - Keep mail queued while an idle SMTP connection closes, then resume delivery
   on a fresh connection.
+- Do not start idle shutdown while a message is still sending.
 
 ## [5.0.5] - 2026-11-16
 
