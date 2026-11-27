@@ -775,26 +775,27 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	public close(force = false) {
-		if (this.sock) {
-			if (force) {
-				this.log('smtp connection destroyed!')
-				this.sock.destroy()
-			} else {
-				this.log('smtp connection closed.')
-				this.sock.end()
-			}
-		}
+		const closingSocket = this.sock
+		const closingMonitor = this.monitor
 
-		if (this.monitor) {
-			this.monitor.stop()
-			this.monitor = null
-		}
-
+		// Reset the session before a logger or close listener can reconnect.
+		this.sock = null
+		this.monitor = null
 		this._state = SMTPState.NOTCONNECTED
 		this._secure = false
-		this.sock = null
 		this.features = null
 		this.loggedin = !(this.user() && this.password())
+
+		closingMonitor?.stop()
+		if (closingSocket) {
+			if (force) {
+				closingSocket.destroy()
+				this.log('smtp connection destroyed!')
+			} else {
+				closingSocket.end()
+				this.log('smtp connection closed.')
+			}
+		}
 		this.emit('close')
 	}
 

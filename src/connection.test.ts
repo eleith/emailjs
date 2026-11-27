@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { SMTPConnection, DEFAULT_TIMEOUT } from './connection.js'
+import { Socket } from 'net'
+import { SMTPConnection, DEFAULT_TIMEOUT, SMTPState } from './connection.js'
 
 describe('SMTPConnection (Unit)', () => {
 	it('initializes with default options', () => {
@@ -54,6 +55,46 @@ describe('SMTPConnection (Unit)', () => {
 		// @ts-expect-error accessing protected
 		expect(conn.tls).toEqual({ rejectUnauthorized: false })
 	})
+
+	it.each([false, true])(
+		'leaves the replacement socket intact when close(%s) logs',
+		(force) => {
+			class TestConnection extends SMTPConnection {
+				attachSocket(socket: Socket) {
+					this.sock = socket
+					this._state = SMTPState.CONNECTED
+				}
+
+				currentSocket() {
+					return this.sock
+				}
+			}
+
+			const original = new Socket()
+			const replacement = new Socket()
+			let stateAtLog: ReturnType<SMTPConnection['state']> | undefined
+			const connection = new TestConnection({
+				logger: () => {
+					stateAtLog = connection.state()
+					connection.attachSocket(replacement)
+				},
+			})
+			connection.attachSocket(original)
+
+			try {
+				connection.close(force)
+				expect(stateAtLog).toBe(SMTPState.NOTCONNECTED)
+				if (force) expect(original.destroyed).toBe(true)
+				else expect(original.writableEnded).toBe(true)
+				expect(replacement.destroyed).toBe(false)
+				expect(replacement.writableEnded).toBe(false)
+				expect(connection.currentSocket()).toBe(replacement)
+			} finally {
+				original.destroy()
+				replacement.destroy()
+			}
+		}
+	)
 
 	it('does not conflict with Node.js domain module when emitting events on close', async () => {
 		// Import node:domain which instruments EventEmitter.prototype.emit
