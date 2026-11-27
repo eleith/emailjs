@@ -162,9 +162,8 @@ export class SMTPClient {
 				this._sendmail(this.queue.shift() as MessageStack)
 			}
 		}
-		// wait around 1 seconds in case something does come in,
-		// otherwise close out SMTP connection if still open
-		else if (this.smtp.state() == SMTPState.CONNECTED) {
+		// Give new mail one second to arrive before closing an idle connection.
+		else if (!this.sending && this.smtp.state() == SMTPState.CONNECTED) {
 			this.timer = setTimeout(() => {
 				this.timer = null
 				this.waitingForQuitToFinish = true

@@ -459,6 +459,48 @@ describe('SMTPClient', () => {
 		spy.mockRestore()
 	})
 
+	it('does not send idle QUIT when a send callback starts another message', () => {
+		class TestClient extends SMTPClient {
+			protected override ready = true
+			private activeMessage?: MessageStack
+
+			protected override _sendmail(stack: MessageStack) {
+				this.sending = true
+				this.activeMessage = stack
+			}
+
+			finishSend() {
+				const stack = this.activeMessage
+				if (!stack) throw new Error('No message is sending')
+				this.activeMessage = undefined
+				this._senddone(null, stack)
+			}
+		}
+
+		vi.useFakeTimers()
+		try {
+			const client = new TestClient({ host: 'localhost' })
+			vi.spyOn(client.smtp, 'state').mockReturnValue(SMTPState.CONNECTED)
+			const quit = vi.spyOn(client.smtp, 'quit').mockImplementation(() => {})
+			const message = new Message({ from: 'me', to: 'you', text: 'hi' })
+			const onSecondSend = vi.fn()
+
+			client.send(message, () => client.send(message, onSecondSend))
+			client.finishSend()
+			vi.advanceTimersByTime(1000)
+			expect(quit).not.toHaveBeenCalled()
+
+			client.finishSend()
+			expect(onSecondSend).toHaveBeenCalledExactlyOnceWith(null, message)
+			vi.advanceTimersByTime(999)
+			expect(quit).not.toHaveBeenCalled()
+			vi.advanceTimersByTime(1)
+			expect(quit).toHaveBeenCalledTimes(1)
+		} finally {
+			vi.useRealTimers()
+		}
+	})
+
 	it.each(['relay reply', 'explicit close', 'relay disconnect'])(
 		'resumes queued mail after idle QUIT ends with %s',
 		async (shutdown) => {
