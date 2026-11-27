@@ -20,6 +20,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Keep mail queued while an idle SMTP connection closes, then resume delivery
   on a fresh connection.
 - Do not start idle shutdown while a message is still sending.
+- Reset SMTP connection state before calling the close logger so it can safely
+  start a new connection.
 
 ## [5.0.5] - 2026-11-16
 
