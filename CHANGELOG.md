@@ -16,6 +16,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+- Resume queued delivery on a fresh connection when a relay rejects both EHLO
+  and fallback HELO but leaves the socket open. The failed send is not retried.
 - Complete login after an explicit EHLO without sending another greeting. Refuse
   AUTH during a mail transaction or TLS upgrade, or after successful AUTH on
   the same connection. Only a `235` reply establishes authentication;

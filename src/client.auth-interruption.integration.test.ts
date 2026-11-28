@@ -2,9 +2,13 @@ import { createServer, type AddressInfo } from 'node:net'
 import { once } from 'node:events'
 import { expect, it, onTestFinished, vi } from 'vitest'
 import { SMTPClient } from './client.js'
+import { SMTPErrorStates } from './error.js'
 
-// Hold the first NOOP reply. Subsequent connections accept ordinary PLAIN delivery.
-async function openRelay() {
+// Interrupt AUTH with a held NOOP, or reject both greetings on the first socket.
+async function openRelay(
+	scenario: 'interruptAuth' | 'rejectFirstGreeting' = 'interruptAuth',
+	credentials = true
+) {
 	const sessions: string[][] = []
 	const bodies: string[] = []
 	const events: string[] = []
@@ -20,6 +24,7 @@ async function openRelay() {
 	})
 	const relay = createServer((socket) => {
 		const commands: string[] = []
+		const reject = scenario === 'rejectFirstGreeting' && sessions.length === 0
 		sessions.push(commands)
 		events.push('relay connection')
 		socket.write('220 local\r\n')
@@ -43,7 +48,12 @@ async function openRelay() {
 				commands.push(verb)
 				switch (verb) {
 					case 'EHLO':
-						socket.write('250-local\r\n250 AUTH PLAIN\r\n')
+						socket.write(
+							reject ? '502 EHLO denied\r\n' : '250-local\r\n250 AUTH PLAIN\r\n'
+						)
+						break
+					case 'HELO':
+						socket.write(reject ? '550 HELO denied\r\n' : '250 ok\r\n')
 						break
 					case 'NOOP':
 						if (commands.filter((c) => c === 'NOOP').length > 1) {
@@ -79,12 +89,11 @@ async function openRelay() {
 	const onNoop = vi.fn((_err: unknown) => {
 		events.push('NOOP complete')
 	})
-	let inject = true
+	let inject = scenario === 'interruptAuth'
 	const client = new SMTPClient({
 		host: '127.0.0.1',
 		port: (relay.address() as AddressInfo).port,
-		user: 'user',
-		password: 'secret',
+		...(credentials && { user: 'user', password: 'secret' }),
 		logger(entry) {
 			if (
 				inject &&
@@ -207,3 +216,29 @@ it('does not issue idle QUIT over a NOOP that interrupted AUTH', async () => {
 		expect(failed).toHaveBeenCalledTimes(1)
 	})
 })
+
+it.each([true, false])(
+	'continues queued delivery after rejected greetings (credentials: %s)',
+	async (credentials) => {
+		const { client, sessions, bodies } = await openRelay(
+			'rejectFirstGreeting',
+			credentials
+		)
+		const failed = vi.fn()
+		client.send(first, failed)
+		await client.sendAsync({ ...first, text: 'second body' })
+
+		expect(failed).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({
+				code: SMTPErrorStates.BADRESPONSE,
+				smtp: expect.stringContaining('550 HELO denied'),
+			}),
+			expect.objectContaining({ text: first.text })
+		)
+		expect(sessions).toEqual([
+			['EHLO', 'HELO'],
+			['EHLO', ...(credentials ? ['AUTH'] : []), 'MAIL', 'RCPT', 'DATA'],
+		])
+		expect(bodies).toEqual([expect.stringContaining('second body')])
+	}
+)
