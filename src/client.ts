@@ -286,25 +286,26 @@ export class SMTPClient {
 	}
 
 	protected _senddata(stack: MessageStack) {
-		this.smtp.data(this._sendsmtp(stack, this._sendmessage))
+		const transfer = this.smtp.captureDataTransfer()
+		transfer.open((err) => {
+			if (err) this._senddone(err, stack)
+			else this._sendmessage(stack, transfer)
+		})
 	}
 
-	protected _sendmessage(stack: MessageStack) {
-		const stream = stack.message.stream()
-
-		stream.on('data', (data) => this.smtp.message(data))
-		stream.on('end', () => {
-			this.smtp.data_end(
-				this._sendsmtp(stack, () => this._senddone(null, stack))
-			)
-		})
-
-		// there is no way to cancel a message while in the DATA portion,
-		// so we have to close the socket to prevent a bad email from going out
-		stream.on('error', (err) => {
-			this.smtp.close()
-			this._senddone(err, stack)
-		})
+	protected _sendmessage(
+		stack: MessageStack,
+		transfer = this.smtp.captureDataTransfer()
+	) {
+		transfer.stream(
+			(body) => {
+				const stream = stack.message.stream()
+				stream.on('data', body.write)
+				stream.on('end', body.end)
+				stream.on('error', body.abort)
+			},
+			(err) => this._senddone(err, stack)
+		)
 	}
 
 	protected _senddone(err: Error | null | undefined, stack: MessageStack) {

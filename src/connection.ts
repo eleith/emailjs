@@ -5,6 +5,7 @@ import { connect, TLSSocket } from 'tls'
 import type { ConnectionOptions } from 'tls'
 
 import { SMTPError, SMTPErrorStates } from './error.js'
+import { DataTransfer } from './smtp-data.js'
 import { SMTPResponseMonitor } from './response.js'
 import { startSession, endSession } from './smtp-session.js'
 import { SmtpTransport } from './smtp-transport.js'
@@ -658,6 +659,12 @@ export class SMTPConnection extends EventEmitter {
 		to: string
 	) {
 		this.command(`RCPT TO:${to}`, callback, [250, 251])
+	}
+
+	/** @internal Bind the client's delivery to this socket before issuing DATA. */
+	captureDataTransfer() {
+		const socket = this.sock
+		return new DataTransfer(this, () => this.sock === socket)
 	}
 
 	public data(
