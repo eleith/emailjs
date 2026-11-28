@@ -7,7 +7,8 @@ import type { ConnectionOptions } from 'tls'
 
 import { SMTPError, SMTPErrorStates } from './error.js'
 import { SMTPResponseMonitor } from './response.js'
-import { sessionSockets } from './smtp-session.js'
+import { startSession, endSession } from './smtp-session.js'
+import { SmtpTransport } from './smtp-transport.js'
 import { startTlsHandshake } from './tls-upgrade.js'
 
 export const AUTH_METHODS = {
@@ -54,6 +55,8 @@ const caller = (callback?: CallbackFn, ...args: Parameters<CallbackFn>) => {
 }
 
 type CallbackFn = (err: Error | null | undefined, ...rest: unknown[]) => void
+type CommandCallback = (err: Error | null | undefined, data?: unknown) => void
+type SmtpRequestSender = (request: string, onReply: CommandCallback) => void
 
 export type SMTPSocketOptions = Omit<
 	ConnectionOptions,
@@ -103,9 +106,22 @@ export class SMTPConnection extends EventEmitter {
 	protected tls: boolean | SMTPSocketOptions = false
 	protected port: number
 
-	private greylistResponseTracker = new WeakSet<
-		(err: Error | null | undefined, data?: unknown, message?: string) => void
-	>()
+	private activeTransport: SmtpTransport | null = null
+
+	private get transport(): SmtpTransport | null {
+		// sock is a protected field: subclasses can install a socket directly.
+		const socket = this.sock
+		if (socket !== (this.activeTransport?.socket ?? null)) {
+			this.activeTransport = socket
+				? new SmtpTransport(
+						socket,
+						(entry) => this.log(entry),
+						(owner) => this.activeTransport === owner && this.sock === socket
+					)
+				: null
+		}
+		return this.activeTransport
+	}
 
 	constructor({
 		timeout,
@@ -290,7 +306,7 @@ export class SMTPConnection extends EventEmitter {
 			this.sock.connect(this.port, this.host.trim(), connectedErrBack)
 		}
 
-		sessionSockets.set(this, this.sock)
+		startSession(this, () => this.transport)
 		this.watchSmtpReplies(this.sock)
 		this.sock.once('response', response)
 	}
@@ -299,20 +315,19 @@ export class SMTPConnection extends EventEmitter {
 		str: string,
 		callback: (err: Error | null | undefined, data?: unknown) => void
 	) {
-		if (this.sock != null && this._state === SMTPState.CONNECTED) {
-			this.log(str)
-
-			this.sock.once('response', (err, data, message) => {
-				if (err) {
-					caller(callback, err)
-				} else {
-					this.log(data)
-					caller(callback, null, data, message)
-				}
-			})
-			if (this.sock.writable) {
-				this.sock.write(str)
-			}
+		if (this.transport && this._state === SMTPState.CONNECTED) {
+			if (
+				!this.transport.trySendRequest(str, (err, ...rest) =>
+					caller(callback, err, ...rest)
+				)
+			)
+				caller(
+					callback,
+					SMTPError.create(
+						'SMTP connection is no longer writable',
+						SMTPErrorStates.CONNECTIONCLOSED
+					)
+				)
 		} else {
 			this.close(true)
 			caller(
@@ -330,6 +345,17 @@ export class SMTPConnection extends EventEmitter {
 		callback: (err: Error | null | undefined, data?: unknown) => void,
 		codes: number[] | number = [250]
 	) {
+		return this.runCommand(cmd, callback, codes)
+	}
+
+	private runCommand(
+		cmd: string,
+		callback: CommandCallback,
+		codes: number[] | number,
+		sendRequest: SmtpRequestSender = (line, onReply) => this.send(line, onReply)
+	) {
+		const commandTransport = this.transport
+		let greylistRetryUsed = false
 		const codesArray = Array.isArray(codes)
 			? codes
 			: typeof codes === 'number'
@@ -357,12 +383,23 @@ export class SMTPConnection extends EventEmitter {
 				} else if (
 					(code === 450 || code === 451) &&
 					msg.message?.toLowerCase().includes('greylist') &&
-					this.greylistResponseTracker.has(response) === false
+					!greylistRetryUsed
 				) {
-					this.greylistResponseTracker.add(response)
-					setTimeout(() => {
-						this.send(cmd + CRLF, response)
-					}, GREYLIST_DELAY)
+					greylistRetryUsed = true
+					const retry = () => {
+						if (commandTransport !== this.transport)
+							return caller(
+								callback,
+								SMTPError.create(
+									'connection closed before greylist retry',
+									SMTPErrorStates.CONNECTIONCLOSED
+								)
+							)
+						sendRequest(cmd + CRLF, response)
+					}
+					if (commandTransport)
+						commandTransport.retryAfter(GREYLIST_DELAY, retry)
+					else setTimeout(retry, GREYLIST_DELAY)
 				} else {
 					const suffix = msg.message ? `: ${msg.message}` : ''
 					const errorMessage = `bad response on command '${
@@ -381,8 +418,7 @@ export class SMTPConnection extends EventEmitter {
 			}
 		}
 
-		this.greylistResponseTracker.delete(response)
-		this.send(cmd + CRLF, response)
+		sendRequest(cmd + CRLF, response)
 	}
 
 	public helo(
@@ -419,6 +455,7 @@ export class SMTPConnection extends EventEmitter {
 				return caller(callback, err)
 			}
 
+			const finishUpgrade = this.transport?.beginOperation()
 			this.prepareForStartTlsHandshake(plaintextSocket)
 
 			const onHandshake = (err: Error | null, tlsSocket: TLSSocket) => {
@@ -448,11 +485,21 @@ export class SMTPConnection extends EventEmitter {
 					this.host.trim(),
 					tlsOptions,
 					this.timeout,
-					onHandshake
+					(err, tlsSocket) => {
+						try {
+							onHandshake(err, tlsSocket)
+						} finally {
+							finishUpgrade?.()
+						}
+					}
 				)
 			} catch (err) {
-				this.close(true)
-				caller(callback, err as Error)
+				try {
+					this.close(true)
+					caller(callback, err as Error)
+				} finally {
+					finishUpgrade?.()
+				}
 			}
 		}
 		this.command('starttls', onStartTlsReply, [220])
@@ -513,11 +560,22 @@ export class SMTPConnection extends EventEmitter {
 	) {
 		const socket = this.sock
 		this.command(`ehlo ${domain || this._domain}`, (err, data) => {
+			const receivedReply =
+				!err ||
+				(err instanceof SMTPError && err.code === SMTPErrorStates.BADRESPONSE)
+			if (receivedReply && this.sock !== socket) {
+				return caller(
+					callback,
+					SMTPError.create(
+						'connection closed during EHLO',
+						SMTPErrorStates.CONNECTIONCLOSED
+					)
+				)
+			}
 			if (err) {
 				if (this.tls && socket && this.sock === socket) this.close(true)
 				return caller(callback, err)
 			}
-
 			if (this.needsStartTls()) {
 				return this.starttls((err) => {
 					if (err) caller(callback, err)
@@ -582,8 +640,8 @@ export class SMTPConnection extends EventEmitter {
 
 	public message(data: string) {
 		this.log(data)
-		if (this.sock) {
-			this.sock.write(data)
+		if (this.transport) {
+			this.transport.write(data)
 		} else {
 			this.log('no socket to write to')
 		}
@@ -609,10 +667,29 @@ export class SMTPConnection extends EventEmitter {
 	) {
 		const domainName = domain || this._domain
 		if (!this.features || this.needsStartTls()) {
+			const transport = this.transport
 			this.ehlo((err, data) => {
-				if (err && !this.tls) return this.helo(callback, domainName)
+				if (err && transport && this.transport === transport && !this.tls)
+					return this.helo(callback, domainName)
 				caller(callback, err, data)
 			}, domainName)
+		}
+	}
+
+	// Capture the transport once; SASL continuations and retries share this sender.
+	private createAuthLineSender(
+		transport: SmtpTransport | null,
+		interrupted: () => void
+	): SmtpRequestSender {
+		let firstAuthLineSent = false
+		return (request, onReply) => {
+			if (
+				transport?.trySendRequest(request, onReply, {
+					requireIdle: !firstAuthLineSent,
+				})
+			)
+				firstAuthLineSent = true
+			else interrupted()
 		}
 	}
 
@@ -674,9 +751,26 @@ export class SMTPConnection extends EventEmitter {
 				}
 			}
 
+			const authTransport = this.transport
+			const reportAuthInterrupted = () =>
+				caller(
+					callback,
+					SMTPError.create(
+						'AUTH exchange interrupted',
+						SMTPErrorStates.AUTHFAILED
+					)
+				)
+			const sendAuthLine = this.createAuthLineSender(
+				authTransport,
+				reportAuthInterrupted
+			)
+			const runAuthCommand = (
+				line: string,
+				onReply: CommandCallback,
+				codes: number[]
+			) => this.runCommand(line, onReply, codes, sendAuthLine)
 			const failed = (err: Error) => {
-				this.loggedin = false
-				this.close() // if auth is bad, close the connection, it won't get better by itself
+				if (this.transport === authTransport) this.close()
 
 				// AUTH commands and replies may contain credentials. Keep only the failure category.
 				const sanitizedCause =
@@ -702,6 +796,7 @@ export class SMTPConnection extends EventEmitter {
 				if (err) {
 					failed(err)
 				} else {
+					if (this.transport !== authTransport) return reportAuthInterrupted()
 					this.loggedin = true
 					caller(callback, err, data, message)
 				}
@@ -716,9 +811,9 @@ export class SMTPConnection extends EventEmitter {
 					failed(err)
 				} else {
 					if (method === AUTH_METHODS['CRAM-MD5']) {
-						this.command(encodeCramMd5(msg as string), response, [235, 503])
+						runAuthCommand(encodeCramMd5(msg as string), response, [235, 503])
 					} else if (method === AUTH_METHODS.LOGIN) {
-						this.command(
+						runAuthCommand(
 							Buffer.from(login.password()).toString('base64'),
 							response,
 							[235, 503]
@@ -732,7 +827,7 @@ export class SMTPConnection extends EventEmitter {
 					failed(err)
 				} else {
 					if (method === AUTH_METHODS.LOGIN) {
-						this.command(
+						runAuthCommand(
 							Buffer.from(login.user()).toString('base64'),
 							attempt,
 							[334]
@@ -743,20 +838,20 @@ export class SMTPConnection extends EventEmitter {
 
 			switch (method) {
 				case AUTH_METHODS['CRAM-MD5']:
-					this.command(`AUTH  ${AUTH_METHODS['CRAM-MD5']}`, attempt, [334])
+					runAuthCommand(`AUTH  ${AUTH_METHODS['CRAM-MD5']}`, attempt, [334])
 					break
 				case AUTH_METHODS.LOGIN:
-					this.command(`AUTH ${AUTH_METHODS.LOGIN}`, attemptUser, [334])
+					runAuthCommand(`AUTH ${AUTH_METHODS.LOGIN}`, attemptUser, [334])
 					break
 				case AUTH_METHODS.PLAIN:
-					this.command(
+					runAuthCommand(
 						`AUTH ${AUTH_METHODS.PLAIN} ${encodePlain()}`,
 						response,
 						[235, 503]
 					)
 					break
 				case AUTH_METHODS.XOAUTH2:
-					this.command(
+					runAuthCommand(
 						`AUTH ${AUTH_METHODS.XOAUTH2} ${encodeXoauth2()}`,
 						response,
 						[235, 503]
@@ -784,8 +879,9 @@ export class SMTPConnection extends EventEmitter {
 		const closingMonitor = this.monitor
 
 		// Reset the session before a logger or close listener can reconnect.
-		sessionSockets.delete(this)
+		endSession(this)
 		this.sock = null
+		this.activeTransport = null
 		this.monitor = null
 		this._state = SMTPState.NOTCONNECTED
 		this._secure = false

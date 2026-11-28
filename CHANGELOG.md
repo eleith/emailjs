@@ -17,6 +17,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 ### Fixed
 
 - Let queued mail reconnect when the relay offers no supported AUTH method.
+- Bind AUTH writes and retries to the original SMTP connection. A login
+  interrupted before AUTH is sent lets the intervening command finish before
+  the client opens a fresh session for queued mail.
+  Internally generated AUTH lines no longer dispatch through public `command()`
+  or `send()` overrides; direct public `command()` still calls `send()`.
+- Report `CONNECTIONCLOSED` if the session is replaced before its EHLO reply
+  is processed. If login already determined that AUTH was unsupported, preserve
+  `AUTHNOTSUPPORTED` and leave the replacement connection open.
 - Preserve queued mail when a connection or login failure callback retries a send.
 - Consume SMTP replies before notifying listeners to prevent duplicate delivery
   when a listener processes more data synchronously.

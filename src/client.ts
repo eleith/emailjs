@@ -2,7 +2,7 @@ import { addressparser, flattenAddressGroups } from './address.js'
 import type { MessageAttachment, MessageHeaders } from './message.js'
 import { Message } from './message.js'
 import { SMTPError, SMTPErrorStates } from './error.js'
-import { captureSessionCleanup } from './smtp-session.js'
+import { getSession, type SmtpSession } from './smtp-session.js'
 import type { SMTPConnectionOptions } from './connection.js'
 import { SMTPConnection, SMTPState } from './connection.js'
 
@@ -40,6 +40,7 @@ export class SMTPClient {
 	protected ready = false
 	protected timer: NodeJS.Timeout | null = null
 	private waitingForQuitToFinish = false
+	private retiringLoginSession = false
 
 	constructor(server: Partial<SMTPConnectionOptions>) {
 		this.smtp = new SMTPConnection(server)
@@ -153,7 +154,7 @@ export class SMTPClient {
 	}
 
 	protected _poll() {
-		if (this.waitingForQuitToFinish) return
+		if (this.waitingForQuitToFinish || this.retiringLoginSession) return
 
 		if (this.timer != null) {
 			clearTimeout(this.timer)
@@ -182,12 +183,29 @@ export class SMTPClient {
 	}
 
 	protected _connect(stack: MessageStack) {
-		let closeLoginSession: (() => void) | undefined
-		const finishSetup = (err?: Error | null) => {
+		const finishSetup = (err?: Error | null, session?: SmtpSession) => {
 			if (err) {
 				// The callback may immediately enqueue a retry.
 				this.queue.shift()
-				if (isUnsupportedAuthError(err)) closeLoginSession?.()
+				if (isUnsupportedAuthError(err)) session?.close()
+				if (
+					session &&
+					err instanceof SMTPError &&
+					err.code === SMTPErrorStates.AUTHFAILED
+				) {
+					// New sends may enqueue, but cannot reconnect ahead of the command
+					// that interrupted login, even if the socket has already closed.
+					this.retiringLoginSession = true
+					try {
+						stack.callback(err, stack.message)
+					} finally {
+						session.closeWhenIdle(() => {
+							this.retiringLoginSession = false
+							this._poll()
+						})
+					}
+					return
+				}
 				stack.callback(err, stack.message)
 			} else {
 				this.ready = true
@@ -201,9 +219,9 @@ export class SMTPClient {
 
 			const needsLogin = !this.smtp.authorized()
 			if (needsLogin) {
-				closeLoginSession = captureSessionCleanup(this.smtp)
-				this.smtp.login(finishSetup)
-			} else this.smtp.ehlo_or_helo_if_needed(finishSetup)
+				const currentSmtpSession = getSession(this.smtp)
+				this.smtp.login((err) => finishSetup(err, currentSmtpSession))
+			} else this.smtp.ehlo_or_helo_if_needed((err) => finishSetup(err))
 		})
 	}
 
