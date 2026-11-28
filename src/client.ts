@@ -1,6 +1,8 @@
 import { addressparser, flattenAddressGroups } from './address.js'
 import type { MessageAttachment, MessageHeaders } from './message.js'
 import { Message } from './message.js'
+import { SMTPError, SMTPErrorStates } from './error.js'
+import { captureSessionCleanup } from './smtp-session.js'
 import type { SMTPConnectionOptions } from './connection.js'
 import { SMTPConnection, SMTPState } from './connection.js'
 
@@ -22,6 +24,12 @@ export interface MessageStack {
 	to: ReturnType<typeof addressparser>
 	cc: string[]
 	bcc: string[]
+}
+
+function isUnsupportedAuthError(err: Error) {
+	return (
+		err instanceof SMTPError && err.code === SMTPErrorStates.AUTHNOTSUPPORTED
+	)
 }
 
 export class SMTPClient {
@@ -174,10 +182,12 @@ export class SMTPClient {
 	}
 
 	protected _connect(stack: MessageStack) {
+		let closeLoginSession: (() => void) | undefined
 		const finishSetup = (err?: Error | null) => {
 			if (err) {
 				// The callback may immediately enqueue a retry.
 				this.queue.shift()
+				if (isUnsupportedAuthError(err)) closeLoginSession?.()
 				stack.callback(err, stack.message)
 			} else {
 				this.ready = true
@@ -190,8 +200,10 @@ export class SMTPClient {
 			if (err) return finishSetup(err)
 
 			const needsLogin = !this.smtp.authorized()
-			if (needsLogin) this.smtp.login(finishSetup)
-			else this.smtp.ehlo_or_helo_if_needed(finishSetup)
+			if (needsLogin) {
+				closeLoginSession = captureSessionCleanup(this.smtp)
+				this.smtp.login(finishSetup)
+			} else this.smtp.ehlo_or_helo_if_needed(finishSetup)
 		})
 	}
 

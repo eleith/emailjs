@@ -7,6 +7,7 @@ import type { ConnectionOptions } from 'tls'
 
 import { SMTPError, SMTPErrorStates } from './error.js'
 import { SMTPResponseMonitor } from './response.js'
+import { sessionSockets } from './smtp-session.js'
 import { startTlsHandshake } from './tls-upgrade.js'
 
 export const AUTH_METHODS = {
@@ -289,6 +290,7 @@ export class SMTPConnection extends EventEmitter {
 			this.sock.connect(this.port, this.host.trim(), connectedErrBack)
 		}
 
+		sessionSockets.set(this, this.sock)
 		this.watchSmtpReplies(this.sock)
 		this.sock.once('response', response)
 	}
@@ -782,6 +784,7 @@ export class SMTPConnection extends EventEmitter {
 		const closingMonitor = this.monitor
 
 		// Reset the session before a logger or close listener can reconnect.
+		sessionSockets.delete(this)
 		this.sock = null
 		this.monitor = null
 		this._state = SMTPState.NOTCONNECTED

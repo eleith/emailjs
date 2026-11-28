@@ -16,6 +16,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+- Let queued mail reconnect when the relay offers no supported AUTH method.
 - Preserve queued mail when a connection or login failure callback retries a send.
 - Consume SMTP replies before notifying listeners to prevent duplicate delivery
   when a listener processes more data synchronously.
