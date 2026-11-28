@@ -1,4 +1,3 @@
-import { createHmac } from 'crypto'
 import { EventEmitter } from 'events'
 import { Socket } from 'net'
 import { hostname } from 'os'
@@ -11,12 +10,13 @@ import { startSession, endSession } from './smtp-session.js'
 import { SmtpTransport } from './smtp-transport.js'
 import { startTlsHandshake } from './tls-upgrade.js'
 
-export const AUTH_METHODS = {
-	PLAIN: 'PLAIN',
-	'CRAM-MD5': 'CRAM-MD5',
-	LOGIN: 'LOGIN',
-	XOAUTH2: 'XOAUTH2',
-} as const
+import {
+	AUTH_METHODS,
+	authenticateWith,
+	selectAuthMethod,
+} from './smtp-auth.js'
+
+export { AUTH_METHODS }
 
 export const SMTPState = {
 	NOTCONNECTED: 0,
@@ -776,10 +776,9 @@ export class SMTPConnection extends EventEmitter {
 				)
 			)
 
-		const login = {
+		const credentials = {
 			user: user ? () => user : this.user,
 			password: password ? () => password : this.password,
-			method: options?.method?.toUpperCase() ?? '',
 		}
 
 		const domain = options?.domain || this._domain
@@ -790,43 +789,17 @@ export class SMTPConnection extends EventEmitter {
 				return
 			}
 
-			let method: keyof typeof AUTH_METHODS | null = null
-
-			const encodeCramMd5 = (challenge: string) => {
-				const hmac = createHmac('md5', login.password())
-				hmac.update(Buffer.from(challenge, 'base64').toString('ascii'))
-				return Buffer.from(`${login.user()} ${hmac.digest('hex')}`).toString(
-					'base64'
+			const method = selectAuthMethod(this.authentication, this.features?.auth)
+			if (!method)
+				return caller(
+					callback,
+					SMTPError.create(
+						'no form of authorization supported',
+						SMTPErrorStates.AUTHNOTSUPPORTED,
+						null,
+						data
+					)
 				)
-			}
-
-			const encodePlain = () =>
-				Buffer.from(`\u0000${login.user()}\u0000${login.password()}`).toString(
-					'base64'
-				)
-
-			const encodeXoauth2 = () =>
-				Buffer.from(
-					`user=${login.user()}\u0001auth=Bearer ${login.password()}\u0001\u0001`
-				).toString('base64')
-
-			// List of authentication methods we support: from preferred to
-			// less preferred methods.
-			if (method === null) {
-				const preferred = this.authentication
-				let auth = ''
-
-				if (typeof this.features?.['auth'] === 'string') {
-					auth = this.features['auth']
-				}
-
-				for (let i = 0; i < preferred.length; i++) {
-					if (auth.includes(preferred[i])) {
-						method = preferred[i]
-						break
-					}
-				}
-			}
 
 			const authTransport = this.transport
 			const reportAuthInterrupted = () =>
@@ -841,11 +814,6 @@ export class SMTPConnection extends EventEmitter {
 				authTransport,
 				reportAuthInterrupted
 			)
-			const runAuthCommand = (
-				line: string,
-				onReply: CommandCallback,
-				codes: number[]
-			) => this.runCommand(line, onReply, codes, sendAuthLine)
 			const failed = (err: Error) => {
 				if (this.transport === authTransport) this.close()
 
@@ -865,87 +833,20 @@ export class SMTPConnection extends EventEmitter {
 				)
 			}
 
-			const response = (
-				err: Error | null | undefined,
-				data?: unknown,
-				message?: string
-			) => {
-				if (err) {
-					failed(err)
-				} else {
-					if (this.transport !== authTransport) return reportAuthInterrupted()
-					this.loggedin = true
-					caller(callback, err, data, message)
-				}
-			}
-
-			const attempt = (
-				err: Error | null | undefined,
-				_data?: unknown,
-				msg?: string
-			) => {
-				if (err) {
-					failed(err)
-				} else {
-					if (method === AUTH_METHODS['CRAM-MD5']) {
-						runAuthCommand(encodeCramMd5(msg as string), response, [235])
-					} else if (method === AUTH_METHODS.LOGIN) {
-						runAuthCommand(
-							Buffer.from(login.password()).toString('base64'),
-							response,
-							[235]
-						)
-					}
-				}
-			}
-
-			const attemptUser = (err: Error | null | undefined) => {
-				if (err) {
-					failed(err)
-				} else {
-					if (method === AUTH_METHODS.LOGIN) {
-						runAuthCommand(
-							Buffer.from(login.user()).toString('base64'),
-							attempt,
-							[334]
-						)
-					}
-				}
-			}
-
-			switch (method) {
-				case AUTH_METHODS['CRAM-MD5']:
-					runAuthCommand(`AUTH  ${AUTH_METHODS['CRAM-MD5']}`, attempt, [334])
-					break
-				case AUTH_METHODS.LOGIN:
-					runAuthCommand(`AUTH ${AUTH_METHODS.LOGIN}`, attemptUser, [334])
-					break
-				case AUTH_METHODS.PLAIN:
-					runAuthCommand(
-						`AUTH ${AUTH_METHODS.PLAIN} ${encodePlain()}`,
-						response,
-						[235]
-					)
-					break
-				case AUTH_METHODS.XOAUTH2:
-					runAuthCommand(
-						`AUTH ${AUTH_METHODS.XOAUTH2} ${encodeXoauth2()}`,
-						response,
-						[235]
-					)
-					break
-				default:
-					caller(
-						callback,
-						SMTPError.create(
-							'no form of authorization supported',
-							SMTPErrorStates.AUTHNOTSUPPORTED,
-							null,
-							data
-						)
-					)
-					break
-			}
+			authenticateWith(method, credentials, (line, onChallenge) => {
+				this.runCommand(
+					line,
+					(err, reply, message?: string) => {
+						if (err) return failed(err)
+						if (this.transport !== authTransport) return reportAuthInterrupted()
+						if (onChallenge) return onChallenge(message as string)
+						this.loggedin = true
+						caller(callback, err, reply, message)
+					},
+					onChallenge ? 334 : 235,
+					sendAuthLine
+				)
+			})
 		}
 
 		this.ehlo_or_helo_if_needed(initiate, domain)

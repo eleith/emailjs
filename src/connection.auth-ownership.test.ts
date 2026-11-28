@@ -53,7 +53,7 @@ it('allows JavaScript callers to omit the callback to public send()', () => {
 
 function startLoginAwaitingEhloReply(
 	logger: (entry: unknown) => void,
-	method: 'LOGIN' | 'PLAIN' = 'LOGIN'
+	method: 'LOGIN' | 'PLAIN' | 'CRAM-MD5' = 'LOGIN'
 ) {
 	const original = createScriptedPeer()
 	const conn = new TestConnection({
@@ -70,6 +70,53 @@ function startLoginAwaitingEhloReply(
 	original.write.mockClear()
 	return { original, conn, loginDone }
 }
+
+it.each([
+	{
+		method: 'CRAM-MD5',
+		steps: [
+			// Preserve the existing two spaces after AUTH on the wire.
+			['250', 'AUTH CRAM-MD5', 'AUTH  CRAM-MD5\r\n'],
+			// Fixed challenge <1234@relay.test> and response for sender / secret.
+			[
+				'334',
+				'PDEyMzRAcmVsYXkudGVzdD4=',
+				'c2VuZGVyIGQ2MzRkMmExZDk0NGE1YWM0NTdhMGYyNjIzMjA0NGU4\r\n',
+			],
+		],
+	},
+	{
+		method: 'LOGIN',
+		steps: [
+			['250', 'AUTH LOGIN', 'AUTH LOGIN\r\n'],
+			['334', 'VXNlcm5hbWU6', 'c2VuZGVy\r\n'],
+			['334', 'UGFzc3dvcmQ6', 'c2VjcmV0\r\n'],
+		],
+	},
+] as const)(
+	'preserves the $method challenge transcript and final reply',
+	({ method, steps }) => {
+		const { original, conn, loginDone } = startLoginAwaitingEhloReply(
+			() => {},
+			method
+		)
+		for (const [code, message, line] of steps) {
+			original.reply(code, message)
+			expect(original.write.mock.calls).toEqual([[line]])
+			original.write.mockClear()
+			expect(loginDone).not.toHaveBeenCalled()
+			expect(conn.authorized()).toBe(false)
+		}
+		original.reply('235', 'authenticated')
+		expect(original.write).not.toHaveBeenCalled()
+		expect(loginDone).toHaveBeenCalledExactlyOnceWith(
+			null,
+			'235 authenticated',
+			'authenticated'
+		)
+		expect(conn.authorized()).toBe(true)
+	}
+)
 
 it.each(['MAIL', 'NOOP'] as const)(
 	'lets nested %s own its reply instead of writing the first AUTH',
