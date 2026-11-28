@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+### Changed
+
+- Group the steps for each SMTP authentication mechanism together internally.
+  Mechanism preference, wire commands, and login callbacks are unchanged.
+
 ### Security
 
 - Keep the failure category, but omit command, reply, and transport error text
