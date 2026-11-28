@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+- Keep a message stream’s DATA bytes, terminator, and abort on its original
+  SMTP socket. A replacement connection cannot receive or be closed by the old
+  stream. Client subclasses that defer `super._sendmessage` should forward its
+  optional transfer argument to retain the original socket. Managed DATA handles
+  its own completion rather than dispatching its replies through `_sendsmtp`.
 - Resume queued delivery on a fresh connection when a relay rejects both EHLO
   and fallback HELO but leaves the socket open. The failed send is not retried.
 - Complete login after an explicit EHLO without sending another greeting. Refuse
