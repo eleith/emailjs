@@ -1,8 +1,17 @@
-import { describe, it, expect, beforeAll, afterAll } from 'vitest'
+import {
+	describe,
+	it,
+	expect,
+	beforeAll,
+	afterAll,
+	onTestFinished,
+	vi,
+} from 'vitest'
+import type { AddressInfo } from 'net'
 import { SMTPServer } from 'smtp-server'
 import type { SMTPServerSession } from 'smtp-server'
-import { SMTPClient, Message } from './index.js'
-import { DEFAULT_TIMEOUT } from './connection.js'
+import { SMTPClient, Message, SMTPErrorStates } from './index.js'
+import { DEFAULT_TIMEOUT, SMTPState } from './connection.js'
 
 const port = 5560
 
@@ -100,6 +109,125 @@ describe('Client Integration', () => {
 				else reject(new Error('Callback not called'))
 			}, 500)
 		})
+	})
+
+	async function startRelayWithDelayedAuth(
+		unsupportedSessions: number,
+		logger?: (entry: unknown) => void
+	) {
+		let connections = 0
+		const recipients: string[] = []
+		const relay = new SMTPServer({
+			disabledCommands: ['STARTTLS'],
+			allowInsecureAuth: true,
+			onConnect(_session, done) {
+				connections++
+				relay.options.authMethods =
+					connections <= unsupportedSessions ? [] : ['PLAIN']
+				done()
+			},
+			onAuth(auth, _session, done) {
+				done(null, { user: auth.username })
+			},
+			onRcptTo(address, _session, done) {
+				recipients.push(address.address)
+				done()
+			},
+		})
+		const port = await new Promise<number>((resolve) => {
+			const listener = relay.listen(0, '127.0.0.1', () =>
+				resolve((listener.address() as AddressInfo).port)
+			)
+		})
+		const sender = new SMTPClient({
+			host: '127.0.0.1',
+			port,
+			user: 'sender',
+			password: 'test',
+			logger,
+		})
+		onTestFinished(async () => {
+			sender.smtp.close(true)
+			await new Promise<void>((resolve) => relay.close(resolve))
+		})
+		return { sender, recipients }
+	}
+
+	it('delivers already queued mail on a fresh connection after unsupported AUTH', async () => {
+		const { sender, recipients } = await startRelayWithDelayedAuth(1)
+		const onFirst = vi.fn()
+		const first = {
+			from: 'from@example.test',
+			to: 'first@example.test',
+			subject: 'queued mail',
+			text: 'first',
+		}
+		sender.send(first, (err) => onFirst(err, sender.smtp.state()))
+		await sender.sendAsync({ ...first, to: 'next@example.test' })
+
+		expect(onFirst).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ code: SMTPErrorStates.AUTHNOTSUPPORTED }),
+			SMTPState.NOTCONNECTED
+		)
+		expect(recipients).toEqual(['next@example.test'])
+	})
+
+	it('recovers when the close logger starts the next setup before close is emitted', async () => {
+		const next = {
+			from: 'from@example.test',
+			to: 'next@example.test',
+			subject: 'next',
+			text: 'next',
+		}
+		const onSecond = vi.fn()
+		let enqueued = false
+		const { sender, recipients } = await startRelayWithDelayedAuth(
+			2,
+			(entry) => {
+				if (entry === 'smtp connection destroyed!' && !enqueued) {
+					enqueued = true
+					sender.send(next, onSecond)
+				}
+			}
+		)
+		await expect(sender.sendAsync(next)).rejects.toMatchObject({
+			code: SMTPErrorStates.AUTHNOTSUPPORTED,
+		})
+		await sender.sendAsync({ ...next, to: 'third@example.test' })
+		expect(onSecond).toHaveBeenCalledExactlyOnceWith(
+			expect.objectContaining({ code: SMTPErrorStates.AUTHNOTSUPPORTED }),
+			expect.any(Message)
+		)
+		expect(recipients).toEqual(['third@example.test'])
+	})
+
+	it('does not close the replacement when the first login reports unsupported AUTH', async () => {
+		let replacementReady: Promise<void> | undefined
+		const { sender } = await startRelayWithDelayedAuth(1, (entry) => {
+			if (
+				replacementReady ||
+				!entry ||
+				typeof entry !== 'object' ||
+				!('code' in entry) ||
+				entry.code !== '250'
+			)
+				return
+			sender.smtp.close(true)
+			replacementReady = new Promise<void>((resolve, reject) =>
+				sender.smtp.connect((err) => (err ? reject(err) : resolve()))
+			)
+		})
+		await expect(
+			sender.sendAsync({
+				from: 'from@example.test',
+				to: 'first@example.test',
+				subject: 'first',
+				text: 'first',
+			})
+		).rejects.toMatchObject({ code: SMTPErrorStates.AUTHNOTSUPPORTED })
+		expect(replacementReady).toBeDefined()
+		await replacementReady
+		expect(sender.smtp.state()).toBe(SMTPState.CONNECTED)
 	})
 
 	it('client has a default connection timeout', () => {
