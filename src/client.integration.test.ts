@@ -203,20 +203,19 @@ describe('Client Integration', () => {
 
 	it('does not close the replacement when the first login reports unsupported AUTH', async () => {
 		let replacementReady: Promise<void> | undefined
-		const { sender } = await startRelayWithDelayedAuth(1, (entry) => {
-			if (
-				replacementReady ||
-				!entry ||
-				typeof entry !== 'object' ||
-				!('code' in entry) ||
-				entry.code !== '250'
-			)
-				return
-			sender.smtp.close(true)
-			replacementReady = new Promise<void>((resolve, reject) =>
-				sender.smtp.connect((err) => (err ? reject(err) : resolve()))
-			)
-		})
+		const { sender } = await startRelayWithDelayedAuth(1)
+		const login = sender.smtp.login.bind(sender.smtp)
+		// Replace the connection after login has the unsupported-AUTH result,
+		// but before the client receives it and decides which session to close.
+		vi.spyOn(sender.smtp, 'login').mockImplementationOnce((done) =>
+			login((err) => {
+				sender.smtp.close(true)
+				replacementReady = new Promise<void>((resolve, reject) =>
+					sender.smtp.connect((err) => (err ? reject(err) : resolve()))
+				)
+				done(err)
+			})
+		)
 		await expect(
 			sender.sendAsync({
 				from: 'from@example.test',

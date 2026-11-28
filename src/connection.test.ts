@@ -36,21 +36,27 @@ describe('SMTPConnection (Unit)', () => {
 	})
 
 	it('preserves the AUTH timeout category without forwarding transport diagnostics', () => {
-		const conn = new SMTPConnection({ user: 'user', password: 'pass' })
+		const socket = new Socket()
+		const conn = new (class extends SMTPConnection {
+			constructor() {
+				super({ user: 'user', password: 'pass' })
+				this.sock = socket
+				this._state = SMTPState.CONNECTED
+			}
+		})()
 		const timeout = SMTPError.create(
 			'private transport detail',
 			SMTPErrorStates.TIMEDOUT,
 			new Error('private cause'),
 			'private reply'
 		)
-		vi.spyOn(conn, 'send')
-			.mockImplementationOnce((_line, reply) =>
-				reply(null, { code: '250', data: '250 AUTH PLAIN' })
-			)
-			.mockImplementationOnce((_line, reply) => reply(timeout))
+		vi.spyOn(socket, 'write').mockReturnValue(true)
 
 		const done = vi.fn()
 		conn.login(done)
+		socket.emit('response', null, { code: '250', data: '250 AUTH PLAIN' })
+		socket.emit('response', timeout)
+		socket.destroy()
 		expect(done).toHaveBeenCalledExactlyOnceWith(
 			expect.objectContaining({
 				code: SMTPErrorStates.AUTHFAILED,
