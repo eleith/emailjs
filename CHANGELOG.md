@@ -16,6 +16,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ### Fixed
 
+- Complete login after an explicit EHLO without sending another greeting. Refuse
+  AUTH during a mail transaction or TLS upgrade, or after successful AUTH on
+  the same connection. Only a `235` reply establishes authentication;
+  `authorized()` recognizes successful raw AUTH as well as managed login.
+- Keep automatic HELO fallback on the connection that rejected EHLO. Like
+  managed AUTH, fallback no longer dispatches through public method overrides;
+  direct `helo()` and `command()` calls are unchanged.
+- Terminate the public `noop()` command with CRLF so the relay can reply.
 - Let queued mail reconnect when the relay offers no supported AUTH method.
 - Bind AUTH writes and retries to the original SMTP connection. A login
   interrupted before AUTH is sent lets the intervening command finish before

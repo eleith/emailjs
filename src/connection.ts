@@ -80,6 +80,14 @@ export interface ConnectOptions {
 	ssl?: boolean
 }
 
+// A relay rejection is still a reply. Preserve transport errors such as timeouts.
+function isRelayReply(err: Error | null | undefined) {
+	return (
+		!err ||
+		(err instanceof SMTPError && err.code === SMTPErrorStates.BADRESPONSE)
+	)
+}
+
 export class SMTPConnection extends EventEmitter {
 	public readonly user: () => string
 	public readonly password: () => string
@@ -109,18 +117,27 @@ export class SMTPConnection extends EventEmitter {
 	private activeTransport: SmtpTransport | null = null
 
 	private get transport(): SmtpTransport | null {
-		// sock is a protected field: subclasses can install a socket directly.
-		const socket = this.sock
-		if (socket !== (this.activeTransport?.socket ?? null)) {
-			this.activeTransport = socket
-				? new SmtpTransport(
-						socket,
-						(entry) => this.log(entry),
-						(owner) => this.activeTransport === owner && this.sock === socket
-					)
-				: null
-		}
+		// Subclasses can replace sock directly instead of calling connect().
+		if (this.sock !== (this.activeTransport?.socket ?? null))
+			this.resetTransport(this.sock)
 		return this.activeTransport
+	}
+
+	private resetTransport(socket: Socket | null) {
+		// A new socket has none of its predecessor's capabilities, TLS status, or login status.
+		this.features = null
+		this._secure = false
+		this.loggedin = !(this.user() && this.password())
+		this.activeTransport = socket
+			? new SmtpTransport(
+					socket,
+					(entry) => this.log(entry),
+					(owner) => this.activeTransport === owner && this.sock === socket,
+					(verb) => {
+						this.features = verb === 'HELO' ? {} : null
+					}
+				)
+			: null
 	}
 
 	constructor({
@@ -194,7 +211,10 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	public authorized() {
-		return this.loggedin
+		const transport = this.transport
+		return transport
+			? transport.isAuthenticated || this.loggedin
+			: !(this.user() && this.password())
 	}
 
 	public connect(
@@ -306,6 +326,7 @@ export class SMTPConnection extends EventEmitter {
 			this.sock.connect(this.port, this.host.trim(), connectedErrBack)
 		}
 
+		this.resetTransport(this.sock)
 		startSession(this, () => this.transport)
 		this.watchSmtpReplies(this.sock)
 		this.sock.once('response', response)
@@ -425,14 +446,28 @@ export class SMTPConnection extends EventEmitter {
 		callback: (err: Error | null | undefined, data?: unknown) => void,
 		domain?: string
 	) {
-		this.command(`helo ${domain || this._domain}`, (err, data) => {
+		this.command(`helo ${domain || this._domain}`, this.heloReply(callback))
+	}
+
+	private heloReply(callback: CommandCallback): CommandCallback {
+		const socket = this.sock
+		return (err, data) => {
+			if (socket !== this.sock && isRelayReply(err))
+				return caller(
+					callback,
+					SMTPError.create(
+						'connection closed during HELO',
+						SMTPErrorStates.CONNECTIONCLOSED
+					)
+				)
 			if (err) {
 				caller(callback, err)
 			} else {
-				this.parse_smtp_features(data as string)
+				// HELO does not negotiate ESMTP extensions.
+				this.features = {}
 				caller(callback, err, data)
 			}
-		})
+		}
 	}
 
 	public starttls(
@@ -515,6 +550,8 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	private resumeSmtpOverTls(tlsSocket: TLSSocket) {
+		if (this.activeTransport?.socket !== tlsSocket)
+			this.resetTransport(tlsSocket)
 		this.watchSmtpReplies(tlsSocket)
 		this._secure = true
 		this._state = SMTPState.CONNECTED
@@ -560,10 +597,7 @@ export class SMTPConnection extends EventEmitter {
 	) {
 		const socket = this.sock
 		this.command(`ehlo ${domain || this._domain}`, (err, data) => {
-			const receivedReply =
-				!err ||
-				(err instanceof SMTPError && err.code === SMTPErrorStates.BADRESPONSE)
-			if (receivedReply && this.sock !== socket) {
+			if (socket !== this.sock && isRelayReply(err)) {
 				return caller(
 					callback,
 					SMTPError.create(
@@ -590,7 +624,7 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	public has_extn(opt: string) {
-		return this.features != null && this.features[opt.toLowerCase()] != null
+		return this.transport != null && this.features?.[opt.toLowerCase()] != null
 	}
 
 	public help(
@@ -609,7 +643,7 @@ export class SMTPConnection extends EventEmitter {
 	public noop(
 		callback: (err: Error | null | undefined, data?: unknown) => void
 	) {
-		this.send('noop', callback)
+		this.send('noop' + CRLF, callback)
 	}
 
 	public mail(
@@ -639,10 +673,11 @@ export class SMTPConnection extends EventEmitter {
 	}
 
 	public message(data: string) {
-		this.log(data)
-		if (this.transport) {
-			this.transport.write(data)
+		const transport = this.transport
+		if (transport) {
+			transport.writeBody(data)
 		} else {
+			this.log(data)
 			this.log('no socket to write to')
 		}
 	}
@@ -666,14 +701,43 @@ export class SMTPConnection extends EventEmitter {
 		domain?: string
 	) {
 		const domainName = domain || this._domain
-		if (!this.features || this.needsStartTls()) {
-			const transport = this.transport
-			this.ehlo((err, data) => {
-				if (err && transport && this.transport === transport && !this.tls)
-					return this.helo(callback, domainName)
-				caller(callback, err, data)
-			}, domainName)
-		}
+		const transport = this.transport
+		if (
+			transport &&
+			(this._state !== SMTPState.CONNECTED || !transport.allowsGreeting)
+		)
+			return caller(
+				callback,
+				SMTPError.create(
+					'SMTP greeting not permitted during this exchange',
+					SMTPErrorStates.ERROR
+				)
+			)
+		if (transport && this.features && !this.needsStartTls())
+			return caller(callback, null)
+		this.ehlo((err, data) => {
+			if (
+				err &&
+				transport &&
+				this.transport === transport &&
+				this._state === SMTPState.CONNECTED &&
+				transport.allowsGreeting &&
+				!this.tls
+			) {
+				return this.runCommand(
+					`helo ${domainName}`,
+					this.heloReply(callback),
+					[250],
+					(line, onReply) => {
+						if (
+							!transport.trySendRequest(line, onReply, { starting: 'greeting' })
+						)
+							onReply(err)
+					}
+				)
+			}
+			caller(callback, err, data)
+		}, domainName)
 	}
 
 	// Capture the transport once; SASL continuations and retries share this sender.
@@ -685,7 +749,7 @@ export class SMTPConnection extends EventEmitter {
 		return (request, onReply) => {
 			if (
 				transport?.trySendRequest(request, onReply, {
-					requireIdle: !firstAuthLineSent,
+					starting: firstAuthLineSent ? undefined : 'auth',
 				})
 			)
 				firstAuthLineSent = true
@@ -699,6 +763,19 @@ export class SMTPConnection extends EventEmitter {
 		password?: string,
 		options: { method?: string; domain?: string } = {}
 	) {
+		const transport = this.transport
+		if (
+			transport &&
+			(this._state !== SMTPState.CONNECTED || !transport.allowsLogin)
+		)
+			return caller(
+				callback,
+				SMTPError.create(
+					'AUTH is not permitted in the current SMTP exchange',
+					SMTPErrorStates.AUTHFAILED
+				)
+			)
+
 		const login = {
 			user: user ? () => user : this.user,
 			password: password ? () => password : this.password,
@@ -811,12 +888,12 @@ export class SMTPConnection extends EventEmitter {
 					failed(err)
 				} else {
 					if (method === AUTH_METHODS['CRAM-MD5']) {
-						runAuthCommand(encodeCramMd5(msg as string), response, [235, 503])
+						runAuthCommand(encodeCramMd5(msg as string), response, [235])
 					} else if (method === AUTH_METHODS.LOGIN) {
 						runAuthCommand(
 							Buffer.from(login.password()).toString('base64'),
 							response,
-							[235, 503]
+							[235]
 						)
 					}
 				}
@@ -847,14 +924,14 @@ export class SMTPConnection extends EventEmitter {
 					runAuthCommand(
 						`AUTH ${AUTH_METHODS.PLAIN} ${encodePlain()}`,
 						response,
-						[235, 503]
+						[235]
 					)
 					break
 				case AUTH_METHODS.XOAUTH2:
 					runAuthCommand(
 						`AUTH ${AUTH_METHODS.XOAUTH2} ${encodeXoauth2()}`,
 						response,
-						[235, 503]
+						[235]
 					)
 					break
 				default:

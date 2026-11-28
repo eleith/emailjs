@@ -1,10 +1,40 @@
 import type { Socket } from 'net'
+import { AuthAdmission, requestVerb } from './auth-admission.js'
 
 type ReplyHandler = (err: Error | null | undefined, ...rest: unknown[]) => void
 
 /** The write and reply path for one socket. A retired transport is never rebound. */
 export class SmtpTransport {
+	private readonly auth = new AuthAdmission()
+	private greetingPaused = false
 	private writeCount = 0
+
+	get isAuthenticated() {
+		return this.auth.isAuthenticated
+	}
+
+	private get available() {
+		return this.idle && !this.greetingPaused
+	}
+
+	get allowsGreeting() {
+		return this.available && this.auth.allowsGreeting
+	}
+	get allowsLogin() {
+		return this.available && this.auth.allowsLogin
+	}
+
+	// Logging and registering a listener can both run caller code mid-command.
+	// Neither greeting nor login may start until control returns to us.
+	private pauseGreetingWhile(fn: () => void) {
+		const wasPaused = this.greetingPaused
+		this.greetingPaused = true
+		try {
+			fn()
+		} finally {
+			this.greetingPaused = wasPaused
+		}
+	}
 	private pendingReply?: ReplyHandler
 	private pendingOperations = 0
 	private finishCleanup?: () => void
@@ -36,10 +66,19 @@ export class SmtpTransport {
 	constructor(
 		readonly socket: Socket,
 		private readonly log: (entry: unknown) => void,
-		private readonly isAttached: (transport: SmtpTransport) => boolean
+		private readonly isAttached: (transport: SmtpTransport) => boolean,
+		private readonly greetingAccepted: (verb: 'EHLO' | 'HELO') => void
 	) {}
 
-	write(data: string) {
+	writeBody(data: string) {
+		this.pauseGreetingWhile(() => this.log(data))
+		if (!this.isAttached(this)) return
+		if (this.pendingReply) this.auth.overlap()
+		this.auth.untrackedWrite(data)
+		this.write(data)
+	}
+
+	private write(data: string) {
 		if (!this.isAttached(this)) return
 		this.writeCount++
 		this.socket.write(data)
@@ -65,35 +104,50 @@ export class SmtpTransport {
 	trySendRequest(
 		request: string,
 		onReply: ReplyHandler,
-		{ requireIdle = false } = {}
+		{ starting }: { starting?: 'auth' | 'greeting' } = {}
 	) {
 		const initialWriteCount = this.writeCount
-		const hasStayedIdle = () =>
-			this.idle && this.writeCount === initialWriteCount
+		const canStillStart = () => {
+			if (this.writeCount !== initialWriteCount) return false
+			if (starting === 'auth') return this.allowsLogin
+			// A fallback HELO can be inside its own greylist retry timer, but
+			// it must never write over another command's pending reply.
+			return (
+				!this.pendingReply && !this.greetingPaused && this.auth.allowsGreeting
+			)
+		}
 		const canStillSendRequest = () =>
 			this.isAttached(this) &&
 			this.socket.writable &&
-			(!requireIdle || hasStayedIdle())
+			(!starting || canStillStart())
 		if (!canStillSendRequest()) return false
-		this.log(request)
+		const verb = requestVerb(request)
+		this.pauseGreetingWhile(() => this.log(request))
 		if (!canStillSendRequest()) return false
 
 		const handleReply: ReplyHandler = (err, data, message) => {
 			if (this.pendingReply === handleReply) this.pendingReply = undefined
 			try {
 				if (err) return onReply(err)
-				this.log(data)
+				const greeting = this.auth.observeReply(
+					verb,
+					Number((data as { code?: string })?.code)
+				)
+				if (greeting && this.isAttached(this)) this.greetingAccepted(greeting)
+				this.pauseGreetingWhile(() => this.log(data))
 				onReply(null, data, message)
 			} finally {
 				if (this.idle) this.finishCleanup?.()
 			}
 		}
-		this.socket.once('response', handleReply)
+		this.pauseGreetingWhile(() => this.socket.once('response', handleReply))
 		// A newListener hook can retire the transport or send a competing request.
 		if (!canStillSendRequest()) {
 			this.socket.removeListener('response', handleReply)
 			return false
 		}
+		this.auth.observeRequest(request)
+		if (this.pendingReply) this.auth.overlap()
 		this.pendingReply = handleReply
 		this.write(request)
 		return true

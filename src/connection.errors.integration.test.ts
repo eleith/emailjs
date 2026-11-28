@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, vi } from 'vitest'
 import { createServer, Server, Socket } from 'net'
 import { SMTPConnection, SMTPState } from './connection.js'
 import { SMTPErrorStates } from './error.js'
@@ -151,10 +151,17 @@ describe('SMTPConnection (Error Handling)', () => {
 		conn.close()
 	})
 
-	it('fails if the server accepts STARTTLS but never completes the handshake', async () => {
+	it('refuses login locally while the STARTTLS handshake waits for its own timeout', async () => {
+		let receivedClientHello!: () => void
+		const handshakeStarted = new Promise<void>((resolve) => {
+			receivedClientHello = resolve
+		})
 		await startServer((socket) => {
 			socket.write('220 welcome\r\n')
-			socket.once('data', () => socket.write('220 Go ahead\r\n'))
+			socket.once('data', () => {
+				socket.write('220 Go ahead\r\n')
+				socket.once('data', receivedClientHello)
+			})
 		})
 
 		const conn = new SMTPConnection({ port, host: '127.0.0.1', timeout: 500 })
@@ -162,13 +169,20 @@ describe('SMTPConnection (Error Handling)', () => {
 			await new Promise<void>((resolve, reject) => {
 				conn.connect((err) => (err ? reject(err) : resolve()))
 			})
-			const upgrade = new Promise<void>((resolve, reject) => {
-				conn.starttls((err) => (err ? reject(err) : resolve()))
+			const upgrade = new Promise<Error | null | undefined>((resolve) => {
+				conn.starttls(resolve)
 			})
-			await expect(upgrade).rejects.toMatchObject({
+			await handshakeStarted
+			const login = vi.fn()
+			conn.login(login, 'sender', 'secret')
+			expect(login).toHaveBeenCalledExactlyOnceWith(
+				expect.objectContaining({ code: SMTPErrorStates.AUTHFAILED })
+			)
+			expect(await upgrade).toMatchObject({
 				code: SMTPErrorStates.TIMEDOUT,
 				message: expect.stringContaining('STARTTLS handshake'),
 			})
+			expect(login).toHaveBeenCalledTimes(1)
 			expect(conn.state()).toBe(SMTPState.NOTCONNECTED)
 		} finally {
 			conn.close(true)
